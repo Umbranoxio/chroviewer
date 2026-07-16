@@ -1,0 +1,43 @@
+syntax = "proto3";
+
+package scoresaber.live.v1;
+
+import "scoresaber/live/v1/common.proto";
+
+option csharp_namespace = "ScoreSaber.Live.V1";
+option go_package = "github.com/ScoreSaber/platform/apps/ludus/src/generated/proto/scoresaber/live/v1;livev1";
+
+enum LudusRoomContextType {
+  LUDUS_ROOM_CONTEXT_TYPE_UNSPECIFIED = 0;
+  LUDUS_ROOM_CONTEXT_TYPE_CORE = 1;
+  LUDUS_ROOM_CONTEXT_TYPE_PUBLIC_PRESENCE = 2;
+  LUDUS_ROOM_CONTEXT_TYPE_TOURNAMENT = 3;
+}
+
+message SetRoomContextRequest {
+  LudusRoomContextType room_context = 1;
+  string tournament_id = 2;
+  repeated LiveMod mods = 3;
+}
+
+message RoomContextUpdated {
+  LudusRoomContextType room_context = 1;
+  string tournament_id = 2;
+  string current_match_id = 3;
+  LudusClientType client_type = 4;
+}
+
+message JoinRoomRequest {
+  string match_id = 1;
+  string room_id = 2;
+  repeated LiveMod mods = 3;
+}
+
+message LeaveRoomRequest {
+  string match_id = 1;
+}
+
+message FollowRoomRequest {
+  string match_id = 1;
+  string player_id = 2;
+}

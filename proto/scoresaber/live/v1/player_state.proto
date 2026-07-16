@@ -1,0 +1,27 @@
+syntax = "proto3";
+
+package scoresaber.live.v1;
+
+import "scoresaber/live/v1/common.proto";
+
+option csharp_namespace = "ScoreSaber.Live.V1";
+option go_package = "github.com/ScoreSaber/platform/apps/ludus/src/generated/proto/scoresaber/live/v1;livev1";
+
+message PresenceUpdate {
+  LudusPlayState play_state = 1;
+  LudusDownloadState download_state = 2;
+  repeated LiveMod mods = 3;
+  string current_room_id = 4;
+  string current_map_hash = 5;
+}
+
+message DownloadStateUpdate {
+  string match_id = 1;
+  LudusDownloadState download_state = 2;
+  string error_message = 3;
+}
+
+message ReadyStateUpdate {
+  string match_id = 1;
+  LudusReadyState ready_state = 2;
+}

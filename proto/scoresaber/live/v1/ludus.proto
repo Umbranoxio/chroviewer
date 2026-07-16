@@ -1,0 +1,54 @@
+syntax = "proto3";
+
+package scoresaber.live.v1;
+
+import "scoresaber/live/v1/commands.proto";
+import "scoresaber/live/v1/chat.proto";
+import "scoresaber/live/v1/player_state.proto";
+import "scoresaber/live/v1/replay_stream.proto";
+import "scoresaber/live/v1/room_state.proto";
+import "scoresaber/live/v1/room_actions.proto";
+import "scoresaber/live/v1/session.proto";
+
+option csharp_namespace = "ScoreSaber.Live.V1";
+option go_package = "github.com/ScoreSaber/platform/apps/ludus/src/generated/proto/scoresaber/live/v1;livev1";
+
+message LudusEnvelope {
+  uint32 protocol_version = 1;
+  string message_id = 2;
+  string connection_id = 3;
+  uint64 sequence = 4;
+  int64 client_time_unix_ms = 5;
+  int64 server_time_unix_ms = 6;
+
+  oneof body {
+    ConnectRequest connect_request = 10;
+    ConnectAccepted connect_accepted = 11;
+    Heartbeat heartbeat = 12;
+    HeartbeatAck heartbeat_ack = 13;
+    ErrorResponse error = 14;
+    ReconnectRequested reconnect_requested = 15;
+    SetClientTypeRequest set_client_type_request = 16;
+
+    SetRoomContextRequest set_room_context_request = 20;
+    JoinRoomRequest join_room_request = 21;
+    LeaveRoomRequest leave_room_request = 22;
+    FollowRoomRequest follow_room_request = 23;
+    RoomContextUpdated room_context_updated = 24;
+
+    PresenceUpdate presence_update = 30;
+    DownloadStateUpdate download_state_update = 31;
+    ReadyStateUpdate ready_state_update = 32;
+
+    ReplayStreamPacket replay_packet = 40;
+    PromptResponse prompt_response = 50;
+
+    ServerCommand server_command = 60;
+    RoomSnapshot room_snapshot = 61;
+    LiveTournamentStreamSnapshot stream_snapshot = 62;
+
+    LiveChatMessageRequest chat_message_request = 70;
+    LiveChatMessage chat_message = 71;
+    LiveChatSnapshot chat_snapshot = 72;
+  }
+}

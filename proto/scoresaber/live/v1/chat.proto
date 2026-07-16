@@ -1,0 +1,42 @@
+syntax = "proto3";
+
+package scoresaber.live.v1;
+
+import "scoresaber/live/v1/common.proto";
+
+option csharp_namespace = "ScoreSaber.Live.V1";
+option go_package = "github.com/ScoreSaber/platform/apps/ludus/src/generated/proto/scoresaber/live/v1;livev1";
+
+enum LiveChatMessageKind {
+  LIVE_CHAT_MESSAGE_KIND_UNSPECIFIED = 0;
+  LIVE_CHAT_MESSAGE_KIND_CHAT = 1;
+  LIVE_CHAT_MESSAGE_KIND_LOG = 2;
+  LIVE_CHAT_MESSAGE_KIND_SYSTEM = 3;
+}
+
+message LiveChatMessageRequest {
+  string match_id = 1;
+  string text = 2;
+  string sender_display_name = 3;
+}
+
+message LiveChatMessage {
+  string message_id = 1;
+  string tournament_id = 2;
+  string match_id = 3;
+  string room_id = 4;
+  string sender_connection_id = 5;
+  string sender_player_id = 6;
+  string sender_display_name = 7;
+  LudusClientType sender_client_type = 8;
+  LiveChatMessageKind kind = 9;
+  string text = 10;
+  int64 created_at_unix_ms = 11;
+  uint64 room_sequence = 12;
+}
+
+message LiveChatSnapshot {
+  string tournament_id = 1;
+  string match_id = 2;
+  repeated LiveChatMessage messages = 3;
+}

@@ -1,0 +1,727 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "description": "WIP\n\nIf you want to keep any kind of mirror instead of making 100s of requests instead consider subscribing to the websocket api.\nwss://ws.beatsaver.com/maps\n\nMessages will be in the style {\"type\": \"MAP_UPDATE\", \"msg\": __MAP_DATA_HERE__}",
+    "version": "0.1",
+    "title": "BeatSaver API",
+    "contact": {
+      "name": "Top_Cat"
+    }
+  },
+  "paths": {
+    "/maps/id/{id}": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "MapDetail",
+            "schema": {
+              "$ref": "#/definitions/MapDetail"
+            },
+            "produces": ["application/json"]
+          },
+          "404": {
+            "description": "Not Found",
+            "produces": ["application/json"]
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "id",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": ["Maps"],
+        "summary": "Get map information",
+        "consumes": [],
+        "operationId": "getMapById"
+      }
+    },
+    "/maps/hash/{hash}": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "MapDetail",
+            "schema": {
+              "$ref": "#/definitions/MapDetail"
+            },
+            "produces": ["application/json"]
+          },
+          "404": {
+            "description": "Not Found",
+            "produces": ["application/json"]
+          }
+        },
+        "parameters": [
+          {
+            "name": "hash",
+            "in": "path",
+            "description": "Up to 50 hashes seperated by commas",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": ["Maps"],
+        "summary": "Get map(s) for a map hash",
+        "consumes": [],
+        "operationId": "getMapByHash"
+      }
+    }
+  },
+  "definitions": {
+    "MapDetail": {
+      "properties": {
+        "automapper": {
+          "type": "boolean"
+        },
+        "blQualified": {
+          "type": "boolean"
+        },
+        "blRanked": {
+          "type": "boolean"
+        },
+        "bookmarked": {
+          "type": "boolean"
+        },
+        "collaborators": {
+          "type": "array",
+          "items": {
+            "description": "UserDetail",
+            "$ref": "#/definitions/UserDetail"
+          }
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "curatedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "curator": {
+          "description": "UserDetail",
+          "$ref": "#/definitions/UserDetail"
+        },
+        "declaredAi": {
+          "type": "string",
+          "enum": ["Admin", "Uploader", "SageScore", "None"]
+        },
+        "deletedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "description": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "lastPublishedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "metadata": {
+          "description": "MapDetailMetadata",
+          "$ref": "#/definitions/MapDetailMetadata"
+        },
+        "name": {
+          "type": "string"
+        },
+        "nsfw": {
+          "type": "boolean"
+        },
+        "qualified": {
+          "type": "boolean"
+        },
+        "ranked": {
+          "type": "boolean"
+        },
+        "stats": {
+          "description": "MapStats",
+          "$ref": "#/definitions/MapStats"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "",
+              "tech",
+              "dance-style",
+              "speed",
+              "balanced",
+              "challenge",
+              "accuracy",
+              "fitness",
+              "poodle",
+              "swing",
+              "nightcore",
+              "folk-acoustic",
+              "kids-family",
+              "ambient",
+              "funk-disco",
+              "jazz",
+              "classical-orchestral",
+              "soul",
+              "speedcore",
+              "punk",
+              "rb",
+              "holiday",
+              "vocaloid",
+              "j-rock",
+              "trance",
+              "drum-and-bass",
+              "comedy-meme",
+              "instrumental",
+              "hardcore",
+              "k-pop",
+              "indie",
+              "techno",
+              "house",
+              "video-game-soundtrack",
+              "tv-movie-soundtrack",
+              "alternative",
+              "dubstep",
+              "metal",
+              "anime",
+              "hip-hop-rap",
+              "j-pop",
+              "dance",
+              "rock",
+              "pop",
+              "electronic",
+              "ai"
+            ]
+          }
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "uploaded": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "uploader": {
+          "description": "UserDetail",
+          "$ref": "#/definitions/UserDetail"
+        },
+        "versions": {
+          "type": "array",
+          "items": {
+            "description": "MapVersion",
+            "$ref": "#/definitions/MapVersion"
+          }
+        }
+      }
+    },
+    "UserDetail": {
+      "properties": {
+        "accountStanding": {
+          "type": "array",
+          "items": {
+            "description": "AccountStandingEntry",
+            "$ref": "#/definitions/AccountStandingEntry"
+          }
+        },
+        "admin": {
+          "type": "boolean"
+        },
+        "avatar": {
+          "type": "string"
+        },
+        "blurnsfw": {
+          "type": "boolean"
+        },
+        "curator": {
+          "type": "boolean"
+        },
+        "curatorTab": {
+          "type": "boolean"
+        },
+        "description": {
+          "type": "string"
+        },
+        "email": {
+          "type": "string"
+        },
+        "followData": {
+          "description": "UserFollowData",
+          "$ref": "#/definitions/UserFollowData"
+        },
+        "hash": {
+          "type": "string"
+        },
+        "id": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "name": {
+          "type": "string"
+        },
+        "patreon": {
+          "type": "string",
+          "enum": ["None", "Supporter", "SupporterPlus"]
+        },
+        "playlistUrl": {
+          "type": "string"
+        },
+        "seniorCurator": {
+          "type": "boolean"
+        },
+        "stats": {
+          "description": "UserStats",
+          "$ref": "#/definitions/UserStats"
+        },
+        "suspensions": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["Review", "Upload"]
+          }
+        },
+        "testplay": {
+          "type": "boolean"
+        },
+        "type": {
+          "type": "string",
+          "enum": ["DISCORD", "SIMPLE", "DUAL"]
+        },
+        "uniqueSet": {
+          "type": "boolean"
+        },
+        "uploadLimit": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "verifiedMapper": {
+          "type": "boolean"
+        },
+        "vivifyLimit": {
+          "type": "integer",
+          "format": "int32"
+        }
+      }
+    },
+    "MapDetailMetadata": {
+      "properties": {
+        "bpm": {
+          "description": "Float",
+          "$ref": "#/definitions/Float"
+        },
+        "duration": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "levelAuthorName": {
+          "type": "string"
+        },
+        "songAuthorName": {
+          "type": "string"
+        },
+        "songName": {
+          "type": "string"
+        },
+        "songSubName": {
+          "type": "string"
+        }
+      }
+    },
+    "MapStats": {
+      "properties": {
+        "downloads": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "downvotes": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "plays": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "reviews": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "score": {
+          "description": "Float",
+          "$ref": "#/definitions/Float"
+        },
+        "scoreOneDP": {
+          "description": "Float",
+          "$ref": "#/definitions/Float"
+        },
+        "sentiment": {
+          "type": "string",
+          "enum": ["PENDING", "VERY_NEGATIVE", "MOSTLY_NEGATIVE", "MIXED", "MOSTLY_POSITIVE", "VERY_POSITIVE"]
+        },
+        "upvotes": {
+          "type": "integer",
+          "format": "int32"
+        }
+      }
+    },
+    "MapVersion": {
+      "properties": {
+        "coverURL": {
+          "type": "string"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "diffs": {
+          "type": "array",
+          "items": {
+            "description": "MapDifficulty",
+            "$ref": "#/definitions/MapDifficulty"
+          }
+        },
+        "downloadURL": {
+          "type": "string"
+        },
+        "feedback": {
+          "type": "string"
+        },
+        "hash": {
+          "type": "string"
+        },
+        "key": {
+          "type": "string"
+        },
+        "previewURL": {
+          "type": "string"
+        },
+        "sageScore": {
+          "description": "Short",
+          "$ref": "#/definitions/Short"
+        },
+        "scheduledAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "state": {
+          "type": "string",
+          "enum": ["Uploaded", "Testplay", "Published", "Feedback", "Scheduled"]
+        },
+        "testplayAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "testplays": {
+          "type": "array",
+          "items": {
+            "description": "MapTestplay",
+            "$ref": "#/definitions/MapTestplay"
+          }
+        }
+      }
+    },
+    "AccountStandingEntry": {
+      "properties": {
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "description": {
+          "type": "string"
+        },
+        "lengthMinutes": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["ACTIVE", "REVOKED", "EXPIRED"]
+        },
+        "type": {
+          "type": "string",
+          "enum": ["Review", "Upload"]
+        }
+      }
+    },
+    "UserFollowData": {
+      "properties": {
+        "collab": {
+          "type": "boolean"
+        },
+        "curation": {
+          "type": "boolean"
+        },
+        "followers": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "following": {
+          "type": "boolean"
+        },
+        "follows": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "upload": {
+          "type": "boolean"
+        }
+      }
+    },
+    "UserStats": {
+      "properties": {
+        "avgBpm": {
+          "description": "Float",
+          "$ref": "#/definitions/Float"
+        },
+        "avgDuration": {
+          "description": "Float",
+          "$ref": "#/definitions/Float"
+        },
+        "avgScore": {
+          "description": "Float",
+          "$ref": "#/definitions/Float"
+        },
+        "diffStats": {
+          "description": "UserDiffStats",
+          "$ref": "#/definitions/UserDiffStats"
+        },
+        "firstUpload": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "lastUpload": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "rankedMaps": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "totalDownvotes": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "totalMaps": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "totalPlaylists": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "totalUpvotes": {
+          "type": "integer",
+          "format": "int32"
+        }
+      }
+    },
+    "Float": {
+      "type": "number"
+    },
+    "MapDifficulty": {
+      "properties": {
+        "blStars": {
+          "description": "Float",
+          "$ref": "#/definitions/Float"
+        },
+        "bombs": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "characteristic": {
+          "type": "string",
+          "enum": ["Standard", "OneSaber", "NoArrows", "90Degree", "360Degree", "Lightshow", "Lawless", "Legacy"]
+        },
+        "chroma": {
+          "type": "boolean"
+        },
+        "cinema": {
+          "type": "boolean"
+        },
+        "difficulty": {
+          "type": "string",
+          "enum": ["Easy", "Normal", "Hard", "Expert", "ExpertPlus"]
+        },
+        "environment": {
+          "type": "string",
+          "enum": [
+            "DefaultEnvironment",
+            "TriangleEnvironment",
+            "NiceEnvironment",
+            "BigMirrorEnvironment",
+            "KDAEnvironment",
+            "MonstercatEnvironment",
+            "CrabRaveEnvironment",
+            "DragonsEnvironment",
+            "OriginsEnvironment",
+            "PanicEnvironment",
+            "RocketEnvironment",
+            "GreenDayEnvironment",
+            "GreenDayGrenadeEnvironment",
+            "TimbalandEnvironment",
+            "FitBeatEnvironment",
+            "LinkinParkEnvironment",
+            "BTSEnvironment",
+            "KaleidoscopeEnvironment",
+            "InterscopeEnvironment",
+            "SkrillexEnvironment",
+            "BillieEnvironment",
+            "HalloweenEnvironment",
+            "GagaEnvironment",
+            "Halloween2Environment",
+            "GlassDesertEnvironment",
+            "MultiplayerEnvironment",
+            "WeaveEnvironment",
+            "PyroEnvironment",
+            "EDMEnvironment",
+            "TheSecondEnvironment",
+            "LizzoEnvironment",
+            "TheWeekndEnvironment",
+            "RockMixtapeEnvironment",
+            "Dragons2Environment",
+            "Panic2Environment",
+            "QueenEnvironment",
+            "LinkinPark2Environment",
+            "TheRollingStonesEnvironment",
+            "LatticeEnvironment",
+            "DaftPunkEnvironment",
+            "HipHopEnvironment",
+            "ColliderEnvironment",
+            "BritneyEnvironment",
+            "Monstercat2Environment",
+            "MetallicaEnvironment",
+            "GridEnvironment",
+            "ColdplayEnvironment",
+            "ProdigyEnvironment"
+          ]
+        },
+        "events": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "label": {
+          "type": "string"
+        },
+        "length": {
+          "type": "number",
+          "format": "double"
+        },
+        "maxScore": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "me": {
+          "type": "boolean"
+        },
+        "ne": {
+          "type": "boolean"
+        },
+        "njs": {
+          "description": "Float",
+          "$ref": "#/definitions/Float"
+        },
+        "notes": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "nps": {
+          "type": "number",
+          "format": "double"
+        },
+        "obstacles": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "offset": {
+          "description": "Float",
+          "$ref": "#/definitions/Float"
+        },
+        "paritySummary": {
+          "description": "MapParitySummary",
+          "$ref": "#/definitions/MapParitySummary"
+        },
+        "seconds": {
+          "type": "number",
+          "format": "double"
+        },
+        "stars": {
+          "description": "Float",
+          "$ref": "#/definitions/Float"
+        },
+        "vivify": {
+          "type": "boolean"
+        }
+      }
+    },
+    "Short": {
+      "type": "integer"
+    },
+    "MapTestplay": {
+      "properties": {
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "feedback": {
+          "type": "string"
+        },
+        "feedbackAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "user": {
+          "description": "UserDetail",
+          "$ref": "#/definitions/UserDetail"
+        },
+        "video": {
+          "type": "string"
+        }
+      }
+    },
+    "UserDiffStats": {
+      "properties": {
+        "easy": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "expert": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "expertPlus": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "hard": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "normal": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "total": {
+          "type": "integer",
+          "format": "int32"
+        }
+      }
+    },
+    "MapParitySummary": {
+      "properties": {
+        "errors": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "resets": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "warns": {
+          "type": "integer",
+          "format": "int32"
+        }
+      }
+    }
+  }
+}

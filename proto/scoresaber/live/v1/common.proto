@@ -1,0 +1,55 @@
+syntax = "proto3";
+
+package scoresaber.live.v1;
+
+option csharp_namespace = "ScoreSaber.Live.V1";
+option go_package = "github.com/ScoreSaber/platform/apps/ludus/src/generated/proto/scoresaber/live/v1;livev1";
+
+message LiveMod {
+  string id = 1;
+  string version = 2;
+}
+
+enum LivePlayerPlatform {
+  LIVE_PLAYER_PLATFORM_UNSPECIFIED = 0;
+  LIVE_PLAYER_PLATFORM_STEAM = 1;
+  LIVE_PLAYER_PLATFORM_OCULUS = 2;
+}
+
+enum LudusClientType {
+  LUDUS_CLIENT_TYPE_UNSPECIFIED = 0;
+  LUDUS_CLIENT_TYPE_PLAYER = 1;
+  LUDUS_CLIENT_TYPE_SPECTATOR = 2;
+  LUDUS_CLIENT_TYPE_ORGANIZER = 3;
+  LUDUS_CLIENT_TYPE_WEBSITE = 4;
+  LUDUS_CLIENT_TYPE_CASTER = 5;
+}
+
+enum LudusPlayState {
+  LUDUS_PLAY_STATE_UNSPECIFIED = 0;
+  LUDUS_PLAY_STATE_IN_MENUS = 1;
+  LUDUS_PLAY_STATE_PAUSED = 2;
+  LUDUS_PLAY_STATE_IN_GAME = 3;
+}
+
+enum LudusReadyState {
+  LUDUS_READY_STATE_UNSPECIFIED = 0;
+  LUDUS_READY_STATE_NOT_READY = 1;
+  LUDUS_READY_STATE_READY = 2;
+  LUDUS_READY_STATE_AFK = 3;
+}
+
+enum LudusDownloadState {
+  LUDUS_DOWNLOAD_STATE_UNSPECIFIED = 0;
+  LUDUS_DOWNLOAD_STATE_NONE = 1;
+  LUDUS_DOWNLOAD_STATE_DOWNLOADING = 2;
+  LUDUS_DOWNLOAD_STATE_DOWNLOADED = 3;
+  LUDUS_DOWNLOAD_STATE_ERROR = 4;
+}
+
+enum LiveScoreCompletion {
+  LIVE_SCORE_COMPLETION_UNSPECIFIED = 0;
+  LIVE_SCORE_COMPLETION_PASSED = 1;
+  LIVE_SCORE_COMPLETION_FAILED = 2;
+  LIVE_SCORE_COMPLETION_QUIT = 3;
+}

@@ -1,0 +1,30 @@
+{
+  "files.exclude": {
+    "dist": true,
+    "node_modules": true
+  },
+  "search.exclude": {
+    "dist": true,
+    "node_modules": true,
+    "public/environments": true
+  },
+  "editor.codeActionsOnSave": {
+    "source.format.oxc": "always",
+    "source.fixAll.oxc": "always",
+    "source.fixAll.eslint": "explicit"
+  },
+  "editor.formatOnSave": false,
+  "oxc.enable.oxfmt": true,
+  "oxc.enable.oxlint": true,
+  "oxc.lint.run": "onType",
+  "oxc.path.oxfmt": "node_modules/.bin/oxfmt",
+  "oxc.path.oxlint": "node_modules/.bin/oxlint",
+  "oxc.requireConfig": true,
+  "eslint.useFlatConfig": true,
+  "prettier.enable": false,
+  "tailwindCSS.classFunctions": ["clsx", "cva", "twMerge"],
+  "tailwindCSS.experimental.configFile": {
+    "src/styles.css": "src/**/*.{css,ts,tsx}"
+  },
+  "tailwindCSS.files.exclude": ["**/.git/**", "**/dist/**", "**/node_modules/**"]
+}

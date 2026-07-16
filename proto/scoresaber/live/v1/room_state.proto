@@ -1,0 +1,85 @@
+syntax = "proto3";
+
+package scoresaber.live.v1;
+
+import "scoresaber/live/v1/common.proto";
+import "scoresaber/live/v1/replay_stream.proto";
+
+option csharp_namespace = "ScoreSaber.Live.V1";
+option go_package = "github.com/ScoreSaber/platform/apps/ludus/src/generated/proto/scoresaber/live/v1;livev1";
+
+message RoomSnapshot {
+  repeated LiveMatchRoomState rooms = 1;
+}
+
+message LiveMatchRoomState {
+  string match_id = 1;
+  string room_id = 2;
+  bool loaded_song = 3;
+  string loaded_song_hash = 4;
+  string loaded_song_name = 5;
+  repeated string player_ids = 6;
+  repeated LiveRoomPlayerState player_states = 7;
+  uint32 viewer_count = 8;
+  repeated LiveRoomViewerState viewers = 9;
+}
+
+message LiveRoomPlayerState {
+  string player_id = 1;
+  LudusPlayState play_state = 2;
+  LudusDownloadState download_state = 3;
+  LudusReadyState ready_state = 4;
+  bool is_bot = 5;
+  string error_message = 6;
+}
+
+message LiveRoomViewerState {
+  string player_id = 1;
+  LudusClientType client_type = 2;
+}
+
+message LiveTournamentStreamSnapshot {
+  string tournament_id = 1;
+  uint64 sequence = 2;
+  int64 server_time_unix_ms = 3;
+  repeated LiveRoomStreamSnapshot rooms = 4;
+}
+
+message LiveRoomStreamSnapshot {
+  LiveMatchRoomState room = 1;
+  repeated LiveRoomReplayState replay_states = 2;
+  repeated ReplayStreamPacket replay_packets = 3;
+  int64 live_edge_song_time_ms = 4;
+  LivePlaybackBuffer playback_buffer = 5;
+}
+
+message LivePlaybackBuffer {
+  LivePlaybackPolicy policy = 1;
+  uint32 recommended_delay_ms = 2;
+  uint32 min_delay_ms = 3;
+  uint32 max_delay_ms = 4;
+}
+
+enum LivePlaybackPolicy {
+  LIVE_PLAYBACK_POLICY_UNSPECIFIED = 0;
+  LIVE_PLAYBACK_POLICY_LOW_LATENCY = 1;
+  LIVE_PLAYBACK_POLICY_SYNCED_ROOM = 2;
+}
+
+message LiveRoomReplayState {
+  string player_id = 1;
+  string stream_id = 2;
+  uint64 sequence = 3;
+  int64 song_time_ms = 4;
+  int64 server_time_unix_ms = 5;
+  ReplayStreamState stream_state = 6;
+  uint32 score = 7;
+  optional double accuracy = 8;
+  optional uint32 combo = 9;
+  uint32 notes_missed = 10;
+  bool full_combo = 11;
+  ReplayCompletion completion = 12;
+  string map_hash = 13;
+  uint32 rank = 14;
+  bool paused = 15;
+}

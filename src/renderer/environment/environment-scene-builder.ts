@@ -1,0 +1,279 @@
+import {
+  Group,
+  Mesh,
+  Vector3,
+  Vector4,
+  type BufferGeometry,
+  type Material,
+  type Object3D,
+  type ShaderMaterial,
+} from 'three';
+
+import { MAIN_ONLY_LAYER } from '../mirror/planar-mirror';
+import { referenceKey, rendererObjectsForMpbController } from './environment-component-utils';
+import { createPositionConstraintApplicator } from './environment-constraints';
+import { createGeometry, nodeFor } from './environment-geometry';
+import type { EnvironmentBoostSwitch, EnvironmentEventSwitch } from './environment-runtime';
+import { createEnvironmentMaterial, type EnvironmentMaterialInstance } from './materials/create-environment-material';
+import type { EnvironmentMaterialContext } from './materials/material-context';
+import type { BasicLightEffectData, EnvironmentData, ObjectReference } from './types';
+
+export interface EnvironmentSceneBuild {
+  root: Group;
+  geometries: Map<string, BufferGeometry>;
+  materialInstances: Set<Material>;
+  rendererMeshes: Map<Object3D, Mesh>;
+  objectShaderMaterials: ShaderMaterial[][];
+  nodes: Group[];
+  lightEffectsByObject: Map<number, BasicLightEffectData[]>;
+  lightEffectsByTarget: Map<string, BasicLightEffectData[]>;
+  eventSwitches: EnvironmentEventSwitch[];
+  boostSwitches: EnvironmentBoostSwitch[];
+  applyChromaRemoval: (ids: readonly string[]) => void;
+  enforceChromaRemoval: () => void;
+  applyConstraints: () => boolean;
+}
+
+function controlledRendererObjects(data: EnvironmentData) {
+  const controlledObjects = new Set<number>();
+  data.objects.forEach((object, index) => {
+    for (const controller of object.components?.ParametricBloomFogLightController ?? []) {
+      if (!controller.enabled) continue;
+      if (controller.BoxLight !== null) controlledObjects.add(controller.BoxLight.obj);
+      if (controller.SpriteLight !== null) controlledObjects.add(controller.SpriteLight.obj);
+    }
+    for (const controller of object.components?.RectangleFakeGlowLightController ?? []) {
+      if (!controller.enabled) continue;
+      for (const rendererObject of rendererObjectsForMpbController(data, controller.MpbController)) {
+        controlledObjects.add(rendererObject);
+      }
+    }
+    for (const controller of object.components?.MaterialLightController ?? []) {
+      if (controller.enabled && controller.Renderer !== null) controlledObjects.add(controller.Renderer.obj);
+    }
+    for (const controller of object.components?.SpriteLightController ?? []) {
+      if (controller.enabled && controller.Renderer !== null) controlledObjects.add(controller.Renderer.obj);
+    }
+    for (const controller of object.components?.MaterialPropertyBlockController ?? []) {
+      if (!controller.enabled) continue;
+      const renderers =
+        controller.Renderers.length === 0 ? [index] : controller.Renderers.map((renderer) => renderer.obj);
+      for (const renderer of renderers) controlledObjects.add(renderer);
+    }
+    for (const animator of object.components?.MaterialPropertyBlockPositionAnimator ?? []) {
+      if (!animator.enabled) continue;
+      for (const rendererObject of rendererObjectsForMpbController(data, animator.Controller)) {
+        controlledObjects.add(rendererObject);
+      }
+    }
+  });
+  return controlledObjects;
+}
+
+function collectLightEffects(data: EnvironmentData) {
+  const byObject = new Map<number, BasicLightEffectData[]>();
+  const byTarget = new Map<string, BasicLightEffectData[]>();
+  for (const object of data.objects) {
+    for (const effect of object.components?.BasicLightEffect ?? []) {
+      if (!effect.enabled) continue;
+      for (const entry of effect.lightEntries) {
+        const key = referenceKey(entry);
+        const targetEffects = byTarget.get(key);
+        if (targetEffects === undefined) byTarget.set(key, [effect]);
+        else targetEffects.push(effect);
+        if (entry.component !== 'ParametricBloomFogLightController') continue;
+        const effects = byObject.get(entry.obj);
+        if (effects === undefined) byObject.set(entry.obj, [effect]);
+        else effects.push(effect);
+      }
+    }
+  }
+  return { byObject, byTarget };
+}
+
+function buildSwitches(data: EnvironmentData, nodes: Group[]) {
+  function genericEventType(reference: ObjectReference) {
+    if (reference.component !== 'GenericCallbackEventEffect') return undefined;
+    const effect = data.objects[reference.obj]?.components?.GenericCallbackEventEffect?.[reference.componentIndex ?? 0];
+    return effect?.enabled === true ? effect.ID : undefined;
+  }
+
+  const eventSwitches: EnvironmentEventSwitch[] = [];
+  const boostSwitches: EnvironmentBoostSwitch[] = [];
+  for (const object of data.objects) {
+    for (const component of object.components?.GameObjectIntSwitch ?? []) {
+      const eventType = genericEventType(component.Effect);
+      if (!component.enabled || eventType === undefined) continue;
+      const containers = component.GameObjectsValueContainers.map((container) => ({
+        value: container.Value,
+        targets: container.GameObjects.flatMap((reference) => nodes[reference.obj] ?? []),
+      }));
+      function apply(value: number) {
+        for (const container of containers) {
+          const visible = container.value === value;
+          for (const target of container.targets) target.visible = visible;
+        }
+      }
+      apply(component.DefaultValue);
+      eventSwitches.push({ eventType, defaultValue: component.DefaultValue, apply });
+    }
+    for (const component of object.components?.GameObjectSwitch ?? []) {
+      if (!component.enabled || component.Effect.component !== 'ColorBoostEffect') continue;
+      const effect =
+        data.objects[component.Effect.obj]?.components?.ColorBoostEffect?.[component.Effect.componentIndex ?? 0];
+      if (effect?.enabled !== true) continue;
+      const normal = component.NormalGameObjects.flatMap((reference) => nodes[reference.obj] ?? []);
+      const boost = component.BoostGameObjects.flatMap((reference) => nodes[reference.obj] ?? []);
+      function apply(boosted: boolean) {
+        for (const target of normal) target.visible = !boosted;
+        for (const target of boost) target.visible = boosted;
+      }
+      apply(false);
+      boostSwitches.push({ apply });
+    }
+  }
+  return { eventSwitches, boostSwitches };
+}
+
+export function buildEnvironmentScene(
+  data: EnvironmentData,
+  materialContext: EnvironmentMaterialContext,
+): EnvironmentSceneBuild {
+  const root = new Group();
+  root.name = data.id;
+  const lightEffects = collectLightEffects(data);
+  const controlledObjects = controlledRendererObjects(data);
+  const geometries = new Map(Object.entries(data.meshes).map(([name, mesh]) => [name, createGeometry(mesh)]));
+  const materials = new Map<string, EnvironmentMaterialInstance>();
+  for (const [name, materialData] of Object.entries(data.materials)) {
+    const material = createEnvironmentMaterial(materialData, materialContext, data.id);
+    if (material !== null) materials.set(name, material);
+  }
+  const materialInstances = new Set([...materials.values()].map((instance) => instance.material));
+  const rendererMeshes = new Map<Object3D, Mesh>();
+  const objectShaderMaterials: ShaderMaterial[][] = data.objects.map(() => []);
+  const nodes = data.objects.map(nodeFor);
+  const chromaMarkers = data.objects.flatMap((object, index) => {
+    const marker = object.components?.ChromaIDMarker?.[0];
+    const node = nodes[index];
+    return marker?.enabled === true && node !== undefined ? [{ id: marker.ChromaID, node }] : [];
+  });
+  let removedNodes = new Set<Group>();
+
+  nodes.forEach((node, index) => {
+    const object = data.objects[index];
+    if (object === undefined) return;
+    const parent = object.parent < 0 ? root : nodes[object.parent];
+    parent?.add(node);
+    const geometry = object.mesh === undefined ? undefined : geometries.get(object.mesh);
+    const rendererInstances = (object.materials ?? []).flatMap((name) => {
+      if (name === null) return [];
+      const material = materials.get(name);
+      const materialData = data.materials[name];
+      if (material === undefined || materialData === undefined) return [];
+      if (!controlledObjects.has(index)) return [material];
+      const instance = createEnvironmentMaterial(materialData, materialContext, data.id);
+      if (instance === null) return [];
+      materialInstances.add(instance.material);
+      return [instance];
+    });
+    const rendererMaterials = rendererInstances.map((instance) => instance.material);
+    objectShaderMaterials[index] = rendererInstances.flatMap((instance) => instance.shader ?? []);
+    if (geometry === undefined || rendererMaterials.length === 0) return;
+    const mesh = new Mesh(geometry, rendererMaterials.length === 1 ? rendererMaterials[0] : rendererMaterials);
+    rendererMeshes.set(node, mesh);
+    mesh.name = `${object.name}:renderer`;
+    mesh.visible = object.rendererEnabled !== false;
+    const materialFamilies = object.materials?.flatMap((name) => (name === null ? [] : [data.materials[name]?.family]));
+    if (materialFamilies?.includes('clouds')) {
+      mesh.frustumCulled = false;
+    }
+    if (
+      object.materials?.some(
+        (name) => name !== null && data.materials[name]?.shader === 'ChroMapper/Parametric Slice Billboard',
+      )
+    ) {
+      mesh.renderOrder = 1;
+    }
+    if (materialFamilies?.includes('stencil')) {
+      mesh.renderOrder = -1;
+    }
+    if (object.components?.PlanarReflection !== undefined) mesh.layers.set(MAIN_ONLY_LAYER);
+    node.add(mesh);
+  });
+
+  for (const object of data.objects) {
+    for (const setter of object.components?.MaterialPropertyBlockFloatSetter ?? []) {
+      if (!setter.enabled) continue;
+      for (const rendererObject of rendererObjectsForMpbController(data, setter.Controller)) {
+        for (const material of objectShaderMaterials[rendererObject] ?? []) {
+          for (const [property, value] of Object.entries(setter.Values)) {
+            const uniform = material.uniforms[property];
+            if (uniform === undefined) material.uniforms[property] = { value };
+            else uniform.value = value;
+          }
+        }
+      }
+    }
+  }
+
+  const switches = buildSwitches(data, nodes);
+  root.updateMatrixWorld(true);
+  const applyConstraints = createPositionConstraintApplicator(data, nodes);
+  applyConstraints();
+  root.updateMatrixWorld(true);
+
+  for (const object of data.objects) {
+    for (const animator of object.components?.MaterialPropertyBlockPositionAnimator ?? []) {
+      if (!animator.enabled) continue;
+      const target = nodes[animator.TargetTransform.obj];
+      if (target === undefined) continue;
+      const targetNode = target;
+      const value = new Vector4();
+      const worldPosition = new Vector3();
+      function update() {
+        targetNode.getWorldPosition(worldPosition);
+        value.set(worldPosition.x, worldPosition.y, worldPosition.z, 1);
+      }
+      update();
+      for (const rendererObject of rendererObjectsForMpbController(data, animator.Controller)) {
+        for (const material of objectShaderMaterials[rendererObject] ?? []) {
+          material.uniforms[animator.Property] = { value };
+          const beforeRender = material.onBeforeRender.bind(material);
+          material.onBeforeRender = (...args) => {
+            beforeRender(...args);
+            update();
+          };
+        }
+      }
+    }
+  }
+
+  function applyChromaRemoval(ids: readonly string[]) {
+    for (const node of removedNodes) node.visible = data.objects[nodes.indexOf(node)]?.active ?? true;
+    removedNodes = new Set(
+      chromaMarkers.filter((marker) => ids.some((id) => marker.id.includes(id))).map((marker) => marker.node),
+    );
+    for (const node of removedNodes) node.visible = false;
+  }
+
+  function enforceChromaRemoval() {
+    for (const node of removedNodes) node.visible = false;
+  }
+
+  return {
+    root,
+    geometries,
+    materialInstances,
+    rendererMeshes,
+    objectShaderMaterials,
+    nodes,
+    lightEffectsByObject: lightEffects.byObject,
+    lightEffectsByTarget: lightEffects.byTarget,
+    eventSwitches: switches.eventSwitches,
+    boostSwitches: switches.boostSwitches,
+    applyChromaRemoval,
+    enforceChromaRemoval,
+    applyConstraints,
+  };
+}

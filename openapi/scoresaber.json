@@ -1,0 +1,3778 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "ScoreSaber API v2",
+    "description": "ScoreSaber API v2 Documentation",
+    "version": "2.0",
+    "contact": {}
+  },
+  "paths": {
+    "/api/v2/leaderboards/{id}": {
+      "get": {
+        "operationId": "LeaderboardController_getLeaderboardById",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "integer",
+              "exclusiveMinimum": true
+            }
+          },
+          {
+            "name": "realmId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "description": "Realm ID (defaults to the active realm)",
+              "type": "integer",
+              "minimum": 0
+            },
+            "description": "Realm ID (defaults to the active realm)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Leaderboard details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "number"
+                    },
+                    "map": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "number"
+                        },
+                        "hash": {
+                          "type": "string"
+                        },
+                        "bsid": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "songName": {
+                          "type": "string"
+                        },
+                        "songSubName": {
+                          "type": "string"
+                        },
+                        "songAuthorName": {
+                          "type": "string"
+                        },
+                        "levelAuthorName": {
+                          "type": "string"
+                        },
+                        "bpm": {
+                          "type": "number"
+                        },
+                        "coverUrl": {
+                          "type": "string"
+                        },
+                        "verified": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "hash",
+                        "bsid",
+                        "songName",
+                        "songSubName",
+                        "songAuthorName",
+                        "levelAuthorName",
+                        "bpm",
+                        "coverUrl",
+                        "verified"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "difficulty": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "number"
+                        },
+                        "difficulty": {
+                          "type": "number"
+                        },
+                        "rawDifficulty": {
+                          "type": "string"
+                        },
+                        "gameMode": {
+                          "type": "string"
+                        }
+                      },
+                      "required": ["id", "difficulty", "rawDifficulty", "gameMode"],
+                      "additionalProperties": false
+                    },
+                    "maxScore": {
+                      "type": "number"
+                    },
+                    "totalScores": {
+                      "type": "number"
+                    },
+                    "dailyScores": {
+                      "type": "number"
+                    },
+                    "createdAt": {
+                      "type": "string"
+                    },
+                    "realm": {
+                      "type": "object",
+                      "properties": {
+                        "realmId": {
+                          "type": "number"
+                        },
+                        "realmName": {
+                          "type": "string"
+                        },
+                        "leaderboardStatus": {
+                          "type": "string",
+                          "enum": ["UNRANKED", "RANKED", "QUALIFIED", "LOVED"]
+                        },
+                        "positiveModifiers": {
+                          "type": "boolean"
+                        },
+                        "stars": {
+                          "type": "number"
+                        },
+                        "rankedAt": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "qualifiedAt": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "lovedAt": {
+                          "nullable": true,
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "realmId",
+                        "realmName",
+                        "leaderboardStatus",
+                        "positiveModifiers",
+                        "stars",
+                        "rankedAt",
+                        "qualifiedAt",
+                        "lovedAt"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "map",
+                    "difficulty",
+                    "maxScore",
+                    "totalScores",
+                    "dailyScores",
+                    "createdAt",
+                    "realm"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request\n\nBad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "statusCode": {
+                          "type": "number",
+                          "enum": [400]
+                        },
+                        "error": {
+                          "type": "string",
+                          "enum": ["Bad Request"]
+                        },
+                        "code": {
+                          "type": "string",
+                          "enum": ["VALIDATION_ERROR"]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "properties": {
+                            "field": {
+                              "type": "string"
+                            }
+                          },
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": ["statusCode", "error", "code", "message"],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "statusCode": {
+                          "type": "number",
+                          "enum": [400]
+                        },
+                        "error": {
+                          "type": "string",
+                          "enum": ["Bad Request"]
+                        },
+                        "code": {
+                          "type": "string",
+                          "enum": ["REQUEST_VALIDATION_ERROR"]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "properties": {
+                            "errors": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "path": {
+                                    "type": "string"
+                                  },
+                                  "message": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": ["path", "message"],
+                                "additionalProperties": false
+                              }
+                            }
+                          },
+                          "required": ["errors"],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": ["statusCode", "error", "code", "message", "details"],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "statusCode": {
+                          "type": "number",
+                          "enum": [400]
+                        },
+                        "error": {
+                          "type": "string",
+                          "enum": ["Bad Request"]
+                        },
+                        "code": {
+                          "type": "string",
+                          "enum": ["INVALID_PATH_PARAMETER"]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "properties": {
+                            "errors": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "path": {
+                                    "type": "string"
+                                  },
+                                  "message": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": ["path", "message"],
+                                "additionalProperties": false
+                              }
+                            }
+                          },
+                          "required": ["errors"],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": ["statusCode", "error", "code", "message", "details"],
+                      "additionalProperties": false
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "number",
+                      "enum": [401]
+                    },
+                    "error": {
+                      "type": "string",
+                      "enum": ["Unauthorized"]
+                    },
+                    "code": {
+                      "type": "string",
+                      "enum": ["UNAUTHORIZED"]
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["statusCode", "error", "code", "message"],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "number",
+                      "enum": [404]
+                    },
+                    "error": {
+                      "type": "string",
+                      "enum": ["Not Found"]
+                    },
+                    "code": {
+                      "type": "string",
+                      "enum": ["NOT_FOUND"]
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "details": {
+                      "type": "object",
+                      "properties": {
+                        "resource": {
+                          "type": "string"
+                        },
+                        "id": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "number"
+                            }
+                          ]
+                        }
+                      },
+                      "required": ["resource"],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": ["statusCode", "error", "code", "message"],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "tags": ["Leaderboards"]
+      }
+    },
+    "/api/v2/leaderboards/hash/{hash}": {
+      "get": {
+        "operationId": "LeaderboardController_getDifficultiesForHash",
+        "parameters": [
+          {
+            "name": "hash",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 40
+            }
+          },
+          {
+            "name": "realmId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "description": "Realm ID (defaults to the active realm)",
+              "type": "integer",
+              "minimum": 0
+            },
+            "description": "Realm ID (defaults to the active realm)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Difficulties for map hash",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "number"
+                      },
+                      "difficulty": {
+                        "type": "number"
+                      },
+                      "rawDifficulty": {
+                        "type": "string"
+                      },
+                      "gameMode": {
+                        "type": "string"
+                      }
+                    },
+                    "required": ["id", "difficulty", "rawDifficulty", "gameMode"],
+                    "additionalProperties": false
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request\n\nBad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "statusCode": {
+                          "type": "number",
+                          "enum": [400]
+                        },
+                        "error": {
+                          "type": "string",
+                          "enum": ["Bad Request"]
+                        },
+                        "code": {
+                          "type": "string",
+                          "enum": ["VALIDATION_ERROR"]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "properties": {
+                            "field": {
+                              "type": "string"
+                            }
+                          },
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": ["statusCode", "error", "code", "message"],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "statusCode": {
+                          "type": "number",
+                          "enum": [400]
+                        },
+                        "error": {
+                          "type": "string",
+                          "enum": ["Bad Request"]
+                        },
+                        "code": {
+                          "type": "string",
+                          "enum": ["REQUEST_VALIDATION_ERROR"]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "properties": {
+                            "errors": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "path": {
+                                    "type": "string"
+                                  },
+                                  "message": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": ["path", "message"],
+                                "additionalProperties": false
+                              }
+                            }
+                          },
+                          "required": ["errors"],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": ["statusCode", "error", "code", "message", "details"],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "statusCode": {
+                          "type": "number",
+                          "enum": [400]
+                        },
+                        "error": {
+                          "type": "string",
+                          "enum": ["Bad Request"]
+                        },
+                        "code": {
+                          "type": "string",
+                          "enum": ["INVALID_PATH_PARAMETER"]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "properties": {
+                            "errors": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "path": {
+                                    "type": "string"
+                                  },
+                                  "message": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": ["path", "message"],
+                                "additionalProperties": false
+                              }
+                            }
+                          },
+                          "required": ["errors"],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": ["statusCode", "error", "code", "message", "details"],
+                      "additionalProperties": false
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "number",
+                      "enum": [401]
+                    },
+                    "error": {
+                      "type": "string",
+                      "enum": ["Unauthorized"]
+                    },
+                    "code": {
+                      "type": "string",
+                      "enum": ["UNAUTHORIZED"]
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["statusCode", "error", "code", "message"],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "number",
+                      "enum": [404]
+                    },
+                    "error": {
+                      "type": "string",
+                      "enum": ["Not Found"]
+                    },
+                    "code": {
+                      "type": "string",
+                      "enum": ["NOT_FOUND"]
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "details": {
+                      "type": "object",
+                      "properties": {
+                        "resource": {
+                          "type": "string"
+                        },
+                        "id": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "number"
+                            }
+                          ]
+                        }
+                      },
+                      "required": ["resource"],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": ["statusCode", "error", "code", "message"],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "tags": ["Leaderboards"]
+      }
+    },
+    "/api/v2/players/{id}": {
+      "get": {
+        "operationId": "PlayerController_getPlayer",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "realmId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "description": "Realm ID (defaults to the active realm)",
+              "type": "integer",
+              "minimum": 0
+            },
+            "description": "Realm ID (defaults to the active realm)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Player profile",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "playerNameInGame": {
+                      "type": "string"
+                    },
+                    "country": {
+                      "type": "string"
+                    },
+                    "role": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "avatar": {
+                      "type": "string"
+                    },
+                    "avatarVersion": {
+                      "type": "number"
+                    },
+                    "permissions": {
+                      "type": "number"
+                    },
+                    "banned": {
+                      "type": "boolean"
+                    },
+                    "silenced": {
+                      "type": "boolean"
+                    },
+                    "inactive": {
+                      "type": "boolean"
+                    },
+                    "stats": {
+                      "type": "object",
+                      "properties": {
+                        "realmId": {
+                          "type": "number"
+                        },
+                        "realmName": {
+                          "type": "string"
+                        },
+                        "rank": {
+                          "type": "number"
+                        },
+                        "countryRank": {
+                          "type": "number"
+                        },
+                        "rankChange": {
+                          "nullable": true,
+                          "type": "number"
+                        },
+                        "totalPP": {
+                          "type": "number"
+                        },
+                        "plusOnePP": {
+                          "nullable": true,
+                          "type": "number"
+                        },
+                        "totalScore": {
+                          "type": "string"
+                        },
+                        "totalRankedScore": {
+                          "type": "string"
+                        },
+                        "totalPlayedLeaderboards": {
+                          "type": "number"
+                        },
+                        "totalPlayedRankedLeaderboards": {
+                          "type": "number"
+                        },
+                        "totalSubmittedPlays": {
+                          "type": "number"
+                        },
+                        "totalReplayViews": {
+                          "type": "number"
+                        },
+                        "averageAccuracy": {
+                          "type": "number"
+                        },
+                        "weightedAverageAccuracy": {
+                          "type": "number"
+                        },
+                        "completionAccuracy": {
+                          "type": "number"
+                        },
+                        "device": {
+                          "nullable": true,
+                          "type": "object",
+                          "properties": {
+                            "hmd": {
+                              "nullable": true,
+                              "type": "string"
+                            },
+                            "controllerLeft": {
+                              "nullable": true,
+                              "type": "string"
+                            },
+                            "controllerRight": {
+                              "nullable": true,
+                              "type": "string"
+                            }
+                          },
+                          "required": ["hmd", "controllerLeft", "controllerRight"],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "realmId",
+                        "realmName",
+                        "rank",
+                        "countryRank",
+                        "rankChange",
+                        "totalPP",
+                        "plusOnePP",
+                        "totalScore",
+                        "totalRankedScore",
+                        "totalPlayedLeaderboards",
+                        "totalPlayedRankedLeaderboards",
+                        "totalSubmittedPlays",
+                        "totalReplayViews",
+                        "averageAccuracy",
+                        "weightedAverageAccuracy",
+                        "completionAccuracy",
+                        "device"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "bio": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "vanity": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "profileCustomization": {
+                      "type": "object",
+                      "properties": {
+                        "backgroundImage": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "backgroundImageVersion": {
+                          "nullable": true,
+                          "type": "number"
+                        },
+                        "accentColor": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "accentForegroundColor": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "accentForegroundActiveColor": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "supporterNameColorEnabled": {
+                          "type": "boolean"
+                        },
+                        "badgeOrder": {
+                          "nullable": true,
+                          "type": "array",
+                          "items": {
+                            "type": "number"
+                          }
+                        },
+                        "badgeComments": {
+                          "nullable": true,
+                          "type": "object",
+                          "additionalProperties": {
+                            "type": "string"
+                          }
+                        },
+                        "statOrder": {
+                          "nullable": true,
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "enum": [
+                              "rankedPlays",
+                              "rankedScore",
+                              "rankedAcc",
+                              "plusOnePP",
+                              "totalPlays",
+                              "totalScore",
+                              "joined",
+                              "replayViews",
+                              "role"
+                            ]
+                          }
+                        },
+                        "enabledStatIds": {
+                          "nullable": true,
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "enum": [
+                              "rankedPlays",
+                              "rankedScore",
+                              "rankedAcc",
+                              "plusOnePP",
+                              "totalPlays",
+                              "totalScore",
+                              "joined",
+                              "replayViews",
+                              "role"
+                            ]
+                          }
+                        },
+                        "chartMetricIds": {
+                          "nullable": true,
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "enum": ["rank", "totalPP", "averageAccuracy", "totalSubmittedPlays"]
+                          }
+                        },
+                        "sectionOrder": {
+                          "nullable": true,
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "enum": ["charts", "bio", "pinnedScores", "scores"]
+                          }
+                        }
+                      },
+                      "required": [
+                        "backgroundImage",
+                        "backgroundImageVersion",
+                        "accentColor",
+                        "accentForegroundColor",
+                        "accentForegroundActiveColor",
+                        "supporterNameColorEnabled",
+                        "badgeOrder",
+                        "badgeComments",
+                        "statOrder",
+                        "enabledStatIds",
+                        "chartMetricIds",
+                        "sectionOrder"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "createdAt": {
+                      "type": "string"
+                    },
+                    "lastSeenAt": {
+                      "type": "string"
+                    },
+                    "badges": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "number"
+                          },
+                          "image": {
+                            "type": "string"
+                          },
+                          "description": {
+                            "type": "string"
+                          }
+                        },
+                        "required": ["id", "image", "description"],
+                        "additionalProperties": false
+                      }
+                    },
+                    "pinnedScores": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "score": {
+                            "type": "object",
+                            "properties": {
+                              "score": {
+                                "type": "object",
+                                "properties": {
+                                  "id": {
+                                    "type": "number"
+                                  },
+                                  "rank": {
+                                    "type": "number"
+                                  },
+                                  "unmodifiedScore": {
+                                    "type": "number"
+                                  },
+                                  "modifiedScore": {
+                                    "type": "number"
+                                  },
+                                  "accuracy": {
+                                    "type": "number"
+                                  },
+                                  "pp": {
+                                    "type": "number"
+                                  },
+                                  "weight": {
+                                    "type": "number"
+                                  },
+                                  "mods": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "badCuts": {
+                                    "type": "number"
+                                  },
+                                  "missedNotes": {
+                                    "type": "number"
+                                  },
+                                  "maxCombo": {
+                                    "type": "number"
+                                  },
+                                  "fullCombo": {
+                                    "type": "boolean"
+                                  },
+                                  "hasReplay": {
+                                    "type": "boolean"
+                                  },
+                                  "replayViewCount": {
+                                    "type": "number"
+                                  },
+                                  "personalBest": {
+                                    "type": "boolean"
+                                  },
+                                  "legacyHmdId": {
+                                    "nullable": true,
+                                    "type": "number"
+                                  },
+                                  "version": {
+                                    "nullable": true,
+                                    "type": "string"
+                                  },
+                                  "playOutcome": {
+                                    "type": "string",
+                                    "enum": ["CLEAR", "FAIL", "QUIT", "RESTART"]
+                                  },
+                                  "playOutcomeTime": {
+                                    "nullable": true,
+                                    "type": "number"
+                                  },
+                                  "createdAt": {
+                                    "type": "string"
+                                  },
+                                  "hasHistory": {
+                                    "type": "boolean"
+                                  },
+                                  "player": {
+                                    "type": "object",
+                                    "properties": {
+                                      "id": {
+                                        "type": "string"
+                                      },
+                                      "name": {
+                                        "type": "string"
+                                      },
+                                      "playerNameInGame": {
+                                        "type": "string"
+                                      },
+                                      "country": {
+                                        "type": "string"
+                                      },
+                                      "role": {
+                                        "nullable": true,
+                                        "type": "string"
+                                      },
+                                      "avatar": {
+                                        "type": "string"
+                                      },
+                                      "avatarVersion": {
+                                        "type": "number"
+                                      },
+                                      "permissions": {
+                                        "type": "number"
+                                      }
+                                    },
+                                    "required": [
+                                      "id",
+                                      "name",
+                                      "playerNameInGame",
+                                      "country",
+                                      "role",
+                                      "avatar",
+                                      "avatarVersion",
+                                      "permissions"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  "device": {
+                                    "nullable": true,
+                                    "type": "object",
+                                    "properties": {
+                                      "hmd": {
+                                        "nullable": true,
+                                        "type": "string"
+                                      },
+                                      "controllerLeft": {
+                                        "nullable": true,
+                                        "type": "string"
+                                      },
+                                      "controllerRight": {
+                                        "nullable": true,
+                                        "type": "string"
+                                      }
+                                    },
+                                    "required": ["hmd", "controllerLeft", "controllerRight"],
+                                    "additionalProperties": false
+                                  }
+                                },
+                                "required": [
+                                  "id",
+                                  "rank",
+                                  "unmodifiedScore",
+                                  "modifiedScore",
+                                  "accuracy",
+                                  "pp",
+                                  "weight",
+                                  "mods",
+                                  "badCuts",
+                                  "missedNotes",
+                                  "maxCombo",
+                                  "fullCombo",
+                                  "hasReplay",
+                                  "personalBest",
+                                  "legacyHmdId",
+                                  "version",
+                                  "playOutcome",
+                                  "playOutcomeTime",
+                                  "createdAt",
+                                  "player",
+                                  "device"
+                                ],
+                                "additionalProperties": false
+                              },
+                              "leaderboard": {
+                                "type": "object",
+                                "properties": {
+                                  "id": {
+                                    "type": "number"
+                                  },
+                                  "map": {
+                                    "type": "object",
+                                    "properties": {
+                                      "id": {
+                                        "type": "number"
+                                      },
+                                      "hash": {
+                                        "type": "string"
+                                      },
+                                      "bsid": {
+                                        "nullable": true,
+                                        "type": "string"
+                                      },
+                                      "songName": {
+                                        "type": "string"
+                                      },
+                                      "songSubName": {
+                                        "type": "string"
+                                      },
+                                      "songAuthorName": {
+                                        "type": "string"
+                                      },
+                                      "levelAuthorName": {
+                                        "type": "string"
+                                      },
+                                      "bpm": {
+                                        "type": "number"
+                                      },
+                                      "coverUrl": {
+                                        "type": "string"
+                                      },
+                                      "verified": {
+                                        "type": "boolean"
+                                      }
+                                    },
+                                    "required": [
+                                      "id",
+                                      "hash",
+                                      "bsid",
+                                      "songName",
+                                      "songSubName",
+                                      "songAuthorName",
+                                      "levelAuthorName",
+                                      "bpm",
+                                      "coverUrl",
+                                      "verified"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  "difficulty": {
+                                    "type": "object",
+                                    "properties": {
+                                      "id": {
+                                        "type": "number"
+                                      },
+                                      "difficulty": {
+                                        "type": "number"
+                                      },
+                                      "rawDifficulty": {
+                                        "type": "string"
+                                      },
+                                      "gameMode": {
+                                        "type": "string"
+                                      }
+                                    },
+                                    "required": ["id", "difficulty", "rawDifficulty", "gameMode"],
+                                    "additionalProperties": false
+                                  },
+                                  "maxScore": {
+                                    "type": "number"
+                                  },
+                                  "totalScores": {
+                                    "type": "number"
+                                  },
+                                  "dailyScores": {
+                                    "type": "number"
+                                  },
+                                  "createdAt": {
+                                    "type": "string"
+                                  },
+                                  "realm": {
+                                    "type": "object",
+                                    "properties": {
+                                      "realmId": {
+                                        "type": "number"
+                                      },
+                                      "realmName": {
+                                        "type": "string"
+                                      },
+                                      "leaderboardStatus": {
+                                        "type": "string",
+                                        "enum": ["UNRANKED", "RANKED", "QUALIFIED", "LOVED"]
+                                      },
+                                      "positiveModifiers": {
+                                        "type": "boolean"
+                                      },
+                                      "stars": {
+                                        "type": "number"
+                                      },
+                                      "rankedAt": {
+                                        "nullable": true,
+                                        "type": "string"
+                                      },
+                                      "qualifiedAt": {
+                                        "nullable": true,
+                                        "type": "string"
+                                      },
+                                      "lovedAt": {
+                                        "nullable": true,
+                                        "type": "string"
+                                      }
+                                    },
+                                    "required": [
+                                      "realmId",
+                                      "realmName",
+                                      "leaderboardStatus",
+                                      "positiveModifiers",
+                                      "stars",
+                                      "rankedAt",
+                                      "qualifiedAt",
+                                      "lovedAt"
+                                    ],
+                                    "additionalProperties": false
+                                  }
+                                },
+                                "required": [
+                                  "id",
+                                  "map",
+                                  "difficulty",
+                                  "maxScore",
+                                  "totalScores",
+                                  "dailyScores",
+                                  "createdAt",
+                                  "realm"
+                                ],
+                                "additionalProperties": false
+                              }
+                            },
+                            "required": ["score", "leaderboard"],
+                            "additionalProperties": false
+                          },
+                          "comment": {
+                            "type": "string"
+                          }
+                        },
+                        "required": ["score", "comment"],
+                        "additionalProperties": false
+                      }
+                    },
+                    "followers": {
+                      "type": "number"
+                    },
+                    "following": {
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "name",
+                    "playerNameInGame",
+                    "country",
+                    "role",
+                    "avatar",
+                    "avatarVersion",
+                    "permissions",
+                    "banned",
+                    "silenced",
+                    "inactive",
+                    "stats",
+                    "bio",
+                    "vanity",
+                    "profileCustomization",
+                    "createdAt",
+                    "lastSeenAt",
+                    "badges",
+                    "pinnedScores",
+                    "followers",
+                    "following"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request\n\nBad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "statusCode": {
+                          "type": "number",
+                          "enum": [400]
+                        },
+                        "error": {
+                          "type": "string",
+                          "enum": ["Bad Request"]
+                        },
+                        "code": {
+                          "type": "string",
+                          "enum": ["VALIDATION_ERROR"]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "properties": {
+                            "field": {
+                              "type": "string"
+                            }
+                          },
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": ["statusCode", "error", "code", "message"],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "statusCode": {
+                          "type": "number",
+                          "enum": [400]
+                        },
+                        "error": {
+                          "type": "string",
+                          "enum": ["Bad Request"]
+                        },
+                        "code": {
+                          "type": "string",
+                          "enum": ["REQUEST_VALIDATION_ERROR"]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "properties": {
+                            "errors": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "path": {
+                                    "type": "string"
+                                  },
+                                  "message": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": ["path", "message"],
+                                "additionalProperties": false
+                              }
+                            }
+                          },
+                          "required": ["errors"],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": ["statusCode", "error", "code", "message", "details"],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "statusCode": {
+                          "type": "number",
+                          "enum": [400]
+                        },
+                        "error": {
+                          "type": "string",
+                          "enum": ["Bad Request"]
+                        },
+                        "code": {
+                          "type": "string",
+                          "enum": ["INVALID_PATH_PARAMETER"]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "properties": {
+                            "errors": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "path": {
+                                    "type": "string"
+                                  },
+                                  "message": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": ["path", "message"],
+                                "additionalProperties": false
+                              }
+                            }
+                          },
+                          "required": ["errors"],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": ["statusCode", "error", "code", "message", "details"],
+                      "additionalProperties": false
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "number",
+                      "enum": [401]
+                    },
+                    "error": {
+                      "type": "string",
+                      "enum": ["Unauthorized"]
+                    },
+                    "code": {
+                      "type": "string",
+                      "enum": ["UNAUTHORIZED"]
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["statusCode", "error", "code", "message"],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "number",
+                      "enum": [404]
+                    },
+                    "error": {
+                      "type": "string",
+                      "enum": ["Not Found"]
+                    },
+                    "code": {
+                      "type": "string",
+                      "enum": ["NOT_FOUND"]
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "details": {
+                      "type": "object",
+                      "properties": {
+                        "resource": {
+                          "type": "string"
+                        },
+                        "id": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "number"
+                            }
+                          ]
+                        }
+                      },
+                      "required": ["resource"],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": ["statusCode", "error", "code", "message"],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "tags": ["Players"]
+      }
+    },
+    "/api/v2/players/{id}/scores": {
+      "get": {
+        "operationId": "PlayerController_getPlayerScores",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "default": 1,
+              "description": "Page number",
+              "type": "integer",
+              "exclusiveMinimum": true
+            },
+            "description": "Page number"
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "default": 8,
+              "description": "Items per page (max: 100)",
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "description": "Items per page (max: 100)"
+          },
+          {
+            "name": "sort",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "default": "top",
+              "description": "Sort order",
+              "type": "string",
+              "enum": ["top", "recent", "oldest", "accuracy"]
+            },
+            "description": "Sort order"
+          },
+          {
+            "name": "search",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "description": "Search by song name (min 3 chars)",
+              "type": "string",
+              "minLength": 3,
+              "maxLength": 64
+            },
+            "description": "Search by song name (min 3 chars)"
+          },
+          {
+            "name": "personalBest",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "description": "Personal best filter",
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "string",
+                  "enum": ["all"]
+                }
+              ]
+            },
+            "description": "Personal best filter"
+          },
+          {
+            "name": "leaderboardId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "description": "Leaderboard id",
+              "type": "integer",
+              "exclusiveMinimum": true
+            },
+            "description": "Leaderboard id"
+          },
+          {
+            "name": "mapId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "description": "Map id",
+              "type": "integer",
+              "exclusiveMinimum": true
+            },
+            "description": "Map id"
+          },
+          {
+            "name": "from",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "description": "Oldest score timestamp",
+              "type": "string"
+            },
+            "description": "Oldest score timestamp"
+          },
+          {
+            "name": "to",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "description": "Newest score timestamp",
+              "type": "string"
+            },
+            "description": "Newest score timestamp"
+          },
+          {
+            "name": "hasReplay",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "description": "Replay availability filter",
+              "type": "string"
+            },
+            "description": "Replay availability filter"
+          },
+          {
+            "name": "realmId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "description": "Realm ID (defaults to the active realm)",
+              "type": "integer",
+              "minimum": 0
+            },
+            "description": "Realm ID (defaults to the active realm)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Paginated player scores",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "score": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "number"
+                              },
+                              "rank": {
+                                "type": "number"
+                              },
+                              "unmodifiedScore": {
+                                "type": "number"
+                              },
+                              "modifiedScore": {
+                                "type": "number"
+                              },
+                              "accuracy": {
+                                "type": "number"
+                              },
+                              "pp": {
+                                "type": "number"
+                              },
+                              "weight": {
+                                "type": "number"
+                              },
+                              "mods": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string"
+                                }
+                              },
+                              "badCuts": {
+                                "type": "number"
+                              },
+                              "missedNotes": {
+                                "type": "number"
+                              },
+                              "maxCombo": {
+                                "type": "number"
+                              },
+                              "fullCombo": {
+                                "type": "boolean"
+                              },
+                              "hasReplay": {
+                                "type": "boolean"
+                              },
+                              "replayViewCount": {
+                                "type": "number"
+                              },
+                              "personalBest": {
+                                "type": "boolean"
+                              },
+                              "legacyHmdId": {
+                                "nullable": true,
+                                "type": "number"
+                              },
+                              "version": {
+                                "nullable": true,
+                                "type": "string"
+                              },
+                              "playOutcome": {
+                                "type": "string",
+                                "enum": ["CLEAR", "FAIL", "QUIT", "RESTART"]
+                              },
+                              "playOutcomeTime": {
+                                "nullable": true,
+                                "type": "number"
+                              },
+                              "createdAt": {
+                                "type": "string"
+                              },
+                              "hasHistory": {
+                                "type": "boolean"
+                              },
+                              "player": {
+                                "type": "object",
+                                "properties": {
+                                  "id": {
+                                    "type": "string"
+                                  },
+                                  "name": {
+                                    "type": "string"
+                                  },
+                                  "playerNameInGame": {
+                                    "type": "string"
+                                  },
+                                  "country": {
+                                    "type": "string"
+                                  },
+                                  "role": {
+                                    "nullable": true,
+                                    "type": "string"
+                                  },
+                                  "avatar": {
+                                    "type": "string"
+                                  },
+                                  "avatarVersion": {
+                                    "type": "number"
+                                  },
+                                  "permissions": {
+                                    "type": "number"
+                                  }
+                                },
+                                "required": [
+                                  "id",
+                                  "name",
+                                  "playerNameInGame",
+                                  "country",
+                                  "role",
+                                  "avatar",
+                                  "avatarVersion",
+                                  "permissions"
+                                ],
+                                "additionalProperties": false
+                              },
+                              "device": {
+                                "nullable": true,
+                                "type": "object",
+                                "properties": {
+                                  "hmd": {
+                                    "nullable": true,
+                                    "type": "string"
+                                  },
+                                  "controllerLeft": {
+                                    "nullable": true,
+                                    "type": "string"
+                                  },
+                                  "controllerRight": {
+                                    "nullable": true,
+                                    "type": "string"
+                                  }
+                                },
+                                "required": ["hmd", "controllerLeft", "controllerRight"],
+                                "additionalProperties": false
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "rank",
+                              "unmodifiedScore",
+                              "modifiedScore",
+                              "accuracy",
+                              "pp",
+                              "weight",
+                              "mods",
+                              "badCuts",
+                              "missedNotes",
+                              "maxCombo",
+                              "fullCombo",
+                              "hasReplay",
+                              "personalBest",
+                              "legacyHmdId",
+                              "version",
+                              "playOutcome",
+                              "playOutcomeTime",
+                              "createdAt",
+                              "player",
+                              "device"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "leaderboard": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "number"
+                              },
+                              "map": {
+                                "type": "object",
+                                "properties": {
+                                  "id": {
+                                    "type": "number"
+                                  },
+                                  "hash": {
+                                    "type": "string"
+                                  },
+                                  "bsid": {
+                                    "nullable": true,
+                                    "type": "string"
+                                  },
+                                  "songName": {
+                                    "type": "string"
+                                  },
+                                  "songSubName": {
+                                    "type": "string"
+                                  },
+                                  "songAuthorName": {
+                                    "type": "string"
+                                  },
+                                  "levelAuthorName": {
+                                    "type": "string"
+                                  },
+                                  "bpm": {
+                                    "type": "number"
+                                  },
+                                  "coverUrl": {
+                                    "type": "string"
+                                  },
+                                  "verified": {
+                                    "type": "boolean"
+                                  }
+                                },
+                                "required": [
+                                  "id",
+                                  "hash",
+                                  "bsid",
+                                  "songName",
+                                  "songSubName",
+                                  "songAuthorName",
+                                  "levelAuthorName",
+                                  "bpm",
+                                  "coverUrl",
+                                  "verified"
+                                ],
+                                "additionalProperties": false
+                              },
+                              "difficulty": {
+                                "type": "object",
+                                "properties": {
+                                  "id": {
+                                    "type": "number"
+                                  },
+                                  "difficulty": {
+                                    "type": "number"
+                                  },
+                                  "rawDifficulty": {
+                                    "type": "string"
+                                  },
+                                  "gameMode": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": ["id", "difficulty", "rawDifficulty", "gameMode"],
+                                "additionalProperties": false
+                              },
+                              "maxScore": {
+                                "type": "number"
+                              },
+                              "totalScores": {
+                                "type": "number"
+                              },
+                              "dailyScores": {
+                                "type": "number"
+                              },
+                              "createdAt": {
+                                "type": "string"
+                              },
+                              "realm": {
+                                "type": "object",
+                                "properties": {
+                                  "realmId": {
+                                    "type": "number"
+                                  },
+                                  "realmName": {
+                                    "type": "string"
+                                  },
+                                  "leaderboardStatus": {
+                                    "type": "string",
+                                    "enum": ["UNRANKED", "RANKED", "QUALIFIED", "LOVED"]
+                                  },
+                                  "positiveModifiers": {
+                                    "type": "boolean"
+                                  },
+                                  "stars": {
+                                    "type": "number"
+                                  },
+                                  "rankedAt": {
+                                    "nullable": true,
+                                    "type": "string"
+                                  },
+                                  "qualifiedAt": {
+                                    "nullable": true,
+                                    "type": "string"
+                                  },
+                                  "lovedAt": {
+                                    "nullable": true,
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "realmId",
+                                  "realmName",
+                                  "leaderboardStatus",
+                                  "positiveModifiers",
+                                  "stars",
+                                  "rankedAt",
+                                  "qualifiedAt",
+                                  "lovedAt"
+                                ],
+                                "additionalProperties": false
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "map",
+                              "difficulty",
+                              "maxScore",
+                              "totalScores",
+                              "dailyScores",
+                              "createdAt",
+                              "realm"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "required": ["score", "leaderboard"],
+                        "additionalProperties": false
+                      }
+                    },
+                    "metadata": {
+                      "type": "object",
+                      "properties": {
+                        "page": {
+                          "type": "number"
+                        },
+                        "itemsPerPage": {
+                          "type": "number"
+                        },
+                        "totalItems": {
+                          "type": "number"
+                        },
+                        "totalPages": {
+                          "type": "number"
+                        }
+                      },
+                      "required": ["page", "itemsPerPage", "totalItems", "totalPages"],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": ["data", "metadata"],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request\n\nBad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "statusCode": {
+                          "type": "number",
+                          "enum": [400]
+                        },
+                        "error": {
+                          "type": "string",
+                          "enum": ["Bad Request"]
+                        },
+                        "code": {
+                          "type": "string",
+                          "enum": ["VALIDATION_ERROR"]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "properties": {
+                            "field": {
+                              "type": "string"
+                            }
+                          },
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": ["statusCode", "error", "code", "message"],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "statusCode": {
+                          "type": "number",
+                          "enum": [400]
+                        },
+                        "error": {
+                          "type": "string",
+                          "enum": ["Bad Request"]
+                        },
+                        "code": {
+                          "type": "string",
+                          "enum": ["REQUEST_VALIDATION_ERROR"]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "properties": {
+                            "errors": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "path": {
+                                    "type": "string"
+                                  },
+                                  "message": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": ["path", "message"],
+                                "additionalProperties": false
+                              }
+                            }
+                          },
+                          "required": ["errors"],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": ["statusCode", "error", "code", "message", "details"],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "statusCode": {
+                          "type": "number",
+                          "enum": [400]
+                        },
+                        "error": {
+                          "type": "string",
+                          "enum": ["Bad Request"]
+                        },
+                        "code": {
+                          "type": "string",
+                          "enum": ["INVALID_PATH_PARAMETER"]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "properties": {
+                            "errors": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "path": {
+                                    "type": "string"
+                                  },
+                                  "message": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": ["path", "message"],
+                                "additionalProperties": false
+                              }
+                            }
+                          },
+                          "required": ["errors"],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": ["statusCode", "error", "code", "message", "details"],
+                      "additionalProperties": false
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "number",
+                      "enum": [401]
+                    },
+                    "error": {
+                      "type": "string",
+                      "enum": ["Unauthorized"]
+                    },
+                    "code": {
+                      "type": "string",
+                      "enum": ["UNAUTHORIZED"]
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["statusCode", "error", "code", "message"],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "number",
+                      "enum": [404]
+                    },
+                    "error": {
+                      "type": "string",
+                      "enum": ["Not Found"]
+                    },
+                    "code": {
+                      "type": "string",
+                      "enum": ["NOT_FOUND"]
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "details": {
+                      "type": "object",
+                      "properties": {
+                        "resource": {
+                          "type": "string"
+                        },
+                        "id": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "number"
+                            }
+                          ]
+                        }
+                      },
+                      "required": ["resource"],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": ["statusCode", "error", "code", "message"],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "tags": ["Players"]
+      }
+    },
+    "/api/v2/scores/{id}": {
+      "get": {
+        "operationId": "ScoreController_getScore",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "integer",
+              "exclusiveMinimum": true
+            }
+          },
+          {
+            "name": "realmId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "description": "Realm ID (defaults to the active realm)",
+              "type": "integer",
+              "minimum": 0
+            },
+            "description": "Realm ID (defaults to the active realm)"
+          },
+          {
+            "name": "includeScoreStats",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "default": true,
+              "description": "Include detailed replay statistics",
+              "type": "string"
+            },
+            "description": "Include detailed replay statistics"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Score details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "score": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "number"
+                        },
+                        "rank": {
+                          "type": "number"
+                        },
+                        "unmodifiedScore": {
+                          "type": "number"
+                        },
+                        "modifiedScore": {
+                          "type": "number"
+                        },
+                        "accuracy": {
+                          "type": "number"
+                        },
+                        "pp": {
+                          "type": "number"
+                        },
+                        "weight": {
+                          "type": "number"
+                        },
+                        "mods": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "badCuts": {
+                          "type": "number"
+                        },
+                        "missedNotes": {
+                          "type": "number"
+                        },
+                        "maxCombo": {
+                          "type": "number"
+                        },
+                        "fullCombo": {
+                          "type": "boolean"
+                        },
+                        "hasReplay": {
+                          "type": "boolean"
+                        },
+                        "replayViewCount": {
+                          "type": "number"
+                        },
+                        "personalBest": {
+                          "type": "boolean"
+                        },
+                        "legacyHmdId": {
+                          "nullable": true,
+                          "type": "number"
+                        },
+                        "version": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "playOutcome": {
+                          "type": "string",
+                          "enum": ["CLEAR", "FAIL", "QUIT", "RESTART"]
+                        },
+                        "playOutcomeTime": {
+                          "nullable": true,
+                          "type": "number"
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "hasHistory": {
+                          "type": "boolean"
+                        },
+                        "player": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string"
+                            },
+                            "name": {
+                              "type": "string"
+                            },
+                            "playerNameInGame": {
+                              "type": "string"
+                            },
+                            "country": {
+                              "type": "string"
+                            },
+                            "role": {
+                              "nullable": true,
+                              "type": "string"
+                            },
+                            "avatar": {
+                              "type": "string"
+                            },
+                            "avatarVersion": {
+                              "type": "number"
+                            },
+                            "permissions": {
+                              "type": "number"
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "name",
+                            "playerNameInGame",
+                            "country",
+                            "role",
+                            "avatar",
+                            "avatarVersion",
+                            "permissions"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "device": {
+                          "nullable": true,
+                          "type": "object",
+                          "properties": {
+                            "hmd": {
+                              "nullable": true,
+                              "type": "string"
+                            },
+                            "controllerLeft": {
+                              "nullable": true,
+                              "type": "string"
+                            },
+                            "controllerRight": {
+                              "nullable": true,
+                              "type": "string"
+                            }
+                          },
+                          "required": ["hmd", "controllerLeft", "controllerRight"],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "rank",
+                        "unmodifiedScore",
+                        "modifiedScore",
+                        "accuracy",
+                        "pp",
+                        "weight",
+                        "mods",
+                        "badCuts",
+                        "missedNotes",
+                        "maxCombo",
+                        "fullCombo",
+                        "hasReplay",
+                        "personalBest",
+                        "legacyHmdId",
+                        "version",
+                        "playOutcome",
+                        "playOutcomeTime",
+                        "createdAt",
+                        "player",
+                        "device"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "leaderboard": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "number"
+                        },
+                        "map": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "number"
+                            },
+                            "hash": {
+                              "type": "string"
+                            },
+                            "bsid": {
+                              "nullable": true,
+                              "type": "string"
+                            },
+                            "songName": {
+                              "type": "string"
+                            },
+                            "songSubName": {
+                              "type": "string"
+                            },
+                            "songAuthorName": {
+                              "type": "string"
+                            },
+                            "levelAuthorName": {
+                              "type": "string"
+                            },
+                            "bpm": {
+                              "type": "number"
+                            },
+                            "coverUrl": {
+                              "type": "string"
+                            },
+                            "verified": {
+                              "type": "boolean"
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "hash",
+                            "bsid",
+                            "songName",
+                            "songSubName",
+                            "songAuthorName",
+                            "levelAuthorName",
+                            "bpm",
+                            "coverUrl",
+                            "verified"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "difficulty": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "number"
+                            },
+                            "difficulty": {
+                              "type": "number"
+                            },
+                            "rawDifficulty": {
+                              "type": "string"
+                            },
+                            "gameMode": {
+                              "type": "string"
+                            }
+                          },
+                          "required": ["id", "difficulty", "rawDifficulty", "gameMode"],
+                          "additionalProperties": false
+                        },
+                        "maxScore": {
+                          "type": "number"
+                        },
+                        "totalScores": {
+                          "type": "number"
+                        },
+                        "dailyScores": {
+                          "type": "number"
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "realm": {
+                          "type": "object",
+                          "properties": {
+                            "realmId": {
+                              "type": "number"
+                            },
+                            "realmName": {
+                              "type": "string"
+                            },
+                            "leaderboardStatus": {
+                              "type": "string",
+                              "enum": ["UNRANKED", "RANKED", "QUALIFIED", "LOVED"]
+                            },
+                            "positiveModifiers": {
+                              "type": "boolean"
+                            },
+                            "stars": {
+                              "type": "number"
+                            },
+                            "rankedAt": {
+                              "nullable": true,
+                              "type": "string"
+                            },
+                            "qualifiedAt": {
+                              "nullable": true,
+                              "type": "string"
+                            },
+                            "lovedAt": {
+                              "nullable": true,
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "realmId",
+                            "realmName",
+                            "leaderboardStatus",
+                            "positiveModifiers",
+                            "stars",
+                            "rankedAt",
+                            "qualifiedAt",
+                            "lovedAt"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "map",
+                        "difficulty",
+                        "maxScore",
+                        "totalScores",
+                        "dailyScores",
+                        "createdAt",
+                        "realm"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "scoreStats": {
+                      "nullable": true,
+                      "type": "object",
+                      "properties": {
+                        "totalScore": {
+                          "type": "number"
+                        },
+                        "maxScore": {
+                          "type": "number"
+                        },
+                        "passed": {
+                          "type": "boolean"
+                        },
+                        "failTime": {
+                          "type": "number"
+                        },
+                        "endTime": {
+                          "type": "number"
+                        },
+                        "maxCombo": {
+                          "type": "number"
+                        },
+                        "max115Streak": {
+                          "nullable": true,
+                          "type": "number"
+                        },
+                        "fcAcc": {
+                          "type": "number"
+                        },
+                        "accLeft": {
+                          "type": "number"
+                        },
+                        "accRight": {
+                          "type": "number"
+                        },
+                        "leftPreswing": {
+                          "type": "number"
+                        },
+                        "rightPreswing": {
+                          "type": "number"
+                        },
+                        "leftPostswing": {
+                          "type": "number"
+                        },
+                        "rightPostswing": {
+                          "type": "number"
+                        },
+                        "leftTimeDependence": {
+                          "type": "number"
+                        },
+                        "rightTimeDependence": {
+                          "type": "number"
+                        },
+                        "leftTiming": {
+                          "type": "number"
+                        },
+                        "rightTiming": {
+                          "type": "number"
+                        },
+                        "leftAverageCut": {
+                          "type": "array",
+                          "items": {
+                            "anyOf": [
+                              {
+                                "type": "number"
+                              },
+                              {
+                                "type": "number"
+                              },
+                              {
+                                "type": "number"
+                              }
+                            ]
+                          },
+                          "minItems": 3,
+                          "maxItems": 3
+                        },
+                        "rightAverageCut": {
+                          "type": "array",
+                          "items": {
+                            "anyOf": [
+                              {
+                                "type": "number"
+                              },
+                              {
+                                "type": "number"
+                              },
+                              {
+                                "type": "number"
+                              }
+                            ]
+                          },
+                          "minItems": 3,
+                          "maxItems": 3
+                        },
+                        "leftMiss": {
+                          "type": "number"
+                        },
+                        "rightMiss": {
+                          "type": "number"
+                        },
+                        "leftBadCuts": {
+                          "type": "number"
+                        },
+                        "rightBadCuts": {
+                          "type": "number"
+                        },
+                        "leftBombs": {
+                          "type": "number"
+                        },
+                        "rightBombs": {
+                          "type": "number"
+                        },
+                        "leftSaberHitOffset": {
+                          "type": "number"
+                        },
+                        "rightSaberHitOffset": {
+                          "type": "number"
+                        },
+                        "noteSpawnOffset": {
+                          "type": "number"
+                        },
+                        "jumpDistance": {
+                          "type": "number"
+                        },
+                        "pauseCount": {
+                          "type": "number"
+                        },
+                        "pauseTotalDurationSeconds": {
+                          "type": "number"
+                        },
+                        "averageHeight": {
+                          "type": "number"
+                        },
+                        "averageHeadPosition": {
+                          "type": "object",
+                          "properties": {
+                            "x": {
+                              "type": "number"
+                            },
+                            "y": {
+                              "type": "number"
+                            },
+                            "z": {
+                              "type": "number"
+                            }
+                          },
+                          "required": ["x", "y", "z"],
+                          "additionalProperties": false
+                        },
+                        "scoreGraph": {
+                          "type": "array",
+                          "items": {
+                            "type": "number"
+                          }
+                        },
+                        "gridCutDetails": {
+                          "type": "object",
+                          "properties": {
+                            "grid": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "count": {
+                                    "type": "number"
+                                  },
+                                  "avgScore": {
+                                    "type": "number"
+                                  },
+                                  "left": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "properties": {
+                                        "count": {
+                                          "type": "number"
+                                        },
+                                        "avgScore": {
+                                          "type": "number"
+                                        }
+                                      },
+                                      "required": ["count", "avgScore"],
+                                      "additionalProperties": false
+                                    }
+                                  },
+                                  "right": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "properties": {
+                                        "count": {
+                                          "type": "number"
+                                        },
+                                        "avgScore": {
+                                          "type": "number"
+                                        }
+                                      },
+                                      "required": ["count", "avgScore"],
+                                      "additionalProperties": false
+                                    }
+                                  }
+                                },
+                                "required": ["count", "avgScore", "left", "right"],
+                                "additionalProperties": false
+                              }
+                            },
+                            "summaryGrids": {
+                              "type": "array",
+                              "items": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "count": {
+                                      "type": "number"
+                                    },
+                                    "avgScore": {
+                                      "type": "number"
+                                    }
+                                  },
+                                  "required": ["count", "avgScore"],
+                                  "additionalProperties": false
+                                }
+                              }
+                            }
+                          },
+                          "required": ["grid", "summaryGrids"],
+                          "additionalProperties": false
+                        },
+                        "handSummary": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "label": {
+                                "type": "string"
+                              },
+                              "left": {
+                                "type": "object",
+                                "properties": {
+                                  "count": {
+                                    "type": "number"
+                                  },
+                                  "avgScore": {
+                                    "type": "number"
+                                  },
+                                  "avgTd": {
+                                    "type": "number"
+                                  }
+                                },
+                                "required": ["count", "avgScore", "avgTd"],
+                                "additionalProperties": false
+                              },
+                              "right": {
+                                "type": "object",
+                                "properties": {
+                                  "count": {
+                                    "type": "number"
+                                  },
+                                  "avgScore": {
+                                    "type": "number"
+                                  },
+                                  "avgTd": {
+                                    "type": "number"
+                                  }
+                                },
+                                "required": ["count", "avgScore", "avgTd"],
+                                "additionalProperties": false
+                              }
+                            },
+                            "required": ["label", "left", "right"],
+                            "additionalProperties": false
+                          }
+                        },
+                        "accuracyDistribution": {
+                          "type": "object",
+                          "properties": {
+                            "leftTotal": {
+                              "type": "number"
+                            },
+                            "rightTotal": {
+                              "type": "number"
+                            },
+                            "leftCount": {
+                              "type": "array",
+                              "items": {
+                                "type": "number"
+                              }
+                            },
+                            "rightCount": {
+                              "type": "array",
+                              "items": {
+                                "type": "number"
+                              }
+                            },
+                            "leftTd": {
+                              "type": "array",
+                              "items": {
+                                "nullable": true,
+                                "type": "number"
+                              }
+                            },
+                            "rightTd": {
+                              "type": "array",
+                              "items": {
+                                "nullable": true,
+                                "type": "number"
+                              }
+                            },
+                            "timingStdDev": {
+                              "type": "array",
+                              "items": {
+                                "nullable": true,
+                                "type": "number"
+                              }
+                            }
+                          },
+                          "required": [
+                            "leftTotal",
+                            "rightTotal",
+                            "leftCount",
+                            "rightCount",
+                            "leftTd",
+                            "rightTd",
+                            "timingStdDev"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "accuracyTimeline": {
+                          "type": "object",
+                          "properties": {
+                            "times": {
+                              "type": "array",
+                              "items": {
+                                "type": "number"
+                              }
+                            },
+                            "left": {
+                              "type": "object",
+                              "properties": {
+                                "fullSwing": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "number"
+                                  }
+                                },
+                                "actual": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "number"
+                                  }
+                                }
+                              },
+                              "required": ["fullSwing", "actual"],
+                              "additionalProperties": false
+                            },
+                            "right": {
+                              "type": "object",
+                              "properties": {
+                                "fullSwing": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "number"
+                                  }
+                                },
+                                "actual": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "number"
+                                  }
+                                }
+                              },
+                              "required": ["fullSwing", "actual"],
+                              "additionalProperties": false
+                            },
+                            "total": {
+                              "type": "object",
+                              "properties": {
+                                "fullSwing": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "number"
+                                  }
+                                },
+                                "actual": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "number"
+                                  }
+                                }
+                              },
+                              "required": ["fullSwing", "actual"],
+                              "additionalProperties": false
+                            }
+                          },
+                          "required": ["times", "left", "right", "total"],
+                          "additionalProperties": false
+                        },
+                        "underswingStats": {
+                          "type": "object",
+                          "properties": {
+                            "count": {
+                              "type": "number"
+                            },
+                            "fcScore": {
+                              "type": "number"
+                            },
+                            "fullSwingScore": {
+                              "type": "number"
+                            },
+                            "fullSwingFcScore": {
+                              "type": "number"
+                            },
+                            "maxCutScore": {
+                              "type": "number"
+                            },
+                            "fcAcc": {
+                              "type": "number"
+                            },
+                            "fullSwingAcc": {
+                              "type": "number"
+                            },
+                            "fullSwingFcAcc": {
+                              "type": "number"
+                            }
+                          },
+                          "required": [
+                            "count",
+                            "fcScore",
+                            "fullSwingScore",
+                            "fullSwingFcScore",
+                            "maxCutScore",
+                            "fcAcc",
+                            "fullSwingAcc",
+                            "fullSwingFcAcc"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "totalScore",
+                        "maxScore",
+                        "passed",
+                        "failTime",
+                        "endTime",
+                        "maxCombo",
+                        "max115Streak",
+                        "fcAcc",
+                        "accLeft",
+                        "accRight",
+                        "leftPreswing",
+                        "rightPreswing",
+                        "leftPostswing",
+                        "rightPostswing",
+                        "leftTimeDependence",
+                        "rightTimeDependence",
+                        "leftTiming",
+                        "rightTiming",
+                        "leftAverageCut",
+                        "rightAverageCut",
+                        "leftMiss",
+                        "rightMiss",
+                        "leftBadCuts",
+                        "rightBadCuts",
+                        "leftBombs",
+                        "rightBombs",
+                        "leftSaberHitOffset",
+                        "rightSaberHitOffset",
+                        "noteSpawnOffset",
+                        "averageHeight",
+                        "averageHeadPosition",
+                        "scoreGraph",
+                        "gridCutDetails",
+                        "handSummary",
+                        "accuracyDistribution",
+                        "accuracyTimeline",
+                        "underswingStats"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": ["score", "leaderboard", "scoreStats"],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request\n\nBad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "statusCode": {
+                          "type": "number",
+                          "enum": [400]
+                        },
+                        "error": {
+                          "type": "string",
+                          "enum": ["Bad Request"]
+                        },
+                        "code": {
+                          "type": "string",
+                          "enum": ["VALIDATION_ERROR"]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "properties": {
+                            "field": {
+                              "type": "string"
+                            }
+                          },
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": ["statusCode", "error", "code", "message"],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "statusCode": {
+                          "type": "number",
+                          "enum": [400]
+                        },
+                        "error": {
+                          "type": "string",
+                          "enum": ["Bad Request"]
+                        },
+                        "code": {
+                          "type": "string",
+                          "enum": ["REQUEST_VALIDATION_ERROR"]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "properties": {
+                            "errors": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "path": {
+                                    "type": "string"
+                                  },
+                                  "message": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": ["path", "message"],
+                                "additionalProperties": false
+                              }
+                            }
+                          },
+                          "required": ["errors"],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": ["statusCode", "error", "code", "message", "details"],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "statusCode": {
+                          "type": "number",
+                          "enum": [400]
+                        },
+                        "error": {
+                          "type": "string",
+                          "enum": ["Bad Request"]
+                        },
+                        "code": {
+                          "type": "string",
+                          "enum": ["INVALID_PATH_PARAMETER"]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "properties": {
+                            "errors": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "path": {
+                                    "type": "string"
+                                  },
+                                  "message": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": ["path", "message"],
+                                "additionalProperties": false
+                              }
+                            }
+                          },
+                          "required": ["errors"],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": ["statusCode", "error", "code", "message", "details"],
+                      "additionalProperties": false
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "number",
+                      "enum": [401]
+                    },
+                    "error": {
+                      "type": "string",
+                      "enum": ["Unauthorized"]
+                    },
+                    "code": {
+                      "type": "string",
+                      "enum": ["UNAUTHORIZED"]
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["statusCode", "error", "code", "message"],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "number",
+                      "enum": [404]
+                    },
+                    "error": {
+                      "type": "string",
+                      "enum": ["Not Found"]
+                    },
+                    "code": {
+                      "type": "string",
+                      "enum": ["NOT_FOUND"]
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "details": {
+                      "type": "object",
+                      "properties": {
+                        "resource": {
+                          "type": "string"
+                        },
+                        "id": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "number"
+                            }
+                          ]
+                        }
+                      },
+                      "required": ["resource"],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": ["statusCode", "error", "code", "message"],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "tags": ["Scores"]
+      }
+    },
+    "/api/v2/scores/{id}/replay": {
+      "get": {
+        "operationId": "ScoreController_downloadReplay",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "integer",
+              "exclusiveMinimum": true
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Replay file",
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "statusCode": {
+                          "type": "number",
+                          "enum": [400]
+                        },
+                        "error": {
+                          "type": "string",
+                          "enum": ["Bad Request"]
+                        },
+                        "code": {
+                          "type": "string",
+                          "enum": ["VALIDATION_ERROR"]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "properties": {
+                            "field": {
+                              "type": "string"
+                            }
+                          },
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": ["statusCode", "error", "code", "message"],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "statusCode": {
+                          "type": "number",
+                          "enum": [400]
+                        },
+                        "error": {
+                          "type": "string",
+                          "enum": ["Bad Request"]
+                        },
+                        "code": {
+                          "type": "string",
+                          "enum": ["REQUEST_VALIDATION_ERROR"]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "properties": {
+                            "errors": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "path": {
+                                    "type": "string"
+                                  },
+                                  "message": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": ["path", "message"],
+                                "additionalProperties": false
+                              }
+                            }
+                          },
+                          "required": ["errors"],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": ["statusCode", "error", "code", "message", "details"],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "statusCode": {
+                          "type": "number",
+                          "enum": [400]
+                        },
+                        "error": {
+                          "type": "string",
+                          "enum": ["Bad Request"]
+                        },
+                        "code": {
+                          "type": "string",
+                          "enum": ["INVALID_PATH_PARAMETER"]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "properties": {
+                            "errors": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "path": {
+                                    "type": "string"
+                                  },
+                                  "message": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": ["path", "message"],
+                                "additionalProperties": false
+                              }
+                            }
+                          },
+                          "required": ["errors"],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": ["statusCode", "error", "code", "message", "details"],
+                      "additionalProperties": false
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "number",
+                      "enum": [401]
+                    },
+                    "error": {
+                      "type": "string",
+                      "enum": ["Unauthorized"]
+                    },
+                    "code": {
+                      "type": "string",
+                      "enum": ["UNAUTHORIZED"]
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["statusCode", "error", "code", "message"],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "number",
+                      "enum": [404]
+                    },
+                    "error": {
+                      "type": "string",
+                      "enum": ["Not Found"]
+                    },
+                    "code": {
+                      "type": "string",
+                      "enum": ["NOT_FOUND"]
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "details": {
+                      "type": "object",
+                      "properties": {
+                        "resource": {
+                          "type": "string"
+                        },
+                        "id": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "number"
+                            }
+                          ]
+                        }
+                      },
+                      "required": ["resource"],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": ["statusCode", "error", "code", "message"],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "number",
+                      "enum": [429]
+                    },
+                    "error": {
+                      "type": "string",
+                      "enum": ["Too Many Requests"]
+                    },
+                    "code": {
+                      "type": "string",
+                      "enum": ["TOO_MANY_REQUESTS"]
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["statusCode", "error", "code", "message"],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "statusCode": {
+                          "type": "number",
+                          "enum": [500]
+                        },
+                        "error": {
+                          "type": "string",
+                          "enum": ["Internal Server Error"]
+                        },
+                        "code": {
+                          "type": "string",
+                          "enum": ["EXTERNAL_SERVICE_ERROR"]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "properties": {
+                            "service": {
+                              "type": "string"
+                            }
+                          },
+                          "required": ["service"],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": ["statusCode", "error", "code", "message", "details"],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "statusCode": {
+                          "type": "number",
+                          "enum": [500]
+                        },
+                        "error": {
+                          "type": "string",
+                          "enum": ["Internal Server Error"]
+                        },
+                        "code": {
+                          "type": "string",
+                          "enum": ["DATABASE_WRITE_ERROR"]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "properties": {
+                            "operation": {
+                              "type": "string"
+                            }
+                          },
+                          "required": ["operation"],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": ["statusCode", "error", "code", "message", "details"],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "statusCode": {
+                          "type": "number",
+                          "enum": [500]
+                        },
+                        "error": {
+                          "type": "string",
+                          "enum": ["Internal Server Error"]
+                        },
+                        "code": {
+                          "type": "string",
+                          "enum": ["INTERNAL_SERVER_ERROR"]
+                        },
+                        "message": {
+                          "type": "string"
+                        }
+                      },
+                      "required": ["statusCode", "error", "code", "message"],
+                      "additionalProperties": false
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "tags": ["Scores"]
+      }
+    }
+  },
+  "components": {},
+  "tags": [
+    {
+      "name": "Players",
+      "description": "Retrieve player profiles, stats, scores, and history"
+    },
+    {
+      "name": "Player Aliases",
+      "description": "Manage player name aliases"
+    },
+    {
+      "name": "Leaderboards",
+      "description": "Browse and query leaderboards and their scores"
+    },
+    {
+      "name": "Maps",
+      "description": "Browse ranked and qualified maps"
+    },
+    {
+      "name": "Scores",
+      "description": "Access score details and replay data"
+    },
+    {
+      "name": "Ranking",
+      "description": "Rank requests, voting, and qualification workflow"
+    },
+    {
+      "name": "Realms",
+      "description": "Game realms and region configuration"
+    },
+    {
+      "name": "Authentication",
+      "description": "Steam/Patreon OAuth and session tokens"
+    },
+    {
+      "name": "User",
+      "description": "Authenticated user profile and settings"
+    },
+    {
+      "name": "OAuth",
+      "description": "OAuth2 provider for external applications"
+    },
+    {
+      "name": "Game",
+      "description": "ScoreSaber 2 in-game API endpoints"
+    },
+    {
+      "name": "V1: Main",
+      "description": "Legacy public API compatibility endpoints"
+    },
+    {
+      "name": "V1: Game",
+      "description": "Legacy in-game API compatibility endpoints"
+    },
+    {
+      "name": "Admin: Badges",
+      "description": "Badge management"
+    },
+    {
+      "name": "Admin: Leaderboards",
+      "description": "Leaderboard ranking and PP management"
+    },
+    {
+      "name": "Admin: Scores",
+      "description": "Score moderation"
+    },
+    {
+      "name": "Admin: Users",
+      "description": "User moderation and role management"
+    },
+    {
+      "name": "Admin: Permissions",
+      "description": "Permission definitions"
+    },
+    {
+      "name": "Admin: Versions",
+      "description": "Mod version management"
+    }
+  ],
+  "servers": [],
+  "x-tagGroups": [
+    {
+      "name": "Core",
+      "tags": ["Players", "Player Aliases", "Leaderboards", "Maps", "Scores"]
+    },
+    {
+      "name": "Ranking",
+      "tags": ["Ranking"]
+    },
+    {
+      "name": "Authentication",
+      "tags": ["Authentication", "User", "OAuth"]
+    },
+    {
+      "name": "Game",
+      "tags": ["Game", "Realms"]
+    },
+    {
+      "name": "Administration",
+      "tags": [
+        "Admin: Badges",
+        "Admin: Leaderboards",
+        "Admin: Scores",
+        "Admin: Users",
+        "Admin: Permissions",
+        "Admin: Versions"
+      ]
+    },
+    {
+      "name": "Other",
+      "tags": ["V1: Main", "V1: Game"]
+    }
+  ]
+}

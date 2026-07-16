@@ -1,0 +1,8 @@
+*
+!bun.lock
+!messages/**
+!package.json
+!public/**
+!src/**
+!tsconfig.json
+!vite.config.ts

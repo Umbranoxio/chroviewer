@@ -1,0 +1,44 @@
+{
+  "$schema": "./node_modules/oxfmt/configuration_schema.json",
+  "useTabs": false,
+  "singleQuote": true,
+  "trailingComma": "all",
+  "printWidth": 120,
+  "tabWidth": 2,
+  "endOfLine": "lf",
+  "sortImports": {
+    "internalPattern": ["@/"],
+    "customGroups": [
+      {
+        "groupName": "react-libs",
+        "elementNamePattern": ["react", "react/**"]
+      },
+      {
+        "groupName": "app-components",
+        "elementNamePattern": ["@/components/**"]
+      }
+    ],
+    "groups": [
+      "side_effect",
+      "react-libs",
+      "builtin",
+      "external",
+      ["parent", "sibling", "index"],
+      "app-components",
+      "internal",
+      "style",
+      "unknown"
+    ]
+  },
+  "sortTailwindcss": {},
+  "sortPackageJson": false,
+  "ignorePatterns": [
+    "**/.*",
+    "dist/**",
+    "node_modules/**",
+    "public/environments/**",
+    "src/routeTree.gen.ts",
+    "src/sources/beatsaver/generated/**",
+    "src/sources/scoresaber/generated/**"
+  ]
+}

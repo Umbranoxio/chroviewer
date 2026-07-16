@@ -1,0 +1,63 @@
+syntax = "proto3";
+
+package scoresaber.live.v1;
+
+import "scoresaber/live/v1/common.proto";
+import "scoresaber/live/v1/room_actions.proto";
+
+option csharp_namespace = "ScoreSaber.Live.V1";
+option go_package = "github.com/ScoreSaber/platform/apps/ludus/src/generated/proto/scoresaber/live/v1;livev1";
+
+message ConnectRequest {
+  string auth_token = 1;
+  string session_id = 2;
+  string session_key = 3;
+  string tournament_id = 4;
+
+  string player_id = 5;
+  LivePlayerPlatform platform = 6;
+  LudusClientType client_type = 7;
+
+  string game_version = 8;
+  string client_version = 9;
+  repeated LiveMod mods = 10;
+  repeated string role_names = 11;
+  LudusRoomContextType initial_room_context = 12;
+  bool public_live_presence_opt_out = 13;
+}
+
+message ConnectAccepted {
+  string connection_id = 1;
+  string tournament_id = 2;
+  uint32 protocol_version = 3;
+  uint32 heartbeat_interval_ms = 4;
+  uint32 send_queue_size = 5;
+  uint32 max_packet_size_bytes = 6;
+  LudusRoomContextType room_context = 7;
+  string current_match_id = 8;
+  LudusClientType client_type = 9;
+}
+
+message SetClientTypeRequest {
+  LudusClientType client_type = 1;
+}
+
+message ReconnectRequested {
+  string websocket_url = 1;
+  string reason = 2;
+  uint32 retry_after_ms = 3;
+}
+
+message Heartbeat {
+  uint64 last_received_sequence = 1;
+}
+
+message HeartbeatAck {
+  uint64 highest_seen_sequence = 1;
+}
+
+message ErrorResponse {
+  string code = 1;
+  string message = 2;
+  bool retryable = 3;
+}

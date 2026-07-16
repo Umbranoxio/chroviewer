@@ -1,0 +1,84 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": ["typescript", "unicorn", "oxc"],
+  "ignorePatterns": [
+    "**/.*",
+    "dist/**",
+    "node_modules/**",
+    "src/routeTree.gen.ts",
+    "src/sources/beatsaver/generated/**",
+    "src/sources/scoresaber/generated/**"
+  ],
+  "categories": {
+    "correctness": "error"
+  },
+  "rules": {
+    "@typescript-eslint/ban-ts-comment": "error",
+    "@typescript-eslint/no-empty-object-type": "error",
+    "@typescript-eslint/no-explicit-any": "error",
+    "@typescript-eslint/no-namespace": "error",
+    "@typescript-eslint/no-require-imports": "error",
+    "no-unused-vars": [
+      "error",
+      {
+        "argsIgnorePattern": "^_",
+        "varsIgnorePattern": "^_"
+      }
+    ],
+    "unicorn/no-null": "off"
+  },
+  "overrides": [
+    {
+      "files": ["src/core/**/*.{ts,tsx}"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": ["@/app/**", "@/modules/**", "@/renderer/**", "@/sources/**"],
+                "message": "core modules cannot depend on app, source, renderer, or UI implementations"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": ["src/sources/**/*.{ts,tsx}"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": ["@/app/**", "@/modules/**", "@/renderer/**"],
+                "message": "source adapters cannot depend on renderer or UI implementations"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": ["src/renderer/**/*.{ts,tsx}"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": ["@/app/**", "@/modules/**", "@/sources/**"],
+                "message": "renderer modules cannot depend on source or UI implementations"
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ],
+  "env": {
+    "browser": true,
+    "builtin": true
+  }
+}

@@ -1,0 +1,56 @@
+syntax = "proto3";
+
+package scoresaber.live.v1;
+
+option csharp_namespace = "ScoreSaber.Live.V1";
+option go_package = "github.com/ScoreSaber/platform/apps/ludus/src/generated/proto/scoresaber/live/v1;livev1";
+
+message ServerCommand {
+  string command_id = 1;
+  LudusCommandType type = 2;
+  string match_id = 3;
+  repeated string target_player_ids = 4;
+  LiveSongCommand song = 5;
+  string prompt_title = 6;
+  string prompt_message = 7;
+  string prompt_primary_text = 8;
+  string prompt_secondary_text = 9;
+  uint32 prompt_timeout_ms = 10;
+  bool with_sync = 11;
+  int64 start_time_unix_ms = 12;
+  uint32 countdown_ms = 13;
+  bool force_start = 14;
+  string payload_json = 20;
+}
+
+message PromptResponse {
+  string command_id = 1;
+  string match_id = 2;
+  string player_id = 3;
+  bool accepted = 4;
+  int64 responded_at_unix_ms = 5;
+  string prompt_message = 6;
+}
+
+message LiveSongCommand {
+  string hash = 1;
+  string difficulty = 2;
+  string characteristic = 3;
+}
+
+enum LudusCommandType {
+  LUDUS_COMMAND_TYPE_UNSPECIFIED = 0;
+
+  LUDUS_COMMAND_TYPE_LOAD_SONG = 1;
+  LUDUS_COMMAND_TYPE_START_MAP = 2;
+  LUDUS_COMMAND_TYPE_RETURN_TO_MENU = 3;
+  LUDUS_COMMAND_TYPE_PROMPT = 4;
+
+  LUDUS_COMMAND_TYPE_SYNC_PLAYERS = 10;
+  LUDUS_COMMAND_TYPE_CREATE_ROOM = 11;
+  LUDUS_COMMAND_TYPE_CLOSE_ROOM = 12;
+  LUDUS_COMMAND_TYPE_BOTTIFY = 13;
+
+  LUDUS_COMMAND_TYPE_FOLLOW_ROOM = 20;
+  LUDUS_COMMAND_TYPE_FOLLOW_PLAYER = 21;
+}
