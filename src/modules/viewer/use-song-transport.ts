@@ -24,6 +24,7 @@ interface UseSongTransportOptions {
 
 export function useSongTransport({ lightshowModeRef, settings, settingsRef }: UseSongTransportOptions) {
   const clockRef = useRef<SongClock | null>(null);
+  const autoplayRef = useRef(false);
   const [duration, setDuration] = useState(0);
   const [time, setTime] = useState(0);
   const [started, setStarted] = useState(false);
@@ -53,6 +54,7 @@ export function useSongTransport({ lightshowModeRef, settings, settingsRef }: Us
       if (clock === null) return;
       setTime(clock.currentTime());
       setPlaying(clock.isPlaying());
+      setAudioBlocked(autoplayRef.current && clock.isPlaying() && clock.audioBlocked());
     }
 
     function stopPolling() {
@@ -95,6 +97,7 @@ export function useSongTransport({ lightshowModeRef, settings, settingsRef }: Us
   function clear() {
     hitsounds.clear();
     disposeClock();
+    autoplayRef.current = false;
     setDuration(0);
     setTime(0);
     setStarted(false);
@@ -123,6 +126,7 @@ export function useSongTransport({ lightshowModeRef, settings, settingsRef }: Us
     }
     clock.setRate(playbackRate);
     clockRef.current = clock;
+    autoplayRef.current = false;
     hitsounds.load(options.hitsoundEvents);
     setDuration(clock.duration);
     setTime(0);
@@ -132,9 +136,10 @@ export function useSongTransport({ lightshowModeRef, settings, settingsRef }: Us
     return clock;
   }
 
-  function play() {
+  function play({ autoplay = false }: { autoplay?: boolean } = {}) {
     const clock = clockRef.current;
     if (clock === null) return undefined;
+    autoplayRef.current = autoplay;
     if (clock.isPlaying()) return true;
     if (clock.currentTime() >= clock.duration) {
       clock.seek(0);
@@ -145,7 +150,7 @@ export function useSongTransport({ lightshowModeRef, settings, settingsRef }: Us
     clock.play();
     const nextPlaying = clock.isPlaying();
     setStarted(true);
-    setAudioBlocked(clock.audioBlocked());
+    setAudioBlocked(false);
     setPlaying(nextPlaying);
     return nextPlaying;
   }
@@ -155,6 +160,8 @@ export function useSongTransport({ lightshowModeRef, settings, settingsRef }: Us
     if (clock === null) return undefined;
     if (!clock.isPlaying()) return play();
     clock.pause();
+    autoplayRef.current = false;
+    setAudioBlocked(false);
     setPlaying(false);
     return false;
   }
@@ -163,6 +170,7 @@ export function useSongTransport({ lightshowModeRef, settings, settingsRef }: Us
     const clock = clockRef.current;
     if (clock === null) return false;
     const unlocked = await clock.unlockAudio();
+    if (unlocked) autoplayRef.current = false;
     setAudioBlocked(!unlocked || clock.audioBlocked());
     return unlocked;
   }

@@ -213,7 +213,7 @@ export function useViewerSession({
     if (row === undefined) return;
     sources.pendingSharedViewRef.current = null;
     void applyPendingView(row, pending.beat).then(() => {
-      if (pending.autoplay === true) transport.play();
+      if (pending.autoplay === true) transport.play({ autoplay: true });
     });
   }, [sources.rows, sources.songBpm, viewerReady]);
 
