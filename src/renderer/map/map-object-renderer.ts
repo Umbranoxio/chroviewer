@@ -211,6 +211,7 @@ export class MapObjectRenderer {
     const data = this.data;
     const colors = this.colors;
     if (data === null || colors === null) return;
+    this.root.position.z = data.tracksPlayerZ && replayView.hasPoses ? replayView.headPosition.z : 0;
     if (now === this.objectBeat) return;
     this.objectBeat = now;
     const replayTime = songBpmTimeToSeconds(now, data.songBpm);
@@ -237,6 +238,7 @@ export class MapObjectRenderer {
           data.songBpm,
           poseFrames,
           replayView.headPosition,
+          data.tracksPlayerZ,
           noteModelScale,
         );
       } else {
@@ -347,11 +349,12 @@ export class MapObjectRenderer {
     songBpm: number,
     poseFrames: readonly ReplayPose[],
     currentHeadPosition: Vector3,
+    tracksPlayerZ: boolean,
     scale: number,
   ) {
     const state = this.noteLookState(note, poseFrames);
     if (poseFrames.length > 0) {
-      this.advanceReplayNoteLook(state, note, noteTime, replayTime, songBpm, poseFrames);
+      this.advanceReplayNoteLook(state, note, noteTime, replayTime, songBpm, poseFrames, tracksPlayerZ);
     } else {
       this.advancePreviewNoteLook(state, note, noteTime, now, songBpm);
     }
@@ -369,7 +372,13 @@ export class MapObjectRenderer {
         note.x,
         this.position,
         note.y,
-        poseFrames.length > 0 ? currentHeadPosition : mapPlayerCenter,
+        poseFrames.length > 0
+          ? this.poseHeadPosition.set(
+              currentHeadPosition.x,
+              currentHeadPosition.y,
+              tracksPlayerZ ? 0 : currentHeadPosition.z,
+            )
+          : mapPlayerCenter,
         (now - note.spawnBeat) / (note.hjdBeats * 2),
       );
     }
@@ -402,6 +411,7 @@ export class MapObjectRenderer {
     replayTime: number,
     songBpm: number,
     poseFrames: readonly ReplayPose[],
+    tracksPlayerZ: boolean,
   ) {
     if (replayTime < state.lastSampleTime) this.resetNoteLookState(state, note, true);
     let poseIndex =
@@ -417,7 +427,11 @@ export class MapObjectRenderer {
       }
       const beat = secondsToSongBpmTime(frame.time, songBpm);
       this.setNotePosition(note, beat);
-      this.poseHeadPosition.set(frame.head.position.x, frame.head.position.y, -frame.head.position.z);
+      this.poseHeadPosition.set(
+        frame.head.position.x,
+        frame.head.position.y,
+        tracksPlayerZ ? 0 : -frame.head.position.z,
+      );
       this.noteLookRotation.apply(
         state.rotation,
         state.rotation,

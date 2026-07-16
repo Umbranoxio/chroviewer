@@ -113,6 +113,7 @@ export interface MapRenderData {
   lightTranslationEventBoxGroups: Difficulty['lightTranslationEventBoxGroups'];
   fxEventBoxGroups: Difficulty['fxEventBoxGroups'];
   environmentRemoval: string[];
+  tracksPlayerZ: boolean;
   initialPlayerHeight: number;
   replayHeights: ReplayHeightEvent[];
 }
@@ -444,6 +445,7 @@ export function buildMapRenderData(difficulty: Difficulty, options: MapRenderOpt
     lightTranslationEventBoxGroups: difficulty.lightTranslationEventBoxGroups,
     fxEventBoxGroups: difficulty.fxEventBoxGroups,
     environmentRemoval: options.environmentRemoval ?? [],
+    tracksPlayerZ: difficulty.rotationEvents.length === 0,
     initialPlayerHeight,
     replayHeights,
   };

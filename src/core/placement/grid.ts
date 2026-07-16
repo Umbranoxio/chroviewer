@@ -4,7 +4,7 @@ const LANE_SIZE = 0.6;
 export const Y_OFFSET = 0.25;
 const PLAYER_Y_OFFSET = 0.6;
 const OBSTACLE_Y_OFFSET = -0.15;
-export const Z_OFFSET = 1;
+export const Z_OFFSET = 0.65;
 
 export const NOTE_Y_OFFSET = Y_OFFSET + PLAYER_Y_OFFSET;
 export const WALL_Y_OFFSET = Y_OFFSET + OBSTACLE_Y_OFFSET;
