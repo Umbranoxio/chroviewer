@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils';
 
 interface ViewerOverlayProps {
   actionLabel?: string;
+  backdropBlur?: boolean;
   className?: string;
   icon: LucideIcon;
   iconClassName?: string;
@@ -19,6 +20,7 @@ const progressCircumference = 2 * Math.PI * progressRadius;
 
 export function ViewerOverlay({
   actionLabel,
+  backdropBlur = true,
   className,
   icon: Icon,
   iconClassName,
@@ -30,7 +32,8 @@ export function ViewerOverlay({
   return (
     <div
       className={cn(
-        'animate-in fade-in fixed inset-x-0 top-0 bottom-0 z-40 flex items-center justify-center bg-black/35 backdrop-blur-sm transition-[bottom] duration-300 ease-out',
+        'animate-in fade-in fixed inset-x-0 top-0 bottom-0 z-40 flex items-center justify-center bg-black/35 transition-[bottom] duration-300 ease-out',
+        backdropBlur && 'backdrop-blur-sm',
         !actionable && 'pointer-events-none',
         className,
       )}

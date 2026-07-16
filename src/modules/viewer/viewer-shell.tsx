@@ -110,7 +110,7 @@ export function ViewerShell() {
     transport,
   });
   useEffect(() => {
-    setLiveChatOpen(false);
+    setLiveChatOpen(window.matchMedia('(min-width: 40rem)').matches);
   }, [search.matchId, search.playerId, search.roomId, search.tournamentId]);
   useEffect(() => {
     const viewport = window.visualViewport;
@@ -314,6 +314,7 @@ export function ViewerShell() {
 
       {liveActive && liveInterruption !== null && (
         <ViewerOverlay
+          backdropBlur={false}
           className={cn(
             liveChatOpen &&
               'max-sm:bottom-[calc(var(--live-mobile-chat-height)+var(--live-safe-area-bottom)+var(--live-keyboard-inset))]',
