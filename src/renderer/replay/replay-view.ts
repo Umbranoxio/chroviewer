@@ -142,6 +142,10 @@ export class ReplayView {
     return this.replay !== null && this.replay.poses.length > 0;
   }
 
+  get poseFrames() {
+    return this.replay?.poses ?? [];
+  }
+
   loadHeadset() {
     return this.replayHeadset.load();
   }

@@ -206,6 +206,7 @@ export class MapView implements RenderView {
 
   setReplay(replay: Replay | null) {
     this.replayView.setReplay(replay);
+    this.mapObjects.invalidate();
   }
 
   setSongDuration(duration: number | null) {

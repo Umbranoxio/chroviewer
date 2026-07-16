@@ -48,7 +48,7 @@ export class NoteLookRotation {
     rotation: Quaternion,
     endRotationDeg: number,
     noteTime: number,
-    notePosition: Vector3,
+    noteEndX: number,
     noteEndY: number,
     jumpProgress: number,
   ) {
@@ -58,9 +58,7 @@ export class NoteLookRotation {
     }
     const endZ = ((endRotationDeg % 360) + 360) % 360;
     this.setUnityEuler(this.end, 0, 0, endZ);
-    const randomIndex = Math.abs(
-      roundToInt(noteTime * 10 + notePosition.x * 2 + noteEndY * 2) % randomRotations.length,
-    );
+    const randomIndex = Math.abs(roundToInt(noteTime * 10 + noteEndX * 2 + noteEndY * 2) % randomRotations.length);
     const random = randomRotations[randomIndex] ?? defaultRandomRotation;
     this.setUnityEuler(this.middle, random[0] * 20, random[1] * 20, endZ + random[2] * 20);
     if (jumpProgress < 0.125) {
@@ -72,18 +70,25 @@ export class NoteLookRotation {
 
   apply(
     rotation: Quaternion,
+    previousRotation: Quaternion,
     endRotationDeg: number,
     noteTime: number,
+    noteEndX: number,
     notePosition: Vector3,
     noteEndY: number,
     headPosition: Vector3,
     jumpProgress: number,
   ) {
-    this.setJumpRotation(rotation, endRotationDeg, noteTime, notePosition, noteEndY, jumpProgress);
+    if (jumpProgress >= 0.5) {
+      rotation.copy(previousRotation);
+      return;
+    }
+
+    this.up.set(0, 1, 0).applyQuaternion(previousRotation);
+    this.setJumpRotation(rotation, endRotationDeg, noteTime, noteEndX, noteEndY, jumpProgress);
     const blend = clamp01(jumpProgress * 2);
     if (blend === 0) return;
 
-    this.up.set(0, 1, 0).applyQuaternion(rotation);
     this.forward
       .set(notePosition.x - headPosition.x, (notePosition.y - headPosition.y) * 0.2, notePosition.z - headPosition.z)
       .normalize();

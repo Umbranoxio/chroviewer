@@ -12,7 +12,7 @@ import {
   type Texture,
 } from 'three';
 
-import { songBpmTimeToSeconds } from '../../core/beatmap/bpm';
+import { secondsToSongBpmTime, songBpmTimeToSeconds } from '../../core/beatmap/bpm';
 import type { ColorScheme, Rgb } from '../../core/colors';
 import { NOTE_Y_OFFSET, Y_OFFSET, Z_OFFSET } from '../../core/placement/grid';
 import {
@@ -27,7 +27,8 @@ import {
   wallSpawnScale,
   type ObjectMotion,
 } from '../../core/placement/jump-path';
-import type { ArcInstance, MapRenderData } from '../../core/placement/map-render-data';
+import type { ArcInstance, MapRenderData, NoteInstance } from '../../core/placement/map-render-data';
+import type { ReplayPose } from '../../core/replay/types';
 import type { FogUniforms } from '../bloomfog/pipeline';
 import {
   createArcMaterial,
@@ -60,11 +61,20 @@ interface ArcEntry {
   arc: ArcInstance;
 }
 
+interface NoteLookState {
+  rotation: Quaternion;
+  nextPoseIndex: number;
+  nextPreviewBeat: number;
+  lastSampleTime: number;
+  finished: boolean;
+}
+
 const zAxis = new Vector3(0, 0, 1);
 const yAxis = new Vector3(0, 1, 0);
 const mapPlayerCenter = new Vector3(0, 1.7, 0);
 const degToRad = Math.PI / 180;
 const noteModelScale = 1;
+const previewRotationFps = 90;
 const white: Rgb = [1, 1, 1];
 const bombGray: Rgb = [64 / 255, 64 / 255, 64 / 255];
 
@@ -78,9 +88,11 @@ export class MapObjectRenderer {
   );
   private readonly matrix = new Matrix4();
   private readonly position = new Vector3();
+  private readonly poseHeadPosition = new Vector3();
   private readonly quaternion = new Quaternion();
   private readonly noteLookRotation = new NoteLookRotation();
   private readonly scale = new Vector3();
+  private readonly noteLookStates = new Map<NoteInstance, NoteLookState>();
 
   private data: MapRenderData | null = null;
   private colors: ColorScheme | null = null;
@@ -188,6 +200,7 @@ export class MapObjectRenderer {
 
   invalidate() {
     this.objectBeat = Number.NaN;
+    this.noteLookStates.clear();
   }
 
   get wallsVisible() {
@@ -203,7 +216,7 @@ export class MapObjectRenderer {
     const replayTime = songBpmTimeToSeconds(now, data.songBpm);
     for (const group of this.instanceGroups) group.begin();
     const replayLoaded = replayView.hasReplay;
-    const noteLookTarget = replayView.hasPoses ? replayView.headPosition : mapPlayerCenter;
+    const poseFrames = replayView.poseFrames;
 
     for (const note of data.notes) {
       const visible = replayLoaded ? isVisible(note, now) : isVisibleBeforeHit(note, now);
@@ -214,17 +227,23 @@ export class MapObjectRenderer {
       const rotation = note.rotationDeg * spawnRotationProgress(note, now);
       const noteTime = songBpmTimeToSeconds(note.beat, data.songBpm);
       if (note.lookAtPlayer) {
-        this.composeLookNoteAt(note, now, x, y, note.rotationDeg, noteTime, note.y, noteLookTarget, noteModelScale);
+        this.composeLookNoteAt(
+          note,
+          now,
+          x,
+          y,
+          noteTime,
+          replayTime,
+          data.songBpm,
+          poseFrames,
+          replayView.headPosition,
+          noteModelScale,
+        );
       } else {
         this.composeAt(note, now, x, y, rotation, noteModelScale);
       }
       const color = note.customColor ?? (note.colorIndex === 1 ? colors.rightNote : colors.leftNote);
       this.noteBodies[note.colorIndex]?.push(this.matrix, color);
-      if (note.lookAtPlayer) {
-        this.composeLookNoteAt(note, now, x, y, note.rotationDeg, noteTime, note.y, noteLookTarget, 1);
-      } else {
-        this.composeAt(note, now, x, y, rotation, 1);
-      }
       if (note.dot) this.dots[note.colorIndex]?.push(this.matrix, white);
       else this.arrows[note.colorIndex]?.push(this.matrix, white);
     }
@@ -298,6 +317,7 @@ export class MapObjectRenderer {
     this.instanceGroups = [];
     this.arcEntries = [];
     this.ownedMaterials = [];
+    this.noteLookStates.clear();
     this.data = null;
     this.colors = null;
     this.objectBeat = Number.NaN;
@@ -318,27 +338,139 @@ export class MapObjectRenderer {
   }
 
   private composeLookNoteAt(
-    motion: ObjectMotion,
+    note: NoteInstance,
     now: number,
     x: number,
     y: number,
-    rotationDeg: number,
     noteTime: number,
-    noteEndY: number,
-    lookTarget: Vector3,
+    replayTime: number,
+    songBpm: number,
+    poseFrames: readonly ReplayPose[],
+    currentHeadPosition: Vector3,
     scale: number,
   ) {
-    this.position.set(x, y, -aheadDistance(motion, now));
-    this.noteLookRotation.apply(
-      this.quaternion,
-      rotationDeg,
-      noteTime,
-      this.position,
-      noteEndY,
-      lookTarget,
-      (now - motion.spawnBeat) / (motion.hjdBeats * 2),
-    );
+    const state = this.noteLookState(note, songBpm, poseFrames);
+    if (poseFrames.length > 0) {
+      this.advanceReplayNoteLook(state, note, noteTime, replayTime, songBpm, poseFrames);
+    } else {
+      this.advancePreviewNoteLook(state, note, noteTime, now, songBpm);
+    }
+
+    this.position.set(x, y, -aheadDistance(note, now));
+    const sampleTime = poseFrames.length > 0 ? replayTime : songBpmTimeToSeconds(now, songBpm);
+    if (Math.abs(sampleTime - state.lastSampleTime) < 1e-6) {
+      this.quaternion.copy(state.rotation);
+    } else {
+      this.noteLookRotation.apply(
+        this.quaternion,
+        state.rotation,
+        note.rotationDeg,
+        noteTime,
+        note.x,
+        this.position,
+        note.y,
+        poseFrames.length > 0 ? currentHeadPosition : mapPlayerCenter,
+        (now - note.spawnBeat) / (note.hjdBeats * 2),
+      );
+    }
     this.scale.setScalar(scale);
     this.matrix.compose(this.position, this.quaternion, this.scale);
   }
+
+  private noteLookState(note: NoteInstance, songBpm: number, poseFrames: readonly ReplayPose[]) {
+    let state = this.noteLookStates.get(note);
+    if (state !== undefined) return state;
+    state = {
+      rotation: new Quaternion(),
+      nextPoseIndex: firstPoseAtOrAfter(poseFrames, songBpmTimeToSeconds(note.spawnBeat, songBpm)),
+      nextPreviewBeat: note.spawnBeat,
+      lastSampleTime: Number.NEGATIVE_INFINITY,
+      finished: false,
+    };
+    this.noteLookStates.set(note, state);
+    return state;
+  }
+
+  private advanceReplayNoteLook(
+    state: NoteLookState,
+    note: NoteInstance,
+    noteTime: number,
+    replayTime: number,
+    songBpm: number,
+    poseFrames: readonly ReplayPose[],
+  ) {
+    while (!state.finished) {
+      const frame = poseFrames[state.nextPoseIndex];
+      if (frame === undefined || frame.time > replayTime) return;
+      if (frame.time >= noteTime) {
+        state.finished = true;
+        return;
+      }
+      const beat = secondsToSongBpmTime(frame.time, songBpm);
+      this.setNotePosition(note, beat);
+      this.poseHeadPosition.set(frame.head.position.x, frame.head.position.y, -frame.head.position.z);
+      this.noteLookRotation.apply(
+        state.rotation,
+        state.rotation,
+        note.rotationDeg,
+        noteTime,
+        note.x,
+        this.position,
+        note.y,
+        this.poseHeadPosition,
+        (beat - note.spawnBeat) / (note.hjdBeats * 2),
+      );
+      state.lastSampleTime = frame.time;
+      state.nextPoseIndex += 1;
+    }
+  }
+
+  private advancePreviewNoteLook(
+    state: NoteLookState,
+    note: NoteInstance,
+    noteTime: number,
+    now: number,
+    songBpm: number,
+  ) {
+    const step = secondsToSongBpmTime(1 / previewRotationFps, songBpm);
+    while (!state.finished && state.nextPreviewBeat <= now) {
+      if (state.nextPreviewBeat >= note.beat) {
+        state.finished = true;
+        return;
+      }
+      this.setNotePosition(note, state.nextPreviewBeat);
+      this.noteLookRotation.apply(
+        state.rotation,
+        state.rotation,
+        note.rotationDeg,
+        noteTime,
+        note.x,
+        this.position,
+        note.y,
+        mapPlayerCenter,
+        (state.nextPreviewBeat - note.spawnBeat) / (note.hjdBeats * 2),
+      );
+      state.lastSampleTime = songBpmTimeToSeconds(state.nextPreviewBeat, songBpm);
+      state.nextPreviewBeat += step;
+    }
+  }
+
+  private setNotePosition(note: NoteInstance, now: number) {
+    const jump = spawnProgress(note, now);
+    const x = note.startX + (note.x - note.startX) * spawnFlipProgress(note, now);
+    const y = note.startY + (note.y - note.startY) * jump + spawnFlipYOffset(note, now, note.flipYSide);
+    this.position.set(x, y, -aheadDistance(note, now));
+  }
+}
+
+function firstPoseAtOrAfter(frames: readonly ReplayPose[], time: number) {
+  let low = 0;
+  let high = frames.length;
+  while (low < high) {
+    const middle = Math.floor((low + high) / 2);
+    const frame = frames[middle];
+    if (frame !== undefined && frame.time < time) low = middle + 1;
+    else high = middle;
+  }
+  return low;
 }
