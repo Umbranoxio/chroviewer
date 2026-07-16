@@ -74,10 +74,17 @@
     },
     "general": {
       "autoHideControls": "Auto-hide controls",
+      "centimeters": "{value} cm",
+      "colors": "Colors",
       "environment": "Environment",
       "interface": "Interface",
       "stage": "Stage",
-      "timelineBookmarks": "Timeline bookmarks"
+      "timelineBookmarks": "Timeline bookmarks",
+      "trailFlag": "Flag",
+      "trailLength": "Trail length",
+      "trailRectangle": "Rectangle",
+      "trailSamples": "Trail samples",
+      "trailShape": "Trail shape"
     },
     "graphics": {
       "customNoteColors": "Custom note colors",

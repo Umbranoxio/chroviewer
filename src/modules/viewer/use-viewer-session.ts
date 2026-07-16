@@ -96,6 +96,10 @@ export function useViewerSession({
   ]);
 
   useEffect(() => {
+    viewerRef.current?.view.setReplayTrailSettings(settings);
+  }, [settings.replayTrailShape, settings.replayTrailLength, settings.replayTrailSamples]);
+
+  useEffect(() => {
     const active = activeSelectionRef.current;
     const view = viewerRef.current?.view;
     if (active === null || view === undefined) return;

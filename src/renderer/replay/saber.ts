@@ -12,7 +12,7 @@ import {
   type ShaderMaterial,
 } from 'three';
 
-const trailSamples = 18;
+import { DEFAULT_REPLAY_TRAIL_SETTINGS, type ReplayTrailSettings } from '../../core/viewer-settings';
 
 interface SaberMaterials {
   blade: Material;
@@ -32,6 +32,7 @@ export interface ReplaySaberTrail {
   mesh: Mesh<BufferGeometry, ShaderMaterial>;
   material: ShaderMaterial;
   samples: { base: Vector3; tip: Vector3 }[];
+  settings: ReplayTrailSettings;
 }
 
 function cylinder(radius: number, length: number, segments = 12) {
@@ -75,8 +76,9 @@ export function createReplaySaber(materials: SaberMaterials): ReplaySaberModel {
   return { root, trailBase, tip, geometries };
 }
 
-export function createReplaySaberTrail(material: ShaderMaterial): ReplaySaberTrail {
-  const geometry = new BufferGeometry();
+function configureTrailGeometry(trail: ReplaySaberTrail) {
+  const trailSamples = trail.settings.replayTrailSamples;
+  const geometry = trail.mesh.geometry;
   geometry.setAttribute('position', new BufferAttribute(new Float32Array(trailSamples * 6), 3));
   geometry.setAttribute('trailAlpha', new BufferAttribute(new Float32Array(trailSamples * 2), 1));
   const indices = new Uint16Array((trailSamples - 1) * 6);
@@ -86,29 +88,15 @@ export function createReplaySaberTrail(material: ShaderMaterial): ReplaySaberTra
     indices.set([vertex, vertex + 1, vertex + 2, vertex + 2, vertex + 1, vertex + 3], offset);
   }
   geometry.setIndex(new BufferAttribute(indices, 1));
-  geometry.setDrawRange(0, 0);
-  const mesh = new Mesh(geometry, material);
-  mesh.frustumCulled = false;
-  return { mesh, material, samples: [] };
 }
 
-export function clearReplaySaberTrail(trail: ReplaySaberTrail) {
-  trail.samples.length = 0;
-  trail.mesh.geometry.setDrawRange(0, 0);
-}
-
-export function updateReplaySaberTrail(trail: ReplaySaberTrail, base: Vector3, tip: Vector3) {
-  const previous = trail.samples.at(-1);
-  if (previous !== undefined && previous.tip.distanceToSquared(tip) < 0.000004) return;
-  trail.samples.push({ base: base.clone(), tip: tip.clone() });
-  if (trail.samples.length > trailSamples) trail.samples.shift();
-
+function writeReplaySaberTrail(trail: ReplaySaberTrail) {
   const position = trail.mesh.geometry.getAttribute('position');
   const alpha = trail.mesh.geometry.getAttribute('trailAlpha');
   const denominator = Math.max(trail.samples.length - 1, 1);
   trail.samples.forEach((sample, index) => {
     const span = index / denominator;
-    const collapse = (1 - span) * 0.5;
+    const collapse = trail.settings.replayTrailShape === 'flag' ? (1 - span) * 0.5 : 0;
     position.setXYZ(
       index * 2,
       sample.base.x + (sample.tip.x - sample.base.x) * collapse,
@@ -128,4 +116,40 @@ export function updateReplaySaberTrail(trail: ReplaySaberTrail, base: Vector3, t
   position.needsUpdate = true;
   alpha.needsUpdate = true;
   trail.mesh.geometry.setDrawRange(0, Math.max(trail.samples.length - 1, 0) * 6);
+}
+
+export function createReplaySaberTrail(
+  material: ShaderMaterial,
+  settings = DEFAULT_REPLAY_TRAIL_SETTINGS,
+): ReplaySaberTrail {
+  const geometry = new BufferGeometry();
+  geometry.setDrawRange(0, 0);
+  const mesh = new Mesh(geometry, material);
+  mesh.frustumCulled = false;
+  const trail = { mesh, material, samples: [], settings: { ...settings } };
+  configureTrailGeometry(trail);
+  return trail;
+}
+
+export function setReplaySaberTrailSettings(trail: ReplaySaberTrail, settings: ReplayTrailSettings) {
+  const samplesChanged = settings.replayTrailSamples !== trail.settings.replayTrailSamples;
+  trail.settings = { ...settings };
+  if (trail.samples.length > settings.replayTrailSamples) {
+    trail.samples.splice(0, trail.samples.length - settings.replayTrailSamples);
+  }
+  if (samplesChanged) configureTrailGeometry(trail);
+  writeReplaySaberTrail(trail);
+}
+
+export function clearReplaySaberTrail(trail: ReplaySaberTrail) {
+  trail.samples.length = 0;
+  trail.mesh.geometry.setDrawRange(0, 0);
+}
+
+export function updateReplaySaberTrail(trail: ReplaySaberTrail, base: Vector3, tip: Vector3) {
+  const previous = trail.samples.at(-1);
+  if (previous !== undefined && previous.tip.distanceToSquared(tip) < 0.000004) return;
+  trail.samples.push({ base: base.clone(), tip: tip.clone() });
+  if (trail.samples.length > trail.settings.replayTrailSamples) trail.samples.shift();
+  writeReplaySaberTrail(trail);
 }

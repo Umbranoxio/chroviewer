@@ -1,13 +1,15 @@
-import { useTranslations } from 'use-intl';
+import { useFormatter, useTranslations } from 'use-intl';
 
-import type { ViewerSettings } from '../../core/viewer-settings';
+import { DEFAULT_VIEWER_SETTINGS, type ViewerSettings } from '../../core/viewer-settings';
 import { SettingRow } from './components/setting-row';
 import { SettingSection } from './components/setting-section';
+import { SliderSetting } from './components/slider-setting';
 
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
 import { TabsContent } from '@/components/ui/tabs';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 
 interface GeneralSettingsProps {
   settings: ViewerSettings;
@@ -24,6 +26,7 @@ export function GeneralSettings({
   onChange,
   onEnvironmentChange,
 }: GeneralSettingsProps) {
+  const format = useFormatter();
   const t = useTranslations('settings.general');
 
   function update<K extends keyof ViewerSettings>(key: K, value: ViewerSettings[K]) {
@@ -50,6 +53,50 @@ export function GeneralSettings({
               </SelectContent>
             </Select>
           </SettingRow>
+        </SettingSection>
+        <Separator />
+        <SettingSection title={t('colors')}>
+          <SettingRow label={t('trailShape')}>
+            <ToggleGroup
+              type="single"
+              value={settings.replayTrailShape}
+              aria-label={t('trailShape')}
+              onValueChange={(replayTrailShape) => {
+                if (replayTrailShape === 'flag' || replayTrailShape === 'rectangle') {
+                  update('replayTrailShape', replayTrailShape);
+                }
+              }}
+            >
+              <ToggleGroupItem value="flag">{t('trailFlag')}</ToggleGroupItem>
+              <ToggleGroupItem value="rectangle">{t('trailRectangle')}</ToggleGroupItem>
+            </ToggleGroup>
+          </SettingRow>
+          <SliderSetting
+            defaultValue={DEFAULT_VIEWER_SETTINGS.replayTrailLength}
+            id="viewer-replay-trail-length"
+            label={t('trailLength')}
+            value={settings.replayTrailLength}
+            minimum={0.05}
+            maximum={0.98}
+            step={0.001}
+            display={(value) => t('centimeters', { value: format.number(value * 100, 'decimal') })}
+            onChange={(replayTrailLength) => {
+              update('replayTrailLength', replayTrailLength);
+            }}
+          />
+          <SliderSetting
+            defaultValue={DEFAULT_VIEWER_SETTINGS.replayTrailSamples}
+            id="viewer-replay-trail-samples"
+            label={t('trailSamples')}
+            value={settings.replayTrailSamples}
+            minimum={2}
+            maximum={64}
+            step={1}
+            display={(value) => format.number(value, 'integer')}
+            onChange={(replayTrailSamples) => {
+              update('replayTrailSamples', replayTrailSamples);
+            }}
+          />
         </SettingSection>
         <Separator />
         <SettingSection title={t('interface')}>

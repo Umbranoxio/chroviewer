@@ -18,6 +18,9 @@ export function settingsForShareCategories(
       hitsoundVolume: settings.hitsoundVolume,
       showBookmarks: settings.showBookmarks,
       autoHide: settings.autoHide,
+      replayTrailShape: settings.replayTrailShape,
+      replayTrailLength: settings.replayTrailLength,
+      replayTrailSamples: settings.replayTrailSamples,
     });
   }
   if (categories.includes('graphics')) {

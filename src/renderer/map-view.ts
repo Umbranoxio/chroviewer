@@ -7,7 +7,11 @@ import { DEFAULT_COLORS, resolveColorScheme } from '../core/colors';
 import { isForcedLightshowMode, type LightshowMode } from '../core/lighting/basic-light';
 import { applyReplayNoteEvents, type MapRenderData } from '../core/placement/map-render-data';
 import type { Replay, ReplayNoteEvent } from '../core/replay/types';
-import { DEFAULT_REPLAY_CAMERA_SETTINGS, type ReplayCameraSettings } from '../core/viewer-settings';
+import {
+  DEFAULT_REPLAY_CAMERA_SETTINGS,
+  type ReplayCameraSettings,
+  type ReplayTrailSettings,
+} from '../core/viewer-settings';
 import { BloomfogPipeline } from './bloomfog/pipeline';
 import { fixedCameraPosition } from './camera';
 import {
@@ -222,6 +226,10 @@ export class MapView implements RenderView {
 
   setReplayCameraSettings(settings: ReplayCameraSettings) {
     this.replayView.setCameraSettings(settings);
+  }
+
+  setReplayTrailSettings(settings: ReplayTrailSettings) {
+    this.replayView.setTrailSettings(settings);
   }
 
   setScreenDisplacementEffects(enabled: boolean) {

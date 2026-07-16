@@ -12,6 +12,9 @@ export interface ViewerSettings {
   customColors: boolean;
   leftColor: string;
   rightColor: string;
+  replayTrailShape: 'flag' | 'rectangle';
+  replayTrailLength: number;
+  replayTrailSamples: number;
   hitsounds: boolean;
   masterMuted: boolean;
   songMuted: boolean;
@@ -52,6 +55,8 @@ export type ReplayCameraSettings = Pick<
   | 'replayCameraForceUpright'
 >;
 
+export type ReplayTrailSettings = Pick<ViewerSettings, 'replayTrailShape' | 'replayTrailLength' | 'replayTrailSamples'>;
+
 export const DEFAULT_REPLAY_CAMERA_SETTINGS: ReplayCameraSettings = {
   replayCamera: 'first-person',
   replayCameraSmoothing: true,
@@ -68,6 +73,12 @@ export const DEFAULT_REPLAY_CAMERA_SETTINGS: ReplayCameraSettings = {
   replayCameraForceUpright: false,
 };
 
+export const DEFAULT_REPLAY_TRAIL_SETTINGS: ReplayTrailSettings = {
+  replayTrailShape: 'flag',
+  replayTrailLength: 0.331,
+  replayTrailSamples: 18,
+};
+
 export const DEFAULT_VIEWER_SETTINGS: ViewerSettings = {
   graphicsQuality: 'high',
   screenDisplacementEffects: true,
@@ -76,6 +87,7 @@ export const DEFAULT_VIEWER_SETTINGS: ViewerSettings = {
   customColors: false,
   leftColor: '#bb0000',
   rightColor: '#005ebc',
+  ...DEFAULT_REPLAY_TRAIL_SETTINGS,
   hitsounds: true,
   masterMuted: false,
   songMuted: false,
@@ -105,6 +117,13 @@ function numberSetting(fallback: number, minimum: number, maximum: number) {
   );
 }
 
+function integerSetting(fallback: number, minimum: number, maximum: number) {
+  return z.pipe(
+    numberSetting(fallback, minimum, maximum),
+    z.transform((value) => Math.round(value)),
+  );
+}
+
 function hexColorSchema(fallback: string) {
   return z.catch(
     z.pipe(
@@ -123,6 +142,9 @@ const viewerSettingsObjectSchema = z.object({
   customColors: z.catch(z.boolean(), DEFAULT_VIEWER_SETTINGS.customColors),
   leftColor: hexColorSchema(DEFAULT_VIEWER_SETTINGS.leftColor),
   rightColor: hexColorSchema(DEFAULT_VIEWER_SETTINGS.rightColor),
+  replayTrailShape: z.catch(z.enum(['flag', 'rectangle']), DEFAULT_VIEWER_SETTINGS.replayTrailShape),
+  replayTrailLength: numberSetting(DEFAULT_VIEWER_SETTINGS.replayTrailLength, 0.05, 0.98),
+  replayTrailSamples: integerSetting(DEFAULT_VIEWER_SETTINGS.replayTrailSamples, 2, 64),
   hitsounds: z.catch(z.boolean(), DEFAULT_VIEWER_SETTINGS.hitsounds),
   masterMuted: z.catch(z.boolean(), DEFAULT_VIEWER_SETTINGS.masterMuted),
   songMuted: z.catch(z.boolean(), DEFAULT_VIEWER_SETTINGS.songMuted),

@@ -70,6 +70,7 @@ export function useViewerRenderer({
       lifecycle.setView(view);
       view.setLightshowMode(active === null ? 'static' : lightshowModeRef.current);
       view.setReplayCameraSettings(settings);
+      view.setReplayTrailSettings(settingsRef.current);
       view.setScreenDisplacementEffects(settingsRef.current.screenDisplacementEffects);
       viewerRef.current = { view, lifecycle };
       setViewerReady(true);
