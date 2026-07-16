@@ -69,7 +69,7 @@ export const DEFAULT_REPLAY_CAMERA_SETTINGS: ReplayCameraSettings = {
 };
 
 export const DEFAULT_VIEWER_SETTINGS: ViewerSettings = {
-  graphicsQuality: 'medium',
+  graphicsQuality: 'high',
   screenDisplacementEffects: true,
   renderScale: 1,
   staticLights: false,
@@ -87,7 +87,8 @@ export const DEFAULT_VIEWER_SETTINGS: ViewerSettings = {
   autoHide: true,
 };
 
-const storageKey = 'chroviewer.settings.v2';
+const storageKey = 'chroviewer.settings.v3';
+const previousStorageKey = 'chroviewer.settings.v2';
 const legacyStorageKey = 'chroviewer.settings.v1';
 const hexPattern = /^#[0-9a-f]{6}$/i;
 const mobileUserAgent = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i;
@@ -166,7 +167,7 @@ export function loadViewerSettings(
   mobile = isMobileDevice(),
 ): ViewerSettings {
   const defaults: ViewerSettings = mobile
-    ? { ...DEFAULT_VIEWER_SETTINGS, graphicsQuality: 'low' }
+    ? { ...DEFAULT_VIEWER_SETTINGS, graphicsQuality: 'medium' }
     : DEFAULT_VIEWER_SETTINGS;
   const text = storage.getItem(storageKey);
   if (text !== null) {
@@ -174,12 +175,22 @@ export function loadViewerSettings(
     return parsed.isOk() ? sanitizeViewerSettings(parsed.value) : defaults;
   }
 
+  const previousText = storage.getItem(previousStorageKey);
+  if (previousText !== null) {
+    const parsed = Result.try((): unknown => JSON.parse(previousText));
+    if (parsed.isErr()) return defaults;
+    const settings = sanitizeViewerSettings(parsed.value);
+    return settings.graphicsQuality === 'medium'
+      ? { ...settings, graphicsQuality: defaults.graphicsQuality }
+      : settings;
+  }
+
   const legacyText = storage.getItem(legacyStorageKey);
   if (legacyText === null) return defaults;
   const parsed = Result.try((): unknown => JSON.parse(legacyText));
   if (parsed.isErr()) return defaults;
   const settings = sanitizeViewerSettings(parsed.value);
-  return settings.graphicsQuality === 'high' ? { ...settings, graphicsQuality: mobile ? 'low' : 'medium' } : settings;
+  return settings.graphicsQuality === 'high' ? { ...settings, graphicsQuality: defaults.graphicsQuality } : settings;
 }
 
 export function saveViewerSettings(settings: ViewerSettings, storage: Pick<Storage, 'setItem'> = localStorage) {

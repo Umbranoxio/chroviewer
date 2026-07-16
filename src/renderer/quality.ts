@@ -5,7 +5,7 @@ export interface QualitySettings {
 }
 
 export const DEFAULT_QUALITY: QualitySettings = {
-  mirrorQuality: 'medium',
+  mirrorQuality: 'high',
 };
 
 export const mirrorTextureSize = (quality: MirrorQuality) =>
