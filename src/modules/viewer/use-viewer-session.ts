@@ -96,8 +96,42 @@ export function useViewerSession({
   ]);
 
   useEffect(() => {
-    viewerRef.current?.view.setReplayTrailSettings(settings);
-  }, [settings.replayTrailShape, settings.replayTrailLength, settings.replayTrailSamples]);
+    viewerRef.current?.view.setReplaySaberSettings(settings);
+  }, [
+    settings.showSabers,
+    settings.saberScale,
+    settings.saberBladeLength,
+    settings.saberBladeThickness,
+    settings.saberCoreThickness,
+    settings.saberCoreInset,
+    settings.showSaberTrails,
+    settings.replayTrailShape,
+    settings.replayTrailLength,
+    settings.replayTrailThinness,
+    settings.replayTrailSamples,
+    settings.replayTrailFade,
+    settings.replayTrailOpacity,
+    settings.replayTrailMotionThreshold,
+    settings.saberGripLength,
+    settings.saberGripThickness,
+    settings.saberGuardSize,
+    settings.saberGuardThickness,
+    settings.saberCollarSize,
+    settings.saberCollarThickness,
+    settings.saberCollarSpacing,
+    settings.saberRingCount,
+    settings.saberRingSize,
+    settings.saberRingThickness,
+    settings.saberRingSpacing,
+    settings.saberPommelLength,
+    settings.saberPommelThickness,
+    settings.saberXOffset,
+    settings.saberYOffset,
+    settings.saberZOffset,
+    settings.saberXRotation,
+    settings.saberYRotation,
+    settings.saberZRotation,
+  ]);
 
   useEffect(() => {
     const active = activeSelectionRef.current;

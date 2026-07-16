@@ -12,7 +12,12 @@ import {
   type ShaderMaterial,
 } from 'three';
 
-import { DEFAULT_REPLAY_TRAIL_SETTINGS, type ReplayTrailSettings } from '../../core/viewer-settings';
+import {
+  DEFAULT_REPLAY_SABER_SETTINGS,
+  DEFAULT_REPLAY_TRAIL_SETTINGS,
+  type ReplaySaberSettings,
+  type ReplayTrailSettings,
+} from '../../core/viewer-settings';
 
 interface SaberMaterials {
   blade: Material;
@@ -26,6 +31,13 @@ export interface ReplaySaberModel {
   trailBase: Object3D;
   tip: Object3D;
   geometries: BufferGeometry[];
+  blade: Mesh;
+  core: Mesh;
+  guard: Mesh;
+  grip: Mesh;
+  collars: Mesh[];
+  rings: Mesh[];
+  pommel: Mesh;
 }
 
 export interface ReplaySaberTrail {
@@ -55,25 +67,90 @@ export function createReplaySaber(materials: SaberMaterials): ReplaySaberModel {
     mesh.position.z = z;
     root.add(mesh);
     geometries.push(geometry);
+    return mesh;
   }
 
-  add(cone(0.0045, 0.982), materials.blade, -0.54);
-  add(cone(0.0018, 0.978), materials.core, -0.54);
-  add(new TorusGeometry(0.02, 0.001, 6, 32), materials.blade, -0.048);
-  add(cylinder(0.005, 0.089, 16), materials.grip, -0.0025);
-  add(new TorusGeometry(0.006, 0.001, 6, 24), materials.blade, -0.038);
-  add(new TorusGeometry(0.006, 0.001, 6, 24), materials.blade, 0.05);
+  const blade = add(cone(0.0045, 0.982), materials.blade, -0.54);
+  const core = add(cone(0.0018, 0.978), materials.core, -0.54);
+  const guard = add(new TorusGeometry(0.02, 0.001, 6, 32), materials.blade, -0.048);
+  const grip = add(cylinder(0.005, 0.089, 16), materials.grip, -0.0025);
+  const collars = [
+    add(new TorusGeometry(0.006, 0.001, 6, 24), materials.blade, -0.038),
+    add(new TorusGeometry(0.006, 0.001, 6, 24), materials.blade, 0.05),
+  ];
+  const rings: Mesh[] = [];
   for (const z of [-0.024, -0.01, 0.004, 0.018, 0.032]) {
-    add(cylinder(0.0054, 0.0025, 16), materials.metal, z);
+    rings.push(add(cylinder(0.0054, 0.0025, 16), materials.metal, z));
   }
-  add(cylinder(0.0055, 0.009), materials.metal, 0.0465);
+  const pommel = add(cylinder(0.0055, 0.009), materials.metal, 0.0465);
 
   const trailBase = new Object3D();
   const tip = new Object3D();
   trailBase.position.z = -0.7;
   tip.position.z = -1.031;
   root.add(trailBase, tip);
-  return { root, trailBase, tip, geometries };
+  return { root, trailBase, tip, geometries, blade, core, guard, grip, collars, rings, pommel };
+}
+
+export function setReplaySaberSettings(saber: ReplaySaberModel, settings: ReplaySaberSettings) {
+  const bladeBase = -0.049;
+  const bladeLength = settings.saberBladeLength;
+  const bladeCenter = bladeBase - bladeLength / 2;
+  const coreLength = Math.max(bladeLength - settings.saberCoreInset, 0.01);
+  saber.root.visible = settings.showSabers;
+  saber.root.scale.setScalar(settings.saberScale);
+
+  saber.blade.position.z = bladeCenter;
+  saber.blade.scale.set(
+    settings.saberBladeThickness / DEFAULT_REPLAY_SABER_SETTINGS.saberBladeThickness,
+    settings.saberBladeThickness / DEFAULT_REPLAY_SABER_SETTINGS.saberBladeThickness,
+    bladeLength / DEFAULT_REPLAY_SABER_SETTINGS.saberBladeLength,
+  );
+  saber.core.position.z = bladeCenter;
+  saber.core.scale.set(
+    settings.saberCoreThickness / DEFAULT_REPLAY_SABER_SETTINGS.saberCoreThickness,
+    settings.saberCoreThickness / DEFAULT_REPLAY_SABER_SETTINGS.saberCoreThickness,
+    coreLength / (DEFAULT_REPLAY_SABER_SETTINGS.saberBladeLength - DEFAULT_REPLAY_SABER_SETTINGS.saberCoreInset),
+  );
+
+  saber.guard.scale.set(
+    settings.saberGuardSize / DEFAULT_REPLAY_SABER_SETTINGS.saberGuardSize,
+    settings.saberGuardSize / DEFAULT_REPLAY_SABER_SETTINGS.saberGuardSize,
+    settings.saberGuardThickness / DEFAULT_REPLAY_SABER_SETTINGS.saberGuardThickness,
+  );
+  saber.grip.scale.set(
+    settings.saberGripThickness / DEFAULT_REPLAY_SABER_SETTINGS.saberGripThickness,
+    settings.saberGripThickness / DEFAULT_REPLAY_SABER_SETTINGS.saberGripThickness,
+    settings.saberGripLength / DEFAULT_REPLAY_SABER_SETTINGS.saberGripLength,
+  );
+
+  saber.collars.forEach((collar, index) => {
+    collar.position.z = 0.006 + (index === 0 ? -0.5 : 0.5) * settings.saberCollarSpacing;
+    collar.scale.set(
+      settings.saberCollarSize / DEFAULT_REPLAY_SABER_SETTINGS.saberCollarSize,
+      settings.saberCollarSize / DEFAULT_REPLAY_SABER_SETTINGS.saberCollarSize,
+      settings.saberCollarThickness / DEFAULT_REPLAY_SABER_SETTINGS.saberCollarThickness,
+    );
+  });
+
+  saber.rings.forEach((ring, index) => {
+    ring.visible = index < settings.saberRingCount;
+    ring.position.z = 0.004 + (index - (settings.saberRingCount - 1) / 2) * settings.saberRingSpacing;
+    ring.scale.set(
+      settings.saberRingSize / DEFAULT_REPLAY_SABER_SETTINGS.saberRingSize,
+      settings.saberRingSize / DEFAULT_REPLAY_SABER_SETTINGS.saberRingSize,
+      settings.saberRingThickness / DEFAULT_REPLAY_SABER_SETTINGS.saberRingThickness,
+    );
+  });
+
+  saber.pommel.position.z = bladeBase + settings.saberGripLength + 0.0065;
+  saber.pommel.scale.set(
+    settings.saberPommelThickness / DEFAULT_REPLAY_SABER_SETTINGS.saberPommelThickness,
+    settings.saberPommelThickness / DEFAULT_REPLAY_SABER_SETTINGS.saberPommelThickness,
+    settings.saberPommelLength / DEFAULT_REPLAY_SABER_SETTINGS.saberPommelLength,
+  );
+  saber.tip.position.z = bladeBase - bladeLength;
+  saber.trailBase.position.z = saber.tip.position.z + settings.replayTrailLength;
 }
 
 function configureTrailGeometry(trail: ReplaySaberTrail) {
@@ -96,7 +173,8 @@ function writeReplaySaberTrail(trail: ReplaySaberTrail) {
   const denominator = Math.max(trail.samples.length - 1, 1);
   trail.samples.forEach((sample, index) => {
     const span = index / denominator;
-    const collapse = trail.settings.replayTrailShape === 'flag' ? (1 - span) * 0.5 : 0;
+    const shapeCollapse = trail.settings.replayTrailShape === 'flag' ? (1 - span) * 0.5 : 0;
+    const collapse = shapeCollapse + (0.5 - shapeCollapse) * trail.settings.replayTrailThinness;
     position.setXYZ(
       index * 2,
       sample.base.x + (sample.tip.x - sample.base.x) * collapse,
@@ -109,7 +187,7 @@ function writeReplaySaberTrail(trail: ReplaySaberTrail) {
       sample.tip.y + (sample.base.y - sample.tip.y) * collapse,
       sample.tip.z + (sample.base.z - sample.tip.z) * collapse,
     );
-    const opacity = span ** 1.6;
+    const opacity = span ** trail.settings.replayTrailFade * trail.settings.replayTrailOpacity;
     alpha.setX(index * 2, opacity);
     alpha.setX(index * 2 + 1, opacity);
   });
@@ -126,6 +204,7 @@ export function createReplaySaberTrail(
   geometry.setDrawRange(0, 0);
   const mesh = new Mesh(geometry, material);
   mesh.frustumCulled = false;
+  mesh.visible = settings.showSaberTrails;
   const trail = { mesh, material, samples: [], settings: { ...settings } };
   configureTrailGeometry(trail);
   return trail;
@@ -134,6 +213,7 @@ export function createReplaySaberTrail(
 export function setReplaySaberTrailSettings(trail: ReplaySaberTrail, settings: ReplayTrailSettings) {
   const samplesChanged = settings.replayTrailSamples !== trail.settings.replayTrailSamples;
   trail.settings = { ...settings };
+  trail.mesh.visible = settings.showSaberTrails;
   if (trail.samples.length > settings.replayTrailSamples) {
     trail.samples.splice(0, trail.samples.length - settings.replayTrailSamples);
   }
@@ -148,7 +228,8 @@ export function clearReplaySaberTrail(trail: ReplaySaberTrail) {
 
 export function updateReplaySaberTrail(trail: ReplaySaberTrail, base: Vector3, tip: Vector3) {
   const previous = trail.samples.at(-1);
-  if (previous !== undefined && previous.tip.distanceToSquared(tip) < 0.000004) return;
+  const threshold = trail.settings.replayTrailMotionThreshold;
+  if (previous !== undefined && previous.tip.distanceToSquared(tip) < threshold * threshold) return;
   trail.samples.push({ base: base.clone(), tip: tip.clone() });
   if (trail.samples.length > trail.settings.replayTrailSamples) trail.samples.shift();
   writeReplaySaberTrail(trail);

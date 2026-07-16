@@ -9,7 +9,6 @@ import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectVa
 import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
 import { TabsContent } from '@/components/ui/tabs';
-import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 
 interface GraphicsSettingsProps {
   settings: ViewerSettings;
@@ -123,47 +122,6 @@ export function GraphicsSettings({ settings, onChange }: GraphicsSettingsProps) 
               />
             </label>
           </div>
-          <SettingRow label={t('trailShape')}>
-            <ToggleGroup
-              type="single"
-              value={settings.replayTrailShape}
-              aria-label={t('trailShape')}
-              onValueChange={(replayTrailShape) => {
-                if (replayTrailShape === 'flag' || replayTrailShape === 'rectangle') {
-                  update('replayTrailShape', replayTrailShape);
-                }
-              }}
-            >
-              <ToggleGroupItem value="flag">{t('trailFlag')}</ToggleGroupItem>
-              <ToggleGroupItem value="rectangle">{t('trailRectangle')}</ToggleGroupItem>
-            </ToggleGroup>
-          </SettingRow>
-          <SliderSetting
-            defaultValue={DEFAULT_VIEWER_SETTINGS.replayTrailLength}
-            id="viewer-replay-trail-length"
-            label={t('trailLength')}
-            value={settings.replayTrailLength}
-            minimum={0.05}
-            maximum={0.98}
-            step={0.001}
-            display={(value) => t('centimeters', { value: format.number(value * 100, 'decimal') })}
-            onChange={(replayTrailLength) => {
-              update('replayTrailLength', replayTrailLength);
-            }}
-          />
-          <SliderSetting
-            defaultValue={DEFAULT_VIEWER_SETTINGS.replayTrailSamples}
-            id="viewer-replay-trail-samples"
-            label={t('trailSamples')}
-            value={settings.replayTrailSamples}
-            minimum={2}
-            maximum={64}
-            step={1}
-            display={(value) => format.number(value, 'integer')}
-            onChange={(replayTrailSamples) => {
-              update('replayTrailSamples', replayTrailSamples);
-            }}
-          />
         </SettingSection>
       </div>
     </TabsContent>

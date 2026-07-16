@@ -19,7 +19,7 @@ interface SharePanelProps {
   onIncludeTimecodeChange: (include: boolean) => void;
 }
 
-const shareCategories: ShareSettingsCategory[] = ['general', 'graphics', 'camera'];
+const shareCategories: ShareSettingsCategory[] = ['general', 'graphics', 'sabers', 'camera'];
 
 export function SharePanel({
   url,
@@ -46,6 +46,7 @@ export function SharePanel({
       switch (value) {
         case 'general':
         case 'graphics':
+        case 'sabers':
         case 'camera':
           selected.push(value);
       }
@@ -81,7 +82,7 @@ export function SharePanel({
           <div className="grid gap-1.5">
             <span className="text-xs font-medium">{t('includeSettings')}</span>
             <ToggleGroup
-              className="grid grid-cols-3"
+              className="grid grid-cols-4"
               type="multiple"
               value={categories}
               aria-label={t('categoriesLabel')}

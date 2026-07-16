@@ -10,7 +10,7 @@ import type { Replay, ReplayNoteEvent } from '../core/replay/types';
 import {
   DEFAULT_REPLAY_CAMERA_SETTINGS,
   type ReplayCameraSettings,
-  type ReplayTrailSettings,
+  type ReplaySaberSettings,
 } from '../core/viewer-settings';
 import { BloomfogPipeline } from './bloomfog/pipeline';
 import { fixedCameraPosition } from './camera';
@@ -228,8 +228,8 @@ export class MapView implements RenderView {
     this.replayView.setCameraSettings(settings);
   }
 
-  setReplayTrailSettings(settings: ReplayTrailSettings) {
-    this.replayView.setTrailSettings(settings);
+  setReplaySaberSettings(settings: ReplaySaberSettings) {
+    this.replayView.setSaberSettings(settings);
   }
 
   setScreenDisplacementEffects(enabled: boolean) {

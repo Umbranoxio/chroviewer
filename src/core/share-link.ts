@@ -1,6 +1,6 @@
 import { sanitizeViewerSettings, type ViewerSettings } from './viewer-settings';
 
-export type ShareSettingsCategory = 'general' | 'graphics' | 'camera';
+export type ShareSettingsCategory = 'general' | 'graphics' | 'sabers' | 'camera';
 export type SharedViewerSettings = Partial<ViewerSettings>;
 
 export function settingsForShareCategories(
@@ -29,9 +29,43 @@ export function settingsForShareCategories(
       customColors: settings.customColors,
       leftColor: settings.leftColor,
       rightColor: settings.rightColor,
+    });
+  }
+  if (categories.includes('sabers')) {
+    Object.assign(shared, {
+      showSabers: settings.showSabers,
+      saberScale: settings.saberScale,
+      saberBladeLength: settings.saberBladeLength,
+      saberBladeThickness: settings.saberBladeThickness,
+      saberCoreThickness: settings.saberCoreThickness,
+      saberCoreInset: settings.saberCoreInset,
+      showSaberTrails: settings.showSaberTrails,
       replayTrailShape: settings.replayTrailShape,
       replayTrailLength: settings.replayTrailLength,
+      replayTrailThinness: settings.replayTrailThinness,
       replayTrailSamples: settings.replayTrailSamples,
+      replayTrailFade: settings.replayTrailFade,
+      replayTrailOpacity: settings.replayTrailOpacity,
+      replayTrailMotionThreshold: settings.replayTrailMotionThreshold,
+      saberGripLength: settings.saberGripLength,
+      saberGripThickness: settings.saberGripThickness,
+      saberGuardSize: settings.saberGuardSize,
+      saberGuardThickness: settings.saberGuardThickness,
+      saberCollarSize: settings.saberCollarSize,
+      saberCollarThickness: settings.saberCollarThickness,
+      saberCollarSpacing: settings.saberCollarSpacing,
+      saberRingCount: settings.saberRingCount,
+      saberRingSize: settings.saberRingSize,
+      saberRingThickness: settings.saberRingThickness,
+      saberRingSpacing: settings.saberRingSpacing,
+      saberPommelLength: settings.saberPommelLength,
+      saberPommelThickness: settings.saberPommelThickness,
+      saberXOffset: settings.saberXOffset,
+      saberYOffset: settings.saberYOffset,
+      saberZOffset: settings.saberZOffset,
+      saberXRotation: settings.saberXRotation,
+      saberYRotation: settings.saberYRotation,
+      saberZRotation: settings.saberZRotation,
     });
   }
   if (categories.includes('camera')) {

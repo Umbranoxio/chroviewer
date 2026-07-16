@@ -5,9 +5,9 @@ import { isForcedLightshowMode, type LightshowMode } from '../../core/lighting/b
 import { sampleReplayFrames } from '../../core/replay/sampling';
 import type { Replay, ReplayTransform } from '../../core/replay/types';
 import {
-  DEFAULT_REPLAY_TRAIL_SETTINGS,
+  DEFAULT_REPLAY_SABER_SETTINGS,
   type ReplayCameraSettings,
-  type ReplayTrailSettings,
+  type ReplaySaberSettings,
 } from '../../core/viewer-settings';
 import type { FogUniforms } from '../bloomfog/pipeline';
 import {
@@ -29,8 +29,10 @@ import {
   clearReplaySaberTrail,
   createReplaySaber,
   createReplaySaberTrail,
+  setReplaySaberSettings,
   setReplaySaberTrailSettings,
   updateReplaySaberTrail,
+  type ReplaySaberModel,
   type ReplaySaberTrail,
 } from './saber';
 
@@ -57,10 +59,11 @@ export class ReplayView {
   private readonly position = new Vector3();
   private readonly replayGeometries: BufferGeometry[] = [];
   private readonly replayMaterials: ShaderMaterial[] = [];
+  private readonly replaySabers: ReplaySaberModel[] = [];
   private readonly replayTrails: ReplaySaberTrail[] = [];
   private readonly replaySaberColorMaterials: { blade: ShaderMaterial; core: ShaderMaterial }[] = [];
   private replayTrailTime = Number.NEGATIVE_INFINITY;
-  private replayTrailLength = DEFAULT_REPLAY_TRAIL_SETTINGS.replayTrailLength;
+  private saberSettings = DEFAULT_REPLAY_SABER_SETTINGS;
   private replay: Replay | null = null;
   private lightshowMode: LightshowMode = 'full';
 
@@ -100,8 +103,12 @@ export class ReplayView {
       trailBase.position.copy(saber.trailBase.position);
       tip.position.copy(saber.tip.position);
       saber.root.remove(saber.trailBase, saber.tip);
+      saber.trailBase = trailBase;
+      saber.tip = tip;
       saber.root.add(trailBase, tip);
+      setReplaySaberSettings(saber, this.saberSettings);
       offset.add(saber.root);
+      this.replaySabers.push(saber);
       this.replayGeometries.push(...saber.geometries);
       this.replayMaterials.push(bladeMaterial, coreMaterial);
       this.replaySaberColorMaterials.push({ blade: bladeMaterial, core: coreMaterial });
@@ -158,10 +165,7 @@ export class ReplayView {
     this.clearTrails();
     this.cameraController.reset();
     this.root.visible = !isForcedLightshowMode(this.lightshowMode) && this.hasPoses;
-    this.replayLeftOffset.position.set(0, 0, 0);
-    this.replayLeftOffset.quaternion.identity();
-    this.replayRightOffset.position.set(0, 0, 0);
-    this.replayRightOffset.quaternion.identity();
+    this.applySaberOffsets();
     this.cameraController.setReplayPresence(this.hasReplay);
     this.replayHeadset.root.visible = this.cameraController.cameraMode !== 'first-person';
   }
@@ -189,12 +193,12 @@ export class ReplayView {
     this.replayHeadset.root.visible = this.cameraController.cameraMode !== 'first-person';
   }
 
-  setTrailSettings(settings: ReplayTrailSettings) {
-    if (settings.replayTrailLength !== this.replayTrailLength) this.clearTrails();
-    this.replayTrailLength = settings.replayTrailLength;
-    this.replayLeftTrailBase.position.z = this.replayLeftTip.position.z + settings.replayTrailLength;
-    this.replayRightTrailBase.position.z = this.replayRightTip.position.z + settings.replayTrailLength;
+  setSaberSettings(settings: ReplaySaberSettings) {
+    this.clearTrails();
+    this.saberSettings = { ...settings };
+    for (const saber of this.replaySabers) setReplaySaberSettings(saber, settings);
     for (const trail of this.replayTrails) setReplaySaberTrailSettings(trail, settings);
+    this.applySaberOffsets();
   }
 
   setCameraAspect(aspect: number) {
@@ -244,6 +248,18 @@ export class ReplayView {
   private clearTrails() {
     this.replayTrailTime = Number.NEGATIVE_INFINITY;
     for (const trail of this.replayTrails) clearReplaySaberTrail(trail);
+  }
+
+  private applySaberOffsets() {
+    const settings = this.saberSettings;
+    for (const offset of [this.replayLeftOffset, this.replayRightOffset]) {
+      offset.position.set(settings.saberXOffset, settings.saberYOffset, settings.saberZOffset);
+      offset.rotation.set(
+        (settings.saberXRotation * Math.PI) / 180,
+        (settings.saberYRotation * Math.PI) / 180,
+        (settings.saberZRotation * Math.PI) / 180,
+      );
+    }
   }
 
   private updateTrails(time: number) {

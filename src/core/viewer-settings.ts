@@ -12,9 +12,39 @@ export interface ViewerSettings {
   customColors: boolean;
   leftColor: string;
   rightColor: string;
+  showSabers: boolean;
+  saberScale: number;
+  saberBladeLength: number;
+  saberBladeThickness: number;
+  saberCoreThickness: number;
+  saberCoreInset: number;
+  showSaberTrails: boolean;
   replayTrailShape: 'flag' | 'rectangle';
   replayTrailLength: number;
+  replayTrailThinness: number;
   replayTrailSamples: number;
+  replayTrailFade: number;
+  replayTrailOpacity: number;
+  replayTrailMotionThreshold: number;
+  saberGripLength: number;
+  saberGripThickness: number;
+  saberGuardSize: number;
+  saberGuardThickness: number;
+  saberCollarSize: number;
+  saberCollarThickness: number;
+  saberCollarSpacing: number;
+  saberRingCount: number;
+  saberRingSize: number;
+  saberRingThickness: number;
+  saberRingSpacing: number;
+  saberPommelLength: number;
+  saberPommelThickness: number;
+  saberXOffset: number;
+  saberYOffset: number;
+  saberZOffset: number;
+  saberXRotation: number;
+  saberYRotation: number;
+  saberZRotation: number;
   hitsounds: boolean;
   masterMuted: boolean;
   songMuted: boolean;
@@ -55,7 +85,54 @@ export type ReplayCameraSettings = Pick<
   | 'replayCameraForceUpright'
 >;
 
-export type ReplayTrailSettings = Pick<ViewerSettings, 'replayTrailShape' | 'replayTrailLength' | 'replayTrailSamples'>;
+export type ReplayTrailSettings = Pick<
+  ViewerSettings,
+  | 'showSaberTrails'
+  | 'replayTrailShape'
+  | 'replayTrailLength'
+  | 'replayTrailThinness'
+  | 'replayTrailSamples'
+  | 'replayTrailFade'
+  | 'replayTrailOpacity'
+  | 'replayTrailMotionThreshold'
+>;
+
+export type ReplaySaberSettings = Pick<
+  ViewerSettings,
+  | 'showSabers'
+  | 'saberScale'
+  | 'saberBladeLength'
+  | 'saberBladeThickness'
+  | 'saberCoreThickness'
+  | 'saberCoreInset'
+  | 'showSaberTrails'
+  | 'replayTrailShape'
+  | 'replayTrailLength'
+  | 'replayTrailThinness'
+  | 'replayTrailSamples'
+  | 'replayTrailFade'
+  | 'replayTrailOpacity'
+  | 'replayTrailMotionThreshold'
+  | 'saberGripLength'
+  | 'saberGripThickness'
+  | 'saberGuardSize'
+  | 'saberGuardThickness'
+  | 'saberCollarSize'
+  | 'saberCollarThickness'
+  | 'saberCollarSpacing'
+  | 'saberRingCount'
+  | 'saberRingSize'
+  | 'saberRingThickness'
+  | 'saberRingSpacing'
+  | 'saberPommelLength'
+  | 'saberPommelThickness'
+  | 'saberXOffset'
+  | 'saberYOffset'
+  | 'saberZOffset'
+  | 'saberXRotation'
+  | 'saberYRotation'
+  | 'saberZRotation'
+>;
 
 export const DEFAULT_REPLAY_CAMERA_SETTINGS: ReplayCameraSettings = {
   replayCamera: 'first-person',
@@ -74,9 +151,43 @@ export const DEFAULT_REPLAY_CAMERA_SETTINGS: ReplayCameraSettings = {
 };
 
 export const DEFAULT_REPLAY_TRAIL_SETTINGS: ReplayTrailSettings = {
+  showSaberTrails: true,
   replayTrailShape: 'flag',
   replayTrailLength: 0.331,
+  replayTrailThinness: 0,
   replayTrailSamples: 18,
+  replayTrailFade: 1.6,
+  replayTrailOpacity: 1,
+  replayTrailMotionThreshold: 0.002,
+};
+
+export const DEFAULT_REPLAY_SABER_SETTINGS: ReplaySaberSettings = {
+  showSabers: true,
+  saberScale: 1,
+  saberBladeLength: 0.982,
+  saberBladeThickness: 0.0045,
+  saberCoreThickness: 0.0018,
+  saberCoreInset: 0.004,
+  ...DEFAULT_REPLAY_TRAIL_SETTINGS,
+  saberGripLength: 0.089,
+  saberGripThickness: 0.005,
+  saberGuardSize: 0.02,
+  saberGuardThickness: 0.001,
+  saberCollarSize: 0.006,
+  saberCollarThickness: 0.001,
+  saberCollarSpacing: 0.088,
+  saberRingCount: 5,
+  saberRingSize: 0.0054,
+  saberRingThickness: 0.0025,
+  saberRingSpacing: 0.014,
+  saberPommelLength: 0.009,
+  saberPommelThickness: 0.0055,
+  saberXOffset: 0,
+  saberYOffset: 0,
+  saberZOffset: 0,
+  saberXRotation: 0,
+  saberYRotation: 0,
+  saberZRotation: 0,
 };
 
 export const DEFAULT_VIEWER_SETTINGS: ViewerSettings = {
@@ -87,7 +198,7 @@ export const DEFAULT_VIEWER_SETTINGS: ViewerSettings = {
   customColors: false,
   leftColor: '#bb0000',
   rightColor: '#005ebc',
-  ...DEFAULT_REPLAY_TRAIL_SETTINGS,
+  ...DEFAULT_REPLAY_SABER_SETTINGS,
   hitsounds: true,
   masterMuted: false,
   songMuted: false,
@@ -142,9 +253,39 @@ const viewerSettingsObjectSchema = z.object({
   customColors: z.catch(z.boolean(), DEFAULT_VIEWER_SETTINGS.customColors),
   leftColor: hexColorSchema(DEFAULT_VIEWER_SETTINGS.leftColor),
   rightColor: hexColorSchema(DEFAULT_VIEWER_SETTINGS.rightColor),
+  showSabers: z.catch(z.boolean(), DEFAULT_VIEWER_SETTINGS.showSabers),
+  saberScale: numberSetting(DEFAULT_VIEWER_SETTINGS.saberScale, 0.25, 3),
+  saberBladeLength: numberSetting(DEFAULT_VIEWER_SETTINGS.saberBladeLength, 0.1, 2),
+  saberBladeThickness: numberSetting(DEFAULT_VIEWER_SETTINGS.saberBladeThickness, 0.001, 0.03),
+  saberCoreThickness: numberSetting(DEFAULT_VIEWER_SETTINGS.saberCoreThickness, 0.0005, 0.02),
+  saberCoreInset: numberSetting(DEFAULT_VIEWER_SETTINGS.saberCoreInset, 0, 0.2),
+  showSaberTrails: z.catch(z.boolean(), DEFAULT_VIEWER_SETTINGS.showSaberTrails),
   replayTrailShape: z.catch(z.enum(['flag', 'rectangle']), DEFAULT_VIEWER_SETTINGS.replayTrailShape),
-  replayTrailLength: numberSetting(DEFAULT_VIEWER_SETTINGS.replayTrailLength, 0.05, 0.98),
-  replayTrailSamples: integerSetting(DEFAULT_VIEWER_SETTINGS.replayTrailSamples, 2, 64),
+  replayTrailLength: numberSetting(DEFAULT_VIEWER_SETTINGS.replayTrailLength, 0.02, 1.5),
+  replayTrailThinness: numberSetting(DEFAULT_VIEWER_SETTINGS.replayTrailThinness, 0, 0.95),
+  replayTrailSamples: integerSetting(DEFAULT_VIEWER_SETTINGS.replayTrailSamples, 2, 128),
+  replayTrailFade: numberSetting(DEFAULT_VIEWER_SETTINGS.replayTrailFade, 0.1, 5),
+  replayTrailOpacity: numberSetting(DEFAULT_VIEWER_SETTINGS.replayTrailOpacity, 0, 2),
+  replayTrailMotionThreshold: numberSetting(DEFAULT_VIEWER_SETTINGS.replayTrailMotionThreshold, 0.0001, 0.02),
+  saberGripLength: numberSetting(DEFAULT_VIEWER_SETTINGS.saberGripLength, 0.02, 0.3),
+  saberGripThickness: numberSetting(DEFAULT_VIEWER_SETTINGS.saberGripThickness, 0.002, 0.03),
+  saberGuardSize: numberSetting(DEFAULT_VIEWER_SETTINGS.saberGuardSize, 0.005, 0.08),
+  saberGuardThickness: numberSetting(DEFAULT_VIEWER_SETTINGS.saberGuardThickness, 0.0005, 0.01),
+  saberCollarSize: numberSetting(DEFAULT_VIEWER_SETTINGS.saberCollarSize, 0.002, 0.04),
+  saberCollarThickness: numberSetting(DEFAULT_VIEWER_SETTINGS.saberCollarThickness, 0.0005, 0.01),
+  saberCollarSpacing: numberSetting(DEFAULT_VIEWER_SETTINGS.saberCollarSpacing, 0, 0.2),
+  saberRingCount: integerSetting(DEFAULT_VIEWER_SETTINGS.saberRingCount, 0, 5),
+  saberRingSize: numberSetting(DEFAULT_VIEWER_SETTINGS.saberRingSize, 0.002, 0.03),
+  saberRingThickness: numberSetting(DEFAULT_VIEWER_SETTINGS.saberRingThickness, 0.001, 0.02),
+  saberRingSpacing: numberSetting(DEFAULT_VIEWER_SETTINGS.saberRingSpacing, 0, 0.04),
+  saberPommelLength: numberSetting(DEFAULT_VIEWER_SETTINGS.saberPommelLength, 0.002, 0.05),
+  saberPommelThickness: numberSetting(DEFAULT_VIEWER_SETTINGS.saberPommelThickness, 0.002, 0.03),
+  saberXOffset: numberSetting(DEFAULT_VIEWER_SETTINGS.saberXOffset, -0.25, 0.25),
+  saberYOffset: numberSetting(DEFAULT_VIEWER_SETTINGS.saberYOffset, -0.25, 0.25),
+  saberZOffset: numberSetting(DEFAULT_VIEWER_SETTINGS.saberZOffset, -0.25, 0.25),
+  saberXRotation: numberSetting(DEFAULT_VIEWER_SETTINGS.saberXRotation, -45, 45),
+  saberYRotation: numberSetting(DEFAULT_VIEWER_SETTINGS.saberYRotation, -45, 45),
+  saberZRotation: numberSetting(DEFAULT_VIEWER_SETTINGS.saberZRotation, -45, 45),
   hitsounds: z.catch(z.boolean(), DEFAULT_VIEWER_SETTINGS.hitsounds),
   masterMuted: z.catch(z.boolean(), DEFAULT_VIEWER_SETTINGS.masterMuted),
   songMuted: z.catch(z.boolean(), DEFAULT_VIEWER_SETTINGS.songMuted),

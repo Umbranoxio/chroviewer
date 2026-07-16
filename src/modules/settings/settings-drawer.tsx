@@ -6,6 +6,7 @@ import type { ViewerSettings } from '../../core/viewer-settings';
 import { CameraSettings } from './camera-settings';
 import { GeneralSettings } from './general-settings';
 import { GraphicsSettings } from './graphics-settings';
+import { SaberSettings } from './saber-settings';
 
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -52,6 +53,7 @@ export function SettingsDrawer({
               <TabsTrigger value="general">{tc('general')}</TabsTrigger>
               <TabsTrigger value="graphics">{tc('graphics')}</TabsTrigger>
               <TabsTrigger value="camera">{tc('camera')}</TabsTrigger>
+              <TabsTrigger value="sabers">{tc('sabers')}</TabsTrigger>
             </TabsList>
           </div>
           <GeneralSettings
@@ -63,6 +65,7 @@ export function SettingsDrawer({
           />
           <GraphicsSettings settings={settings} onChange={onChange} />
           <CameraSettings settings={settings} hasReplay={hasReplay} onChange={onChange} />
+          <SaberSettings settings={settings} onChange={onChange} />
         </Tabs>
       </SheetContent>
     </Sheet>
