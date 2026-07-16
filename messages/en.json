@@ -135,7 +135,7 @@
     "liveInMenus": "Player is in the menus",
     "livePaused": "Player paused",
     "environmentLoading": "Loading environment...",
-    "clickToUnmute": "Click to unmute",
+    "clickToUnmute": "Enable audio",
     "errors": {
       "audioDecode": "Audio could not be decoded; using silent playback",
       "copyMapInfo": "Could not copy map info",

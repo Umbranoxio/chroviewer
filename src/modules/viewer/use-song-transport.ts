@@ -52,9 +52,18 @@ export function useSongTransport({ lightshowModeRef, settings, settingsRef }: Us
     function updateTransportState() {
       const clock = clockRef.current;
       if (clock === null) return;
+      const currentSettings = settingsRef.current;
       setTime(clock.currentTime());
       setPlaying(clock.isPlaying());
-      setAudioBlocked(autoplayRef.current && clock.isPlaying() && clock.audioBlocked());
+      setAudioBlocked(
+        autoplayRef.current &&
+          !currentSettings.masterMuted &&
+          !currentSettings.songMuted &&
+          currentSettings.masterVolume > 0 &&
+          currentSettings.songVolume > 0 &&
+          clock.isPlaying() &&
+          clock.audioBlocked(),
+      );
     }
 
     function stopPolling() {

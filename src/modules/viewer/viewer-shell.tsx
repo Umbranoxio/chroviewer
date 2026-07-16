@@ -173,10 +173,12 @@ export function ViewerShell() {
   }
 
   function toggleMasterMuted() {
+    if (settingsRef.current.masterMuted) void transport.unlockAudio();
     setSettings((current) => ({ ...current, masterMuted: !current.masterMuted }));
   }
 
   function toggleSongMuted() {
+    if (settingsRef.current.songMuted) void transport.unlockAudio();
     setSettings((current) => ({ ...current, songMuted: !current.songMuted }));
   }
 
@@ -243,34 +245,25 @@ export function ViewerShell() {
         }
       : session.environmentLoading
         ? { icon: LoaderCircle, iconClassName: 'animate-spin', label: t('environmentLoading') }
-        : transport.audioBlocked
+        : session.selectedKey !== '' && transport.ended
           ? {
-              actionLabel: t('clickToUnmute'),
-              icon: Volume2,
-              label: t('clickToUnmute'),
+              actionLabel: commonT('replay'),
+              icon: RotateCcw,
+              label: commonT('replay'),
               onAction: () => {
-                void transport.unlockAudio();
+                transport.togglePlay();
               },
             }
-          : session.selectedKey !== '' && transport.ended
+          : session.selectedKey !== '' && !transport.started
             ? {
-                actionLabel: commonT('replay'),
-                icon: RotateCcw,
-                label: commonT('replay'),
+                actionLabel: commonT('play'),
+                icon: Play,
+                label: commonT('play'),
                 onAction: () => {
                   transport.togglePlay();
                 },
               }
-            : session.selectedKey !== '' && !transport.started
-              ? {
-                  actionLabel: commonT('play'),
-                  icon: Play,
-                  label: commonT('play'),
-                  onAction: () => {
-                    transport.togglePlay();
-                  },
-                }
-              : null;
+            : null;
   const viewportStyle: CSSProperties &
     Record<
       '--live-keyboard-inset' | '--live-mobile-chat-height' | '--live-safe-area-bottom' | '--live-viewport-center-y',
@@ -326,7 +319,26 @@ export function ViewerShell() {
         />
       )}
 
-      {playbackOverlay !== null && <ViewerOverlay {...playbackOverlay} />}
+      {playbackOverlay !== null && (
+        <ViewerOverlay
+          {...playbackOverlay}
+          className={'onAction' in playbackOverlay ? '!bottom-16 max-sm:!bottom-24' : undefined}
+        />
+      )}
+
+      {!liveActive && transport.audioBlocked && (
+        <Button
+          className="fixed bottom-16 left-1/2 z-40 -translate-x-1/2 rounded-full shadow-xl backdrop-blur-xl max-sm:bottom-24"
+          variant="outline"
+          aria-label={t('clickToUnmute')}
+          onClick={() => {
+            void transport.unlockAudio();
+          }}
+        >
+          <Volume2 />
+          {t('clickToUnmute')}
+        </Button>
+      )}
 
       {liveActive && liveChatOpen && (
         <div
@@ -492,9 +504,11 @@ export function ViewerShell() {
             setActivePanel(null);
           }}
           onMasterVolumeChange={(masterVolume) => {
+            if (settingsRef.current.masterVolume === 0 && masterVolume > 0) void transport.unlockAudio();
             setSettings((current) => ({ ...current, masterVolume }));
           }}
           onSongVolumeChange={(songVolume) => {
+            if (settingsRef.current.songVolume === 0 && songVolume > 0) void transport.unlockAudio();
             setSettings((current) => ({ ...current, songVolume }));
           }}
           onHitsoundVolumeChange={(hitsoundVolume) => {
