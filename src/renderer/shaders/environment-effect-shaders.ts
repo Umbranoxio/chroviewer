@@ -196,7 +196,7 @@ void main() {
   albedo.rgb = mix(albedo.rgb, vec3(1.0), whiteMix);
   #endif
   #ifdef SQUARE_ALPHA
-  albedo.a *= albedo.a;
+  albedo.a *= clamp(albedo.a, 0.0, 1.0);
   #endif
   #ifdef FOG_ALPHA
   albedo.a *= 1.0 - chroFogAmount(vWorldPos, _FogStartOffset, _FogScale);
@@ -214,6 +214,8 @@ void main() {
     albedo.rgb = clamp(albedo.rgb * bloomMagnitude + vec3(whiteEnergy), 0.0, 1.0);
     albedo.a = clamp(bloomMagnitude * _BloomMultiplier, 0.0, 1.0);
   }
+  // game writes to a unorm target: blend sources clamp to [0,1] per draw
+  albedo.rgb = clamp(albedo.rgb, 0.0, 1.0);
   gl_FragColor = albedo;
   #include <colorspace_fragment>
 }

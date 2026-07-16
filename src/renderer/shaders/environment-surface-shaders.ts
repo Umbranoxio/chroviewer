@@ -68,7 +68,7 @@ ${FOG_CHUNK}
 void main() {
   vec4 albedo = vec4(chroToneMap(_Color), _ColorAlpha);
   albedo = applyChroFog(albedo, vScreenPos, vWorldPos, _FogStartOffset, _FogScale);
-  gl_FragColor = albedo;
+  gl_FragColor = clamp(albedo, 0.0, 1.0);
   #include <colorspace_fragment>
 }
 `;
@@ -394,7 +394,8 @@ void main() {
     float factor = clamp(distanceAlongAxis * _DarkeningScale, 0.0, 1.0) * _DarkeningIntensity;
     color.rgb = mix(color.rgb, vec3(0.0), factor);
   }
-  gl_FragColor = color;
+  // game writes to a unorm target: blend sources clamp to [0,1] per draw
+  gl_FragColor = clamp(color, 0.0, 1.0);
   #include <colorspace_fragment>
 }
 `;

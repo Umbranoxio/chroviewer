@@ -5,7 +5,7 @@ import type { InfoColorScheme } from './beatmap/info';
 import type { Rgb } from './colors';
 
 export interface ViewerSettings {
-  graphicsQuality: 'none' | 'low' | 'high';
+  graphicsQuality: 'none' | 'low' | 'medium' | 'high';
   screenDisplacementEffects: boolean;
   renderScale: number;
   staticLights: boolean;
@@ -69,7 +69,7 @@ export const DEFAULT_REPLAY_CAMERA_SETTINGS: ReplayCameraSettings = {
 };
 
 export const DEFAULT_VIEWER_SETTINGS: ViewerSettings = {
-  graphicsQuality: 'high',
+  graphicsQuality: 'medium',
   screenDisplacementEffects: true,
   renderScale: 1,
   staticLights: false,
@@ -87,7 +87,8 @@ export const DEFAULT_VIEWER_SETTINGS: ViewerSettings = {
   autoHide: true,
 };
 
-const storageKey = 'chroviewer.settings.v1';
+const storageKey = 'chroviewer.settings.v2';
+const legacyStorageKey = 'chroviewer.settings.v1';
 const hexPattern = /^#[0-9a-f]{6}$/i;
 
 function numberSetting(fallback: number, minimum: number, maximum: number) {
@@ -108,7 +109,7 @@ function hexColorSchema(fallback: string) {
 }
 
 const viewerSettingsObjectSchema = z.object({
-  graphicsQuality: z.catch(z.enum(['none', 'low', 'high']), DEFAULT_VIEWER_SETTINGS.graphicsQuality),
+  graphicsQuality: z.catch(z.enum(['none', 'low', 'medium', 'high']), DEFAULT_VIEWER_SETTINGS.graphicsQuality),
   screenDisplacementEffects: z.catch(z.boolean(), DEFAULT_VIEWER_SETTINGS.screenDisplacementEffects),
   renderScale: numberSetting(DEFAULT_VIEWER_SETTINGS.renderScale, 0.5, 1.5),
   staticLights: z.catch(z.boolean(), DEFAULT_VIEWER_SETTINGS.staticLights),
@@ -145,11 +146,19 @@ export function sanitizeViewerSettings(value: unknown): ViewerSettings {
   return z.parse(viewerSettingsSchema, value);
 }
 
-export function loadViewerSettings(storage: Pick<Storage, 'getItem'> = localStorage) {
+export function loadViewerSettings(storage: Pick<Storage, 'getItem'> = localStorage): ViewerSettings {
   const text = storage.getItem(storageKey);
-  if (text === null) return DEFAULT_VIEWER_SETTINGS;
-  const parsed = Result.try((): unknown => JSON.parse(text));
-  return parsed.isOk() ? sanitizeViewerSettings(parsed.value) : DEFAULT_VIEWER_SETTINGS;
+  if (text !== null) {
+    const parsed = Result.try((): unknown => JSON.parse(text));
+    return parsed.isOk() ? sanitizeViewerSettings(parsed.value) : DEFAULT_VIEWER_SETTINGS;
+  }
+
+  const legacyText = storage.getItem(legacyStorageKey);
+  if (legacyText === null) return DEFAULT_VIEWER_SETTINGS;
+  const parsed = Result.try((): unknown => JSON.parse(legacyText));
+  if (parsed.isErr()) return DEFAULT_VIEWER_SETTINGS;
+  const settings = sanitizeViewerSettings(parsed.value);
+  return settings.graphicsQuality === 'high' ? { ...settings, graphicsQuality: 'medium' } : settings;
 }
 
 export function saveViewerSettings(settings: ViewerSettings, storage: Pick<Storage, 'setItem'> = localStorage) {

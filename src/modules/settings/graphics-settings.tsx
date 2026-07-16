@@ -27,6 +27,7 @@ export function GraphicsSettings({ settings, onChange }: GraphicsSettingsProps) 
   function selectGraphicsQuality(value: string) {
     switch (value) {
       case 'high':
+      case 'medium':
       case 'low':
       case 'none':
         update('graphicsQuality', value);
@@ -45,6 +46,7 @@ export function GraphicsSettings({ settings, onChange }: GraphicsSettingsProps) 
               <SelectContent>
                 <SelectGroup>
                   <SelectItem value="high">{t('high')}</SelectItem>
+                  <SelectItem value="medium">{t('medium')}</SelectItem>
                   <SelectItem value="low">{t('low')}</SelectItem>
                   <SelectItem value="none">{tc('off')}</SelectItem>
                 </SelectGroup>
