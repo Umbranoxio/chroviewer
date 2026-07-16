@@ -8,7 +8,7 @@ const maxPortraitFov = 120;
 const maxPortraitFovIncrease = 10;
 const maxPortraitPullback = 1.5;
 const uprightPitch = -15.5 * degToRad;
-const uprightPitchInfluence = 0.2;
+const uprightPitchInfluence = 1;
 
 function portraitAmount(aspect: number) {
   return Math.min(Math.max((1 - aspect) / 0.75, 0), 1);

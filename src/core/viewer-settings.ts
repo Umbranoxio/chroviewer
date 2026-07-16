@@ -65,7 +65,7 @@ export const DEFAULT_REPLAY_CAMERA_SETTINGS: ReplayCameraSettings = {
   replayCameraXRotation: 0,
   replayCameraYRotation: 0,
   replayCameraZRotation: 0,
-  replayCameraForceUpright: true,
+  replayCameraForceUpright: false,
 };
 
 export const DEFAULT_VIEWER_SETTINGS: ViewerSettings = {
