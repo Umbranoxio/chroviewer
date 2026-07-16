@@ -6,7 +6,7 @@ import { nitro } from 'nitro/vite';
 import { defineConfig } from 'vite';
 
 const securityHeaders = {
-  'content-security-policy': "frame-ancestors 'self' https://scoresaber.com",
+  'content-security-policy': "frame-ancestors 'self' https://scoresaber.com https://beatsaver.com",
   'referrer-policy': 'strict-origin-when-cross-origin',
   'x-content-type-options': 'nosniff',
 };
