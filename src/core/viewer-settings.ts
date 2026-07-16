@@ -184,7 +184,7 @@ export const DEFAULT_REPLAY_SABER_SETTINGS: ReplaySaberSettings = {
   saberPommelThickness: 0.0055,
   saberXOffset: 0,
   saberYOffset: 0,
-  saberZOffset: 0,
+  saberZOffset: 0.15,
   saberXRotation: 0,
   saberYRotation: 0,
   saberZRotation: 0,
