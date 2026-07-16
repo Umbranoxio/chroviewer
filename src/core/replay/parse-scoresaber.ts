@@ -8,6 +8,7 @@ import type {
   ReplayControllerOffset,
   ReplayEnergyEvent,
   ReplayHeightEvent,
+  LegacyScoreSaberFrame,
   ReplayMetadata,
   ReplayMultiplierEvent,
   ReplayNoteEvent,
@@ -23,6 +24,7 @@ import type {
 } from './types';
 
 export const SCORESABER_REPLAY_HEADER = new TextEncoder().encode('ScoreSaber Replay 👌🤠\r\n');
+export const SCORESABER_LEGACY_REPLAY_HEADER = Uint8Array.of(0x5d, 0, 0, 0x80);
 
 const extensionMagic = 0x31585353;
 const maxReplayBytes = 128 * 1024 * 1024;
@@ -59,6 +61,16 @@ class BinaryReader {
     }
   }
 
+  byte() {
+    this.require(1);
+    return this.bytes[this.offset++] ?? 0;
+  }
+
+  skip(length: number) {
+    this.require(length);
+    this.offset += length;
+  }
+
   int32() {
     this.require(4);
     const value = this.view.getInt32(this.offset, true);
@@ -82,8 +94,7 @@ class BinaryReader {
   }
 
   bool() {
-    this.require(1);
-    return this.bytes[this.offset++] !== 0;
+    return this.byte() !== 0;
   }
 
   string() {
@@ -120,6 +131,17 @@ export function hasScoreSaberReplayHeader(data: Uint8Array) {
     data.byteLength >= SCORESABER_REPLAY_HEADER.byteLength &&
     SCORESABER_REPLAY_HEADER.every((byte, index) => data[index] === byte)
   );
+}
+
+export function hasLegacyScoreSaberReplayHeader(data: Uint8Array) {
+  return (
+    data.byteLength >= SCORESABER_LEGACY_REPLAY_HEADER.byteLength &&
+    SCORESABER_LEGACY_REPLAY_HEADER.every((byte, index) => data[index] === byte)
+  );
+}
+
+export function isScoreSaberReplay(data: Uint8Array) {
+  return hasScoreSaberReplayHeader(data) || hasLegacyScoreSaberReplayHeader(data);
 }
 
 function outputSize(stream: Uint8Array) {
@@ -432,6 +454,218 @@ export function applyScoreSaberReplayExtension(
   }
 }
 
+interface LegacyKeyframe extends LegacyScoreSaberFrame {
+  rightHand: ReplayTransform;
+  leftHand: ReplayTransform;
+  head: ReplayTransform;
+}
+
+function nrbfString(reader: BinaryReader) {
+  let length = 0;
+  for (let shift = 0; shift <= 28; shift += 7) {
+    const byte = reader.byte();
+    length |= (byte & 0x7f) << shift;
+    if ((byte & 0x80) === 0) {
+      try {
+        return decoder.decode(reader.raw(length));
+      } catch {
+        throw new Error('legacy ScoreSaber replay contains invalid UTF-8');
+      }
+    }
+  }
+  throw new Error('invalid legacy ScoreSaber replay string length');
+}
+
+function skipNrbfTypeInfo(reader: BinaryReader, type: number) {
+  switch (type) {
+    case 0:
+    case 7:
+      reader.skip(1);
+      break;
+    case 3:
+      nrbfString(reader);
+      break;
+    case 4:
+      nrbfString(reader);
+      reader.skip(4);
+  }
+}
+
+function legacyKeyframe(reader: BinaryReader): LegacyKeyframe {
+  const rightPosition = vector3(reader);
+  const leftPosition = vector3(reader);
+  const headPosition = vector3(reader);
+  return {
+    rightHand: { position: rightPosition, rotation: quaternion(reader) },
+    leftHand: { position: leftPosition, rotation: quaternion(reader) },
+    head: { position: headPosition, rotation: quaternion(reader) },
+    time: reader.float32(),
+    combo: reader.int32(),
+    score: reader.int32(),
+  };
+}
+
+function parseLegacyKeyframes(bytes: Uint8Array) {
+  const reader = new BinaryReader(bytes);
+  const keyframes: LegacyKeyframe[] = [];
+  let keyframeClassId = -1;
+
+  while (reader.offset < bytes.byteLength) {
+    const recordType = reader.byte();
+    switch (recordType) {
+      case 0:
+        reader.skip(16);
+        break;
+      case 1: {
+        reader.skip(4);
+        const metadataId = reader.int32();
+        if (metadataId === keyframeClassId) keyframes.push(legacyKeyframe(reader));
+        break;
+      }
+      case 5: {
+        const objectId = reader.int32();
+        const className = nrbfString(reader);
+        const memberCount = reader.int32();
+        if (memberCount < 0 || memberCount > 256) throw new Error('invalid legacy ScoreSaber replay class');
+        for (let index = 0; index < memberCount; index++) nrbfString(reader);
+        const memberTypes = Array.from({ length: memberCount }, () => reader.byte());
+        for (const memberType of memberTypes) skipNrbfTypeInfo(reader, memberType);
+        reader.skip(4);
+        if (className.includes('KeyframeSerializable')) {
+          if (memberCount !== 24) throw new Error('unsupported legacy ScoreSaber replay keyframe');
+          keyframeClassId = objectId;
+          keyframes.push(legacyKeyframe(reader));
+        }
+        break;
+      }
+      case 6:
+        reader.skip(4);
+        nrbfString(reader);
+        break;
+      case 7: {
+        reader.skip(4);
+        const arrayType = reader.byte();
+        const rank = reader.int32();
+        if (rank < 1 || rank > 32) throw new Error('invalid legacy ScoreSaber replay array');
+        for (let index = 0; index < rank; index++) {
+          const length = reader.int32();
+          if (length < 0 || length > maxListItems) throw new Error('invalid legacy ScoreSaber replay array');
+        }
+        if (arrayType >= 3 && arrayType <= 5) reader.skip(rank * 4);
+        skipNrbfTypeInfo(reader, reader.byte());
+        break;
+      }
+      case 9:
+        reader.skip(4);
+        break;
+      case 10:
+        break;
+      case 11:
+        if (keyframes.length === 0) throw new Error('legacy ScoreSaber replay has no keyframes');
+        return keyframes;
+      case 12:
+        reader.skip(4);
+        nrbfString(reader);
+        break;
+      case 13:
+        reader.skip(1);
+        break;
+      case 14:
+        reader.skip(4);
+        break;
+      case 16: {
+        reader.skip(4);
+        const length = reader.int32();
+        if (length < 0 || length > maxListItems) throw new Error('invalid legacy ScoreSaber replay array');
+        break;
+      }
+      default:
+        throw new Error(`unsupported legacy ScoreSaber replay record ${String(recordType)}`);
+    }
+    if (keyframes.length > maxListItems) throw new Error('legacy ScoreSaber replay has too many keyframes');
+  }
+  throw new Error('truncated legacy ScoreSaber replay');
+}
+
+function legacyMultiplier(combo: number) {
+  if (combo < 2) return { multiplier: 1, nextMultiplierProgress: combo / 2 };
+  if (combo < 6) return { multiplier: 2, nextMultiplierProgress: (combo - 2) / 4 };
+  if (combo < 14) return { multiplier: 4, nextMultiplierProgress: (combo - 6) / 8 };
+  return { multiplier: 8, nextMultiplierProgress: 0 };
+}
+
+export function parseLegacyScoreSaberPayload(bytes: Uint8Array): Replay {
+  const keyframes = parseLegacyKeyframes(bytes);
+  const poses: ReplayPose[] = [];
+  const scores: ReplayScoreEvent[] = [];
+  const combos: ReplayComboEvent[] = [];
+  const multipliers: ReplayMultiplierEvent[] = [];
+  let previousScore: number | undefined;
+  let previousCombo: number | undefined;
+
+  for (const keyframe of keyframes) {
+    if (keyframe.time !== 0 && keyframe.time !== poses.at(-1)?.time) {
+      poses.push({
+        time: keyframe.time,
+        fps: 0,
+        head: keyframe.head,
+        leftHand: keyframe.leftHand,
+        rightHand: keyframe.rightHand,
+      });
+    }
+    if (keyframe.score !== previousScore) {
+      scores.push({ score: keyframe.score, time: keyframe.time });
+      previousScore = keyframe.score;
+    }
+    if (keyframe.combo !== previousCombo) {
+      combos.push({ combo: keyframe.combo, time: keyframe.time });
+      multipliers.push({ ...legacyMultiplier(Math.max(0, keyframe.combo)), time: keyframe.time });
+      previousCombo = keyframe.combo;
+    }
+  }
+
+  return {
+    metadata: {
+      version: 'ScoreSaberLegacy',
+      levelId: '',
+      difficulty: -1,
+      characteristic: '',
+      environment: '',
+      modifiers: [],
+      noteSpawnOffset: 0,
+      leftHanded: false,
+      initialHeight: poses[0]?.head.position.y ?? 0,
+      roomRotation: 0,
+      roomCenter: { x: 0, y: 0, z: 0 },
+      failTime: 0,
+      hasPlaySettings: false,
+    },
+    poses,
+    heights: [],
+    notes: [],
+    scores,
+    combos,
+    multipliers,
+    energies: [],
+    pauses: [],
+    walls: [],
+    legacyScoreSaber: {
+      frames: keyframes.map(({ time, score, combo }) => ({ time, score, combo })),
+      converted: false,
+    },
+  };
+}
+
+export function applyLegacyScoreSaberMetadata(
+  replay: Replay,
+  metadata: { hash: string; difficulty: number; characteristic: string },
+) {
+  if (replay.legacyScoreSaber === undefined) return;
+  replay.metadata.levelId = `custom_level_${metadata.hash}`;
+  replay.metadata.difficulty = metadata.difficulty;
+  replay.metadata.characteristic = metadata.characteristic;
+}
+
 export function parseScoreSaberPayload(bytes: Uint8Array): Replay {
   const reader = new BinaryReader(bytes);
   const pointers = Array.from({ length: 9 }, () => reader.int32());
@@ -510,6 +744,9 @@ export function parseScoreSaberPayload(bytes: Uint8Array): Replay {
 }
 
 export async function parseScoreSaberReplay(data: Uint8Array) {
-  if (!hasScoreSaberReplayHeader(data)) throw new Error('unsupported ScoreSaber replay file');
-  return parseScoreSaberPayload(await decompressReplay(data.subarray(SCORESABER_REPLAY_HEADER.byteLength)));
+  if (hasScoreSaberReplayHeader(data)) {
+    return parseScoreSaberPayload(await decompressReplay(data.subarray(SCORESABER_REPLAY_HEADER.byteLength)));
+  }
+  if (hasLegacyScoreSaberReplayHeader(data)) return parseLegacyScoreSaberPayload(await decompressReplay(data));
+  throw new Error('unsupported ScoreSaber replay file');
 }

@@ -5,6 +5,7 @@ import { useNavigate, useSearch } from '@tanstack/react-router';
 import { Result } from 'better-result';
 import { useTranslations } from 'use-intl';
 
+import { applyLegacyScoreSaberMetadata } from '../../core/replay/parse-scoresaber';
 import type { Replay } from '../../core/replay/types';
 import { replayMapHash } from '../../core/replay/types';
 import { applySharedViewerSettings } from '../../core/share-link';
@@ -96,6 +97,7 @@ export function useViewerRemoteSource({
       ]);
       const replay = yield* replayResult;
       const map = yield* mapResult;
+      applyLegacyScoreSaberMetadata(replay, source);
       const replayHash = replayMapHash(replay);
       if (replayHash?.toLowerCase() !== source.hash.toLowerCase()) {
         return Result.err(

@@ -4,7 +4,7 @@ import { Result } from 'better-result';
 import { useTranslations } from 'use-intl';
 
 import { BeatmapParser } from '../../core/beatmap/worker/client';
-import { hasScoreSaberReplayHeader } from '../../core/replay/parse-scoresaber';
+import { applyLegacyScoreSaberMetadata, isScoreSaberReplay } from '../../core/replay/parse-scoresaber';
 import { replayMapHash, type Replay } from '../../core/replay/types';
 import { extractMapArchive } from '../../sources/archive';
 import { SourceError, sourceError } from '../../sources/source-error';
@@ -35,6 +35,25 @@ interface UseViewerFileSourceOptions {
   onClearViewer: () => void;
   onMapLoaded: () => void;
   onSourceLoaded: () => void;
+}
+
+const legacyDifficultyRanks: Record<string, number> = {
+  easy: 1,
+  normal: 3,
+  hard: 5,
+  expert: 7,
+  expertplus: 9,
+};
+
+function legacyMetadataFromFilename(name: string) {
+  const match = /-([^-]+)-([^-]+)-([0-9a-f]{40})\.dat$/i.exec(name);
+  if (match === null) return null;
+  const difficulty = legacyDifficultyRanks[match[1]?.toLowerCase() ?? ''];
+  const characteristic = match[2];
+  const hash = match[3];
+  return difficulty === undefined || characteristic === undefined || hash === undefined
+    ? null
+    : { difficulty, characteristic, hash };
 }
 
 export function useViewerFileSource({
@@ -181,7 +200,7 @@ export function useViewerFileSource({
                 }),
             }),
           );
-          if (hasScoreSaberReplayHeader(new Uint8Array(data))) {
+          if (isScoreSaberReplay(new Uint8Array(data))) {
             if (replay !== null) {
               return Result.err(
                 new SourceError({
@@ -192,6 +211,8 @@ export function useViewerFileSource({
               );
             }
             replay = yield* Result.await(parseReplay(data));
+            const legacyMetadata = legacyMetadataFromFilename(file.name);
+            if (legacyMetadata !== null) applyLegacyScoreSaberMetadata(replay, legacyMetadata);
           } else sourceFiles.push(file);
         } else sourceFiles.push(file);
       }

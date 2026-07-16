@@ -7,6 +7,7 @@ import {
 } from '../../core/beatmap/info';
 import type { Difficulty } from '../../core/beatmap/types';
 import { DEFAULT_COLORS, type Rgb } from '../../core/colors';
+import { convertLegacyScoreSaberReplay } from '../../core/replay/legacy-scoresaber';
 import type { Replay, ReplayColor } from '../../core/replay/types';
 import { resolveEnvironmentId } from '../../renderer/environment/environment-catalog';
 import type { MapSourceFile } from '../../sources/source-types';
@@ -158,6 +159,7 @@ export async function parseMapPackage(
       const replayMatch =
         replay?.metadata.difficulty === difficultyRank(infoDifficulty.difficulty) &&
         replay.metadata.characteristic.toLowerCase() === set.characteristic.toLowerCase();
+      if (replayMatch) convertLegacyScoreSaberReplay(replay, difficulty, info.beatsPerMinute);
       const mapScheme = colorSchemeForDifficulty(info, infoDifficulty);
       rows.push({
         key,

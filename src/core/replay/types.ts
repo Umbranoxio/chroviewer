@@ -159,6 +159,17 @@ export interface ReplayWallEvent {
   height: number;
 }
 
+export interface LegacyScoreSaberFrame {
+  time: number;
+  score: number;
+  combo: number;
+}
+
+export interface LegacyScoreSaberData {
+  frames: LegacyScoreSaberFrame[];
+  converted: boolean;
+}
+
 export interface Replay {
   metadata: ReplayMetadata;
   poses: ReplayPose[];
@@ -171,6 +182,7 @@ export interface Replay {
   pauses: ReplayPauseEvent[];
   walls: ReplayWallEvent[];
   hsvConfig?: Uint8Array;
+  legacyScoreSaber?: LegacyScoreSaberData;
 }
 
 export function replayMapHash(replay: Replay) {
