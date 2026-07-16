@@ -30,6 +30,6 @@ export interface ActiveSelection {
   mapColorScheme?: InfoColorScheme;
 }
 
-export type ViewerPanel = 'share' | 'shortcuts' | 'speed' | 'lights' | 'camera' | 'volume' | null;
+export type ViewerPanel = 'share' | 'shortcuts' | 'speed' | 'lights' | 'camera' | 'volume' | 'record-video' | null;
 
 export type ViewerSource = 'beatsaver' | 'scoresaber';

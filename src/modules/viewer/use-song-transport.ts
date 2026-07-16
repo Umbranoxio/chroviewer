@@ -20,9 +20,17 @@ interface UseSongTransportOptions {
   lightshowModeRef: RefObject<LightshowMode>;
   settings: ViewerSettings;
   settingsRef: RefObject<ViewerSettings>;
+  audioContextRef: RefObject<AudioContext>;
+  audioDestinationRef: RefObject<MediaStreamAudioDestinationNode | null>;
 }
 
-export function useSongTransport({ lightshowModeRef, settings, settingsRef }: UseSongTransportOptions) {
+export function useSongTransport({
+  lightshowModeRef,
+  settings,
+  settingsRef,
+  audioContextRef,
+  audioDestinationRef,
+}: UseSongTransportOptions) {
   const clockRef = useRef<SongClock | null>(null);
   const autoplayRef = useRef(false);
   const [duration, setDuration] = useState(0);
@@ -116,6 +124,8 @@ export function useSongTransport({ lightshowModeRef, settings, settingsRef }: Us
 
   async function load(options: LoadSongOptions) {
     disposeClock();
+    console.log('Loading song');
+    audioDestinationRef.current = audioContextRef.current.createMediaStreamDestination();
     let clock: SongClock;
     const audioData = options.audioData;
     if (audioData === null) {
@@ -125,6 +135,8 @@ export function useSongTransport({ lightshowModeRef, settings, settingsRef }: Us
         audioData,
         songBpm: options.songBpm,
         volume: options.volume,
+        context: audioContextRef.current,
+        audioDestination: audioDestinationRef.current,
       });
       if (result.isErr()) {
         clock = createSilentClock(options.fallbackDuration, options.songBpm);

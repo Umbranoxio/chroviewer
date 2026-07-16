@@ -121,6 +121,7 @@ export interface AudioClockOptions {
   songBpm: number;
   volume?: number;
   context?: AudioContext;
+  audioDestination: MediaStreamAudioDestinationNode;
 }
 
 function isOggAudio(audioData: ArrayBuffer) {
@@ -152,7 +153,13 @@ async function decodeAudio(ctx: AudioContext, audioData: ArrayBuffer) {
   return decodeOggVorbis(ctx, audioData);
 }
 
-export async function createAudioClock({ audioData, songBpm, volume = 1, context }: AudioClockOptions) {
+export async function createAudioClock({
+  audioData,
+  songBpm,
+  volume = 1,
+  context,
+  audioDestination,
+}: AudioClockOptions) {
   const ownsContext = context === undefined;
   const ctx = context ?? new AudioContext();
   const decoded = await decodeAudio(ctx, audioData);
@@ -182,6 +189,7 @@ export async function createAudioClock({ audioData, songBpm, volume = 1, context
       source = ctx.createBufferSource();
       source.buffer = buffer;
       source.playbackRate.value = rate;
+      source.connect(audioDestination);
       source.connect(gain);
       source.onended = () => {
         source = undefined;
