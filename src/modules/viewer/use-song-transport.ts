@@ -46,14 +46,37 @@ export function useSongTransport({ lightshowModeRef, settings, settingsRef }: Us
   }, [settings.masterMuted, settings.masterVolume, settings.songMuted, settings.songVolume]);
 
   useEffect(() => {
-    const interval = window.setInterval(() => {
+    let interval: number | null = null;
+
+    function updateTransportState() {
       const clock = clockRef.current;
       if (clock === null) return;
       setTime(clock.currentTime());
       setPlaying(clock.isPlaying());
-    }, 100);
-    return () => {
+    }
+
+    function stopPolling() {
+      if (interval === null) return;
       window.clearInterval(interval);
+      interval = null;
+    }
+
+    function startPolling() {
+      if (interval !== null || document.hidden) return;
+      updateTransportState();
+      interval = window.setInterval(updateTransportState, 100);
+    }
+
+    function handleVisibilityChange() {
+      if (document.hidden) stopPolling();
+      else startPolling();
+    }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    startPolling();
+    return () => {
+      stopPolling();
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, []);
 
