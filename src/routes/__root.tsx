@@ -15,11 +15,9 @@ export const Route = createRootRouteWithContext<RouterContext>()({
       { charSet: 'utf-8' },
       { httpEquiv: 'Content-Type', content: 'text/html; charset=utf-8' },
       { name: 'viewport', content: 'width=device-width, initial-scale=1.0, viewport-fit=cover' },
-      { title: 'ScoreSaber Replay' },
-      { name: 'description', content: 'Watch Beat Saber replays on ScoreSaber' },
+      { title: 'ScoreSaber Watch' },
       { property: 'og:site_name', content: 'ScoreSaber' },
-      { property: 'og:title', content: 'ScoreSaber Replay' },
-      { property: 'og:description', content: 'Watch Beat Saber replays on ScoreSaber' },
+      { property: 'og:title', content: 'ScoreSaber Watch' },
       {
         property: 'og:image',
         content: 'https://scoresaber.com/ScoreSaber-iOS-Default-1024x1024@1x.png',
@@ -30,8 +28,7 @@ export const Route = createRootRouteWithContext<RouterContext>()({
       { property: 'og:image:alt', content: 'ScoreSaber logo' },
       { name: 'twitter:card', content: 'summary' },
       { name: 'twitter:site', content: '@ScoreSaber' },
-      { name: 'twitter:title', content: 'ScoreSaber Replay' },
-      { name: 'twitter:description', content: 'Watch Beat Saber replays on ScoreSaber' },
+      { name: 'twitter:title', content: 'ScoreSaber Watch' },
       {
         name: 'twitter:image',
         content: 'https://scoresaber.com/ScoreSaber-iOS-Default-1024x1024@1x.png',
