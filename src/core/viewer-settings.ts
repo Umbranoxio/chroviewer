@@ -90,6 +90,12 @@ export const DEFAULT_VIEWER_SETTINGS: ViewerSettings = {
 const storageKey = 'chroviewer.settings.v2';
 const legacyStorageKey = 'chroviewer.settings.v1';
 const hexPattern = /^#[0-9a-f]{6}$/i;
+const mobileUserAgent = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i;
+
+interface MobileDeviceInfo {
+  userAgent: string;
+  maxTouchPoints: number;
+}
 
 function numberSetting(fallback: number, minimum: number, maximum: number) {
   return z.pipe(
@@ -146,19 +152,34 @@ export function sanitizeViewerSettings(value: unknown): ViewerSettings {
   return z.parse(viewerSettingsSchema, value);
 }
 
-export function loadViewerSettings(storage: Pick<Storage, 'getItem'> = localStorage): ViewerSettings {
+export function isMobileDevice(
+  device: MobileDeviceInfo | undefined = typeof navigator === 'undefined' ? undefined : navigator,
+) {
+  if (device === undefined) return false;
+  return (
+    mobileUserAgent.test(device.userAgent) || (device.maxTouchPoints > 1 && device.userAgent.includes('Macintosh'))
+  );
+}
+
+export function loadViewerSettings(
+  storage: Pick<Storage, 'getItem'> = localStorage,
+  mobile = isMobileDevice(),
+): ViewerSettings {
+  const defaults: ViewerSettings = mobile
+    ? { ...DEFAULT_VIEWER_SETTINGS, graphicsQuality: 'low' }
+    : DEFAULT_VIEWER_SETTINGS;
   const text = storage.getItem(storageKey);
   if (text !== null) {
     const parsed = Result.try((): unknown => JSON.parse(text));
-    return parsed.isOk() ? sanitizeViewerSettings(parsed.value) : DEFAULT_VIEWER_SETTINGS;
+    return parsed.isOk() ? sanitizeViewerSettings(parsed.value) : defaults;
   }
 
   const legacyText = storage.getItem(legacyStorageKey);
-  if (legacyText === null) return DEFAULT_VIEWER_SETTINGS;
+  if (legacyText === null) return defaults;
   const parsed = Result.try((): unknown => JSON.parse(legacyText));
-  if (parsed.isErr()) return DEFAULT_VIEWER_SETTINGS;
+  if (parsed.isErr()) return defaults;
   const settings = sanitizeViewerSettings(parsed.value);
-  return settings.graphicsQuality === 'high' ? { ...settings, graphicsQuality: 'medium' } : settings;
+  return settings.graphicsQuality === 'high' ? { ...settings, graphicsQuality: mobile ? 'low' : 'medium' } : settings;
 }
 
 export function saveViewerSettings(settings: ViewerSettings, storage: Pick<Storage, 'setItem'> = localStorage) {
