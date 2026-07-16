@@ -1,7 +1,5 @@
 import { useEffect, useRef, useState, type RefObject } from 'react';
 
-import { Result } from 'better-result';
-
 import { songBpmTimeToSeconds } from '../../core/beatmap/bpm';
 import type { HitsoundEvent } from '../../core/clock/hitsounds';
 import { createAudioClock, createSilentClock, type SongClock } from '../../core/clock/song-clock';
@@ -88,9 +86,11 @@ export function useSongTransport({ lightshowModeRef, settings, settingsRef }: Us
     if (audioData === null) {
       clock = createSilentClock(options.fallbackDuration, options.songBpm);
     } else {
-      const result = await Result.tryPromise(() =>
-        createAudioClock({ audioData: audioData.slice(0), songBpm: options.songBpm, volume: options.volume }),
-      );
+      const result = await createAudioClock({
+        audioData,
+        songBpm: options.songBpm,
+        volume: options.volume,
+      });
       if (result.isErr()) {
         clock = createSilentClock(options.fallbackDuration, options.songBpm);
         options.onAudioDecodeError();

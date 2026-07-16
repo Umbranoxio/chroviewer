@@ -1,3 +1,5 @@
+import { Result } from 'better-result';
+
 import { secondsToSongBpmTime } from '../beatmap/bpm';
 import {
   createTransport,
@@ -121,15 +123,44 @@ export interface AudioClockOptions {
   context?: AudioContext;
 }
 
-export async function createAudioClock({
-  audioData,
-  songBpm,
-  volume = 1,
-  context,
-}: AudioClockOptions): Promise<SongClock> {
+function isOggAudio(audioData: ArrayBuffer) {
+  const signature = new Uint8Array(audioData, 0, Math.min(audioData.byteLength, 4));
+  return signature[0] === 0x4f && signature[1] === 0x67 && signature[2] === 0x67 && signature[3] === 0x53;
+}
+
+async function decodeOggVorbis(ctx: AudioContext, audioData: ArrayBuffer) {
+  return Result.tryPromise(async () => {
+    const { OggVorbisDecoderWebWorker } = await import('@wasm-audio-decoders/ogg-vorbis');
+    const decoder = new OggVorbisDecoderWebWorker();
+    try {
+      await decoder.ready;
+      const decoded = await decoder.decodeFile(new Uint8Array(audioData));
+      const buffer = ctx.createBuffer(decoded.channelData.length, decoded.samplesDecoded, decoded.sampleRate);
+      for (const [channel, channelData] of decoded.channelData.entries()) {
+        buffer.getChannelData(channel).set(channelData);
+      }
+      return buffer;
+    } finally {
+      await decoder.free();
+    }
+  });
+}
+
+async function decodeAudio(ctx: AudioContext, audioData: ArrayBuffer) {
+  const native = await Result.tryPromise(() => ctx.decodeAudioData(audioData.slice(0)));
+  if (native.isOk() || !isOggAudio(audioData)) return native;
+  return decodeOggVorbis(ctx, audioData);
+}
+
+export async function createAudioClock({ audioData, songBpm, volume = 1, context }: AudioClockOptions) {
   const ownsContext = context === undefined;
   const ctx = context ?? new AudioContext();
-  const buffer = await ctx.decodeAudioData(audioData);
+  const decoded = await decodeAudio(ctx, audioData);
+  if (decoded.isErr()) {
+    if (ownsContext) void ctx.close();
+    return decoded;
+  }
+  const buffer = decoded.value;
   const gain = ctx.createGain();
   gain.gain.value = Math.min(Math.max(volume, 0), 1);
   gain.connect(ctx.destination);
@@ -175,5 +206,5 @@ export async function createAudioClock({
     },
   };
 
-  return createClock(buffer.duration, songBpm, driver);
+  return Result.ok(createClock(buffer.duration, songBpm, driver));
 }
