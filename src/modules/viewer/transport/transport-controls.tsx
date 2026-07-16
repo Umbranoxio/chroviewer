@@ -147,6 +147,7 @@ export function TransportControls({
         interactive={!live}
         markers={markers}
         onSeek={onSeek}
+        onSeekBeats={onSeekBeats}
       />
       <Separator orientation="vertical" className="h-8 max-sm:hidden" />
       <TimelineReadout

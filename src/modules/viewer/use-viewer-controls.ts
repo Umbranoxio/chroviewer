@@ -105,12 +105,14 @@ export function useViewerControls({
 
     window.addEventListener('pointermove', show);
     window.addEventListener('pointerdown', show);
+    window.addEventListener('wheel', show);
     window.addEventListener('keydown', showForKey, true);
     scheduleHide();
     return () => {
       clearTimeout(timeout);
       window.removeEventListener('pointermove', show);
       window.removeEventListener('pointerdown', show);
+      window.removeEventListener('wheel', show);
       window.removeEventListener('keydown', showForKey, true);
     };
   }, [activePanel, autoHide, playing]);

@@ -301,7 +301,15 @@ export function ViewerShell() {
             'max-sm:bottom-[calc(var(--live-mobile-chat-height)+var(--live-safe-area-bottom)+var(--live-keyboard-inset))]',
         )}
       >
-        <canvas ref={session.canvasRef} className="absolute inset-0 size-full" />
+        <canvas
+          ref={session.canvasRef}
+          className="absolute inset-0 size-full"
+          onWheel={(event) => {
+            if (liveActive || session.selectedKey === '' || event.deltaY === 0 || event.ctrlKey || event.metaKey)
+              return;
+            transport.seekBeats(Math.sign(event.deltaY) * beatStep, sources.songBpm);
+          }}
+        />
       </div>
 
       {liveActive && liveInterruption !== null && (

@@ -22,6 +22,7 @@ interface TimelineSliderProps {
   interactive?: boolean;
   markers: TimelineMarker[];
   onSeek: (time: number) => void;
+  onSeekBeats: (beats: number) => void;
 }
 
 const markerTranslationKeys = {
@@ -71,6 +72,7 @@ export function TimelineSlider({
   interactive = true,
   markers,
   onSeek,
+  onSeekBeats,
 }: TimelineSliderProps) {
   const format = useFormatter();
   const locale = useLocale();
@@ -92,6 +94,10 @@ export function TimelineSlider({
       }}
       onPointerLeave={() => {
         setPreview(null);
+      }}
+      onWheel={(event) => {
+        if (!interactive || event.deltaY === 0 || event.ctrlKey || event.metaKey) return;
+        onSeekBeats(Math.sign(event.deltaY) * beatStep);
       }}
     >
       <Slider
