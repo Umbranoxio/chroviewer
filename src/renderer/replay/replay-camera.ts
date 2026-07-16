@@ -134,7 +134,9 @@ export class ReplayCameraController {
     this.updatedAt = now;
     this.position
       .copy(head.position)
-      .add(this.offset.set(settings.replayCameraXOffset, settings.replayCameraYOffset, -settings.replayCameraZOffset));
+      .add(
+        this.offset.set(settings.replayCameraXOffset, settings.replayCameraYOffset, -settings.replayCameraDepthOffset),
+      );
     this.euler.set(
       -settings.replayCameraXRotation * degToRad,
       -settings.replayCameraYRotation * degToRad,

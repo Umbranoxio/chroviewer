@@ -60,7 +60,7 @@ export interface ViewerSettings {
   fixedCameraDistance: number;
   replayCameraXOffset: number;
   replayCameraYOffset: number;
-  replayCameraZOffset: number;
+  replayCameraDepthOffset: number;
   replayCameraXRotation: number;
   replayCameraYRotation: number;
   replayCameraZRotation: number;
@@ -78,7 +78,7 @@ export type ReplayCameraSettings = Pick<
   | 'fixedCameraDistance'
   | 'replayCameraXOffset'
   | 'replayCameraYOffset'
-  | 'replayCameraZOffset'
+  | 'replayCameraDepthOffset'
   | 'replayCameraXRotation'
   | 'replayCameraYRotation'
   | 'replayCameraZRotation'
@@ -143,7 +143,7 @@ export const DEFAULT_REPLAY_CAMERA_SETTINGS: ReplayCameraSettings = {
   fixedCameraDistance: 4,
   replayCameraXOffset: 0,
   replayCameraYOffset: 0,
-  replayCameraZOffset: -0.45,
+  replayCameraDepthOffset: -0.55,
   replayCameraXRotation: 0,
   replayCameraYRotation: 0,
   replayCameraZRotation: 0,
@@ -302,7 +302,7 @@ const viewerSettingsObjectSchema = z.object({
   fixedCameraDistance: numberSetting(DEFAULT_VIEWER_SETTINGS.fixedCameraDistance, 2, 10),
   replayCameraXOffset: numberSetting(DEFAULT_VIEWER_SETTINGS.replayCameraXOffset, -10, 10),
   replayCameraYOffset: numberSetting(DEFAULT_VIEWER_SETTINGS.replayCameraYOffset, -10, 10),
-  replayCameraZOffset: numberSetting(DEFAULT_VIEWER_SETTINGS.replayCameraZOffset, -10, 10),
+  replayCameraDepthOffset: numberSetting(DEFAULT_VIEWER_SETTINGS.replayCameraDepthOffset, -10, 10),
   replayCameraXRotation: numberSetting(DEFAULT_VIEWER_SETTINGS.replayCameraXRotation, -180, 180),
   replayCameraYRotation: numberSetting(DEFAULT_VIEWER_SETTINGS.replayCameraYRotation, -180, 180),
   replayCameraZRotation: numberSetting(DEFAULT_VIEWER_SETTINGS.replayCameraZRotation, -180, 180),

@@ -88,7 +88,7 @@ export function useViewerSession({
     settings.fixedCameraDistance,
     settings.replayCameraXOffset,
     settings.replayCameraYOffset,
-    settings.replayCameraZOffset,
+    settings.replayCameraDepthOffset,
     settings.replayCameraXRotation,
     settings.replayCameraYRotation,
     settings.replayCameraZRotation,

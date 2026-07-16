@@ -78,7 +78,7 @@ export function settingsForShareCategories(
       fixedCameraDistance: settings.fixedCameraDistance,
       replayCameraXOffset: settings.replayCameraXOffset,
       replayCameraYOffset: settings.replayCameraYOffset,
-      replayCameraZOffset: settings.replayCameraZOffset,
+      replayCameraDepthOffset: settings.replayCameraDepthOffset,
       replayCameraXRotation: settings.replayCameraXRotation,
       replayCameraYRotation: settings.replayCameraYRotation,
       replayCameraZRotation: settings.replayCameraZRotation,
