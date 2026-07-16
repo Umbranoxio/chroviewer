@@ -74,19 +74,13 @@
     },
     "general": {
       "autoHideControls": "Auto-hide controls",
-      "centimeters": "{value} cm",
-      "colors": "Colors",
       "environment": "Environment",
       "interface": "Interface",
       "stage": "Stage",
-      "timelineBookmarks": "Timeline bookmarks",
-      "trailFlag": "Flag",
-      "trailLength": "Trail length",
-      "trailRectangle": "Rectangle",
-      "trailSamples": "Trail samples",
-      "trailShape": "Trail shape"
+      "timelineBookmarks": "Timeline bookmarks"
     },
     "graphics": {
+      "centimeters": "{value} cm",
       "customNoteColors": "Custom note colors",
       "high": "High",
       "left": "Left",
@@ -101,7 +95,12 @@
       "screenDisplacement": "Screen displacement",
       "screenDisplacementDescription": "High-quality refractive walls",
       "staticLights": "Static lights",
-      "staticLightsDescription": "Keep the environment lit without animation"
+      "staticLightsDescription": "Keep the environment lit without animation",
+      "trailFlag": "Flag",
+      "trailLength": "Trail length",
+      "trailRectangle": "Rectangle",
+      "trailSamples": "Trail samples",
+      "trailShape": "Trail shape"
     },
     "reset": "Reset",
     "resetSetting": "Reset {setting}",
