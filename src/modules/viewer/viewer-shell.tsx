@@ -102,6 +102,7 @@ export function ViewerShell() {
         };
   const liveActive = liveTarget !== null;
   const live = useLiveExperience({
+    appendReplayHeightEvents: session.appendLiveReplayHeightEvents,
     appendReplayNoteEvents: session.appendLiveReplayNoteEvents,
     hasLiveMap: (hash) => sources.hasLiveMap(hash),
     loadLiveReplay: (hash, replay) => sources.loadLiveReplay(hash, replay),

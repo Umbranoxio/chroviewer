@@ -184,7 +184,7 @@ export const DEFAULT_REPLAY_SABER_SETTINGS: ReplaySaberSettings = {
   saberPommelThickness: 0.0055,
   saberXOffset: 0,
   saberYOffset: 0,
-  saberZOffset: 0.15,
+  saberZOffset: 0,
   saberXRotation: 0,
   saberYRotation: 0,
   saberZRotation: 0,
@@ -210,8 +210,9 @@ export const DEFAULT_VIEWER_SETTINGS: ViewerSettings = {
   autoHide: true,
 };
 
-const storageKey = 'chroviewer.settings.v3';
-const previousStorageKey = 'chroviewer.settings.v2';
+const storageKey = 'chroviewer.settings.v4';
+const previousStorageKey = 'chroviewer.settings.v3';
+const olderStorageKey = 'chroviewer.settings.v2';
 const legacyStorageKey = 'chroviewer.settings.v1';
 const hexPattern = /^#[0-9a-f]{6}$/i;
 const mobileUserAgent = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i;
@@ -342,7 +343,15 @@ export function loadViewerSettings(
   if (previousText !== null) {
     const parsed = Result.try((): unknown => JSON.parse(previousText));
     if (parsed.isErr()) return defaults;
-    const settings = sanitizeViewerSettings(parsed.value);
+    const settings = migrateDefaultSaberZOffset(sanitizeViewerSettings(parsed.value));
+    return settings;
+  }
+
+  const olderText = storage.getItem(olderStorageKey);
+  if (olderText !== null) {
+    const parsed = Result.try((): unknown => JSON.parse(olderText));
+    if (parsed.isErr()) return defaults;
+    const settings = migrateDefaultSaberZOffset(sanitizeViewerSettings(parsed.value));
     return settings.graphicsQuality === 'medium'
       ? { ...settings, graphicsQuality: defaults.graphicsQuality }
       : settings;
@@ -352,8 +361,12 @@ export function loadViewerSettings(
   if (legacyText === null) return defaults;
   const parsed = Result.try((): unknown => JSON.parse(legacyText));
   if (parsed.isErr()) return defaults;
-  const settings = sanitizeViewerSettings(parsed.value);
+  const settings = migrateDefaultSaberZOffset(sanitizeViewerSettings(parsed.value));
   return settings.graphicsQuality === 'high' ? { ...settings, graphicsQuality: defaults.graphicsQuality } : settings;
+}
+
+function migrateDefaultSaberZOffset(settings: ViewerSettings) {
+  return settings.saberZOffset === 0.15 ? { ...settings, saberZOffset: 0 } : settings;
 }
 
 export function saveViewerSettings(settings: ViewerSettings, storage: Pick<Storage, 'setItem'> = localStorage) {

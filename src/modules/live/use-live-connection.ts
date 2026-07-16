@@ -213,7 +213,12 @@ export function useLiveConnection(
           return;
         }
         if (acceptLiveReplayPacket(runtime, packet)) {
-          applyLiveReplayChunk(runtime, packet.body.value, optionsRef.current.appendReplayNoteEvents);
+          applyLiveReplayChunk(
+            runtime,
+            packet.body.value,
+            optionsRef.current.appendReplayNoteEvents,
+            optionsRef.current.appendReplayHeightEvents,
+          );
           if (!deferPlaybackAttempt) tickPlayback();
         }
         return;

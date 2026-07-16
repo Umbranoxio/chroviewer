@@ -5,8 +5,8 @@ import { songBpmTimeToSeconds } from '../core/beatmap/bpm';
 import type { InfoColorScheme } from '../core/beatmap/info';
 import { DEFAULT_COLORS, resolveColorScheme } from '../core/colors';
 import { isForcedLightshowMode, type LightshowMode } from '../core/lighting/basic-light';
-import { applyReplayNoteEvents, type MapRenderData } from '../core/placement/map-render-data';
-import type { Replay, ReplayNoteEvent } from '../core/replay/types';
+import { applyReplayHeightEvents, applyReplayNoteEvents, type MapRenderData } from '../core/placement/map-render-data';
+import type { Replay, ReplayHeightEvent, ReplayNoteEvent } from '../core/replay/types';
 import {
   DEFAULT_REPLAY_CAMERA_SETTINGS,
   type ReplayCameraSettings,
@@ -219,6 +219,12 @@ export class MapView implements RenderView {
       this.mapObjects.invalidate();
     }
     this.replayView.refreshTimeline();
+  }
+
+  appendReplayHeightEvents(events: ReplayHeightEvent[]) {
+    if (this.data === null || events.length === 0) return;
+    applyReplayHeightEvents(this.data, events);
+    this.mapObjects.invalidate();
   }
 
   setReplayCameraMode(mode: ReplayCameraMode) {

@@ -1,7 +1,7 @@
 import type { RefObject } from 'react';
 
 import type { SongClock } from '../../core/clock/song-clock';
-import type { Replay, ReplayNoteEvent } from '../../core/replay/types';
+import type { Replay, ReplayHeightEvent, ReplayNoteEvent } from '../../core/replay/types';
 import type { ScoreSaberReplayPlayer, SourceResult } from '../../sources/source-types';
 import type { LiveChatMessage } from './generated/proto/scoresaber/live/v1/chat_pb';
 import type { LudusPlayState } from './generated/proto/scoresaber/live/v1/common_pb';
@@ -49,6 +49,7 @@ interface LiveTransport {
 }
 
 export interface LiveExperienceOptions {
+  appendReplayHeightEvents: (events: ReplayHeightEvent[]) => void;
   appendReplayNoteEvents: (events: ReplayNoteEvent[]) => void;
   hasLiveMap: (hash: string) => boolean;
   loadLiveReplay: (hash: string, replay: Replay) => Promise<SourceResult<void>>;

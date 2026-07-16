@@ -4,7 +4,7 @@ import { NoteType } from '../beatmap/types';
 import { beatSaberNumberSchema } from '../beatmap/value-schema';
 import { chromaColor } from '../chroma';
 import type { Rgb } from '../colors';
-import type { ReplayNoteEvent, ReplayNoteEventType } from '../replay/types';
+import type { ReplayHeightEvent, ReplayNoteEvent, ReplayNoteEventType } from '../replay/types';
 import { createSpawnProvider, type SpawnState } from '../spawn/variable-njs';
 import { arcPath, type ArcPathPoint } from './arc-spline';
 import { chainLinks } from './chain-links';
@@ -15,6 +15,7 @@ import { buildNoteFormation } from './note-formation';
 export interface NoteInstance extends ObjectMotion {
   x: number;
   y: number;
+  lineLayer: number;
   startX: number;
   startY: number;
   flipYSide: number;
@@ -31,6 +32,7 @@ export interface NoteInstance extends ObjectMotion {
 export interface BombInstance extends ObjectMotion {
   x: number;
   y: number;
+  lineLayer: number;
   startY: number;
   customColor?: Rgb;
   replayEndTime?: number;
@@ -111,6 +113,8 @@ export interface MapRenderData {
   lightTranslationEventBoxGroups: Difficulty['lightTranslationEventBoxGroups'];
   fxEventBoxGroups: Difficulty['fxEventBoxGroups'];
   environmentRemoval: string[];
+  initialPlayerHeight: number;
+  replayHeights: ReplayHeightEvent[];
 }
 
 export interface MapRenderOptions {
@@ -120,11 +124,50 @@ export interface MapRenderOptions {
   recordedJumpDistance?: number;
   leftHanded?: boolean;
   replayNotes?: ReplayNoteEvent[];
+  initialPlayerHeight?: number;
+  replayHeights?: ReplayHeightEvent[];
   environmentRemoval?: string[];
 }
 
 const anyCutDirection = 8;
 const chainLinkScoringTypes = new Set([5, 8]);
+const defaultPlayerHeight = 1.8;
+
+function jumpOffsetYForPlayerHeight(playerHeight: number) {
+  return Math.min(Math.max((playerHeight - defaultPlayerHeight) * 0.5, -0.2), 0.6);
+}
+
+function playerHeightAt(events: readonly ReplayHeightEvent[], time: number, initialHeight: number) {
+  let low = 0;
+  let high = events.length;
+  while (low < high) {
+    const middle = Math.floor((low + high) / 2);
+    const event = events[middle];
+    if (event !== undefined && event.time <= time) low = middle + 1;
+    else high = middle;
+  }
+  return events[low - 1]?.height ?? initialHeight;
+}
+
+function noteJumpY(lineLayer: number, jumpOffsetY: number) {
+  if (lineLayer === 0) return 0.85 + jumpOffsetY;
+  if (lineLayer === 1) return 1.4 + jumpOffsetY;
+  if (lineLayer === 2) return 1.9 + jumpOffsetY;
+  return gridPosition(0, lineLayer).y + NOTE_Y_OFFSET + jumpOffsetY;
+}
+
+function objectJumpY(
+  object: Pick<NoteInstance | BombInstance, 'enterBeat' | 'lineLayer'>,
+  songBpm: number,
+  initialHeight: number,
+  heightEvents: readonly ReplayHeightEvent[],
+) {
+  const spawnTime = songBpmTimeToSeconds(object.enterBeat, songBpm);
+  return noteJumpY(
+    object.lineLayer,
+    jumpOffsetYForPlayerHeight(playerHeightAt(heightEvents, spawnTime, initialHeight)),
+  );
+}
 
 function approximately(left: number, right: number) {
   return Math.abs(left - right) < Math.max(1e-6 * Math.max(Math.abs(left), Math.abs(right)), Number.EPSILON * 8);
@@ -169,6 +212,8 @@ export function buildMapRenderData(difficulty: Difficulty, options: MapRenderOpt
   const leadInBeats = preJumpTravelBeats(options.songBpm);
   const formedNotes = buildNoteFormation(difficulty, options.songBpm);
   const replayNotes = [...(options.replayNotes ?? [])];
+  const initialPlayerHeight = options.initialPlayerHeight ?? defaultPlayerHeight;
+  const replayHeights = [...(options.replayHeights ?? [])];
   function takeReplayEvent(matches: (event: ReplayNoteEvent) => boolean) {
     const index = replayNotes.findIndex(matches);
     if (index < 0) return undefined;
@@ -187,7 +232,6 @@ export function buildMapRenderData(difficulty: Difficulty, options: MapRenderOpt
     const motion = motionFor(state, note.songBpmTime, leadInBeats);
     const grid = gridPosition(note.posX, note.posY);
     const x = options.leftHanded === true ? -grid.x : grid.x;
-    const y = grid.y + NOTE_Y_OFFSET;
     const startGrid = gridPosition(formation.startLineIndex, formation.startLineLayer);
     const startX = options.leftHanded === true ? -startGrid.x : startGrid.x;
     const startY = startGrid.y + Y_OFFSET;
@@ -207,7 +251,8 @@ export function buildMapRenderData(difficulty: Difficulty, options: MapRenderOpt
       bombs.push({
         ...motion,
         x,
-        y,
+        y: objectJumpY({ ...motion, lineLayer: note.posY }, options.songBpm, initialPlayerHeight, replayHeights),
+        lineLayer: note.posY,
         startY,
         customColor,
         replayEndTime: replayEvent?.time,
@@ -233,7 +278,8 @@ export function buildMapRenderData(difficulty: Difficulty, options: MapRenderOpt
       notes.push({
         ...motion,
         x,
-        y,
+        y: objectJumpY({ ...motion, lineLayer: note.posY }, options.songBpm, initialPlayerHeight, replayHeights),
+        lineLayer: note.posY,
         startX,
         startY,
         flipYSide: formation.flipYSide,
@@ -398,7 +444,17 @@ export function buildMapRenderData(difficulty: Difficulty, options: MapRenderOpt
     lightTranslationEventBoxGroups: difficulty.lightTranslationEventBoxGroups,
     fxEventBoxGroups: difficulty.fxEventBoxGroups,
     environmentRemoval: options.environmentRemoval ?? [],
+    initialPlayerHeight,
+    replayHeights,
   };
+}
+
+export function applyReplayHeightEvents(data: MapRenderData, events: ReplayHeightEvent[]) {
+  if (events.length === 0) return;
+  data.replayHeights.push(...events);
+  for (const object of [...data.notes, ...data.bombs]) {
+    object.y = objectJumpY(object, data.songBpm, data.initialPlayerHeight, data.replayHeights);
+  }
 }
 
 export function applyReplayNoteEvents(data: MapRenderData, events: ReplayNoteEvent[]) {

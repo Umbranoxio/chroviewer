@@ -6,8 +6,8 @@ import { songBpmTimeToSeconds } from '../../core/beatmap/bpm';
 import { difficultyRank, effectiveNoteJumpSpeed } from '../../core/beatmap/info';
 import { buildHitsoundEvents } from '../../core/clock/hitsounds';
 import { isForcedLightshowMode, type LightshowMode } from '../../core/lighting/basic-light';
-import { buildMapRenderData } from '../../core/placement/map-render-data';
-import type { ReplayNoteEvent } from '../../core/replay/types';
+import { applyReplayHeightEvents, buildMapRenderData } from '../../core/placement/map-render-data';
+import type { ReplayHeightEvent, ReplayNoteEvent } from '../../core/replay/types';
 import { colorOverride, saveViewerSettings, type ViewerSettings } from '../../core/viewer-settings';
 import { EnvironmentLoadAborted, type EnvironmentLoadFailure } from '../../renderer/environment/environment-error';
 import type { useSongTransport } from './use-song-transport';
@@ -172,6 +172,8 @@ export function useViewerSession({
           : undefined,
       leftHanded: sources.replayRef.current?.metadata.leftHanded,
       replayNotes: sources.replayRef.current?.notes,
+      initialPlayerHeight: sources.replayRef.current?.metadata.initialHeight,
+      replayHeights: sources.replayRef.current?.heights,
       environmentRemoval: row.infoDifficulty.environmentRemoval,
     });
     const environmentResult = await viewer.view.setEnvironment(environmentId);
@@ -207,6 +209,8 @@ export function useViewerSession({
       transport.setHitsoundEvents(hitsoundEvents);
     }
 
+    const currentReplayHeights = sources.replayRef.current?.heights ?? [];
+    applyReplayHeightEvents(data, currentReplayHeights.slice(data.replayHeights.length));
     viewer.view.setMap(data, colorOverride(settings, row.colorScheme));
     viewer.view.setSongDuration(clock.duration);
     viewer.view.setReplay(sources.replayRef.current);
@@ -295,6 +299,10 @@ export function useViewerSession({
     viewerRef.current?.view.appendReplayNoteEvents(events);
   }
 
+  function appendLiveReplayHeightEvents(events: ReplayHeightEvent[]) {
+    viewerRef.current?.view.appendReplayHeightEvents(events);
+  }
+
   const difficultyOptions = sources.rows.map((row) => ({
     key: row.key,
     label: row.label,
@@ -325,6 +333,7 @@ export function useViewerSession({
 
   return {
     canvasRef,
+    appendLiveReplayHeightEvents,
     appendLiveReplayNoteEvents,
     changeLightshowMode,
     clearMapSelection,
