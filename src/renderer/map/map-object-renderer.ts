@@ -63,10 +63,10 @@ interface ArcEntry {
 
 interface NoteLookState {
   rotation: Quaternion;
-  nextPoseIndex: number;
   nextPreviewBeat: number;
   lastSampleTime: number;
   finished: boolean;
+  usesReplayPoses: boolean;
 }
 
 const zAxis = new Vector3(0, 0, 1);
@@ -349,7 +349,7 @@ export class MapObjectRenderer {
     currentHeadPosition: Vector3,
     scale: number,
   ) {
-    const state = this.noteLookState(note, songBpm, poseFrames);
+    const state = this.noteLookState(note, poseFrames);
     if (poseFrames.length > 0) {
       this.advanceReplayNoteLook(state, note, noteTime, replayTime, songBpm, poseFrames);
     } else {
@@ -377,15 +377,19 @@ export class MapObjectRenderer {
     this.matrix.compose(this.position, this.quaternion, this.scale);
   }
 
-  private noteLookState(note: NoteInstance, songBpm: number, poseFrames: readonly ReplayPose[]) {
+  private noteLookState(note: NoteInstance, poseFrames: readonly ReplayPose[]) {
     let state = this.noteLookStates.get(note);
-    if (state !== undefined) return state;
+    const usesReplayPoses = poseFrames.length > 0;
+    if (state !== undefined) {
+      if (state.usesReplayPoses !== usesReplayPoses) this.resetNoteLookState(state, note, usesReplayPoses);
+      return state;
+    }
     state = {
       rotation: new Quaternion(),
-      nextPoseIndex: firstPoseAtOrAfter(poseFrames, songBpmTimeToSeconds(note.spawnBeat, songBpm)),
       nextPreviewBeat: note.spawnBeat,
       lastSampleTime: Number.NEGATIVE_INFINITY,
       finished: false,
+      usesReplayPoses,
     };
     this.noteLookStates.set(note, state);
     return state;
@@ -399,8 +403,13 @@ export class MapObjectRenderer {
     songBpm: number,
     poseFrames: readonly ReplayPose[],
   ) {
+    if (replayTime < state.lastSampleTime) this.resetNoteLookState(state, note, true);
+    let poseIndex =
+      state.lastSampleTime === Number.NEGATIVE_INFINITY
+        ? firstPoseAtOrAfter(poseFrames, songBpmTimeToSeconds(note.spawnBeat, songBpm))
+        : firstPoseAfter(poseFrames, state.lastSampleTime);
     while (!state.finished) {
-      const frame = poseFrames[state.nextPoseIndex];
+      const frame = poseFrames[poseIndex];
       if (frame === undefined || frame.time > replayTime) return;
       if (frame.time >= noteTime) {
         state.finished = true;
@@ -421,8 +430,16 @@ export class MapObjectRenderer {
         (beat - note.spawnBeat) / (note.hjdBeats * 2),
       );
       state.lastSampleTime = frame.time;
-      state.nextPoseIndex += 1;
+      poseIndex += 1;
     }
+  }
+
+  private resetNoteLookState(state: NoteLookState, note: NoteInstance, usesReplayPoses: boolean) {
+    state.rotation.identity();
+    state.nextPreviewBeat = note.spawnBeat;
+    state.lastSampleTime = Number.NEGATIVE_INFINITY;
+    state.finished = false;
+    state.usesReplayPoses = usesReplayPoses;
   }
 
   private advancePreviewNoteLook(
@@ -470,6 +487,18 @@ function firstPoseAtOrAfter(frames: readonly ReplayPose[], time: number) {
     const middle = Math.floor((low + high) / 2);
     const frame = frames[middle];
     if (frame !== undefined && frame.time < time) low = middle + 1;
+    else high = middle;
+  }
+  return low;
+}
+
+function firstPoseAfter(frames: readonly ReplayPose[], time: number) {
+  let low = 0;
+  let high = frames.length;
+  while (low < high) {
+    const middle = Math.floor((low + high) / 2);
+    const frame = frames[middle];
+    if (frame !== undefined && frame.time <= time) low = middle + 1;
     else high = middle;
   }
   return low;
