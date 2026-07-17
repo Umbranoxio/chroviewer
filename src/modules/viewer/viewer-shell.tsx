@@ -384,7 +384,7 @@ export function ViewerShell() {
       <SourcePicker
         choices={sources.sourceChoices}
         input={sources.sourceInput}
-        visible={sources.mapMeta === null && !liveActive && !sources.sourceLoading}
+        visible={sources.mapMeta === null && !liveActive && !sources.sourceLoading && !session.environmentLoading}
         onChoose={(choice) => {
           sources.loadLookup(choice);
         }}
