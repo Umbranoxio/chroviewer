@@ -294,6 +294,32 @@ export async function fetchScoreSaberReplay(
   scoreId: string,
   options: ResolveOptions = {},
 ): Promise<SourceResult<ScoreSaberReplaySource>> {
+  const metadataPromise = fetchScoreSaberReplayMetadata(scoreId, options);
+  const replayPromise = fetchScoreSaberReplayFile(scoreId, options);
+  return Result.gen(async function* () {
+    const metadata = yield* Result.await(metadataPromise);
+    const [replay, player] = await Promise.all([
+      metadata.scoreId === scoreId ? replayPromise : fetchScoreSaberReplayFile(metadata.scoreId, options),
+      requestJson(`${env.VITE_SCORESABER_API_URL}/api/v2/players/${metadata.playerId}`, playerSchema, {
+        ...options,
+        source: 'scoresaber',
+        label: `ScoreSaber player ${metadata.playerId}`,
+        operation: 'load-player',
+      }),
+    ]);
+    if (replay.isErr()) return replay;
+    return Result.ok({
+      scoreId: metadata.scoreId,
+      hash: metadata.hash,
+      difficulty: metadata.difficulty,
+      characteristic: metadata.characteristic,
+      player: player.isOk() ? replayPlayer(player.value, metadata.player) : metadata.player,
+      replay: replay.value,
+    });
+  });
+}
+
+export async function fetchScoreSaberReplayMetadata(scoreId: string, options: ResolveOptions = {}) {
   if (!/^\d+$/.test(scoreId)) {
     return Result.err(
       new SourceError({
@@ -312,29 +338,25 @@ export async function fetchScoreSaberReplay(
         operation: 'load-score',
       }),
     );
-    const metadata = yield* replayMetadata(score, scoreId);
-    const [replay, player] = await Promise.all([
-      requestArrayBuffer(`${env.VITE_SCORESABER_API_URL}/api/v2/scores/${metadata.scoreId}/replay`, {
-        ...options,
-        source: 'scoresaber',
-        label: `ScoreSaber replay ${metadata.scoreId}`,
-        operation: 'download-replay',
-      }),
-      requestJson(`${env.VITE_SCORESABER_API_URL}/api/v2/players/${metadata.playerId}`, playerSchema, {
-        ...options,
-        source: 'scoresaber',
-        label: `ScoreSaber player ${metadata.playerId}`,
-        operation: 'load-player',
-      }),
-    ]);
-    if (replay.isErr()) return replay;
-    return Result.ok({
-      scoreId: metadata.scoreId,
-      hash: metadata.hash,
-      difficulty: metadata.difficulty,
-      characteristic: metadata.characteristic,
-      player: player.isOk() ? replayPlayer(player.value, metadata.player) : metadata.player,
-      replay: replay.value,
-    });
+    return replayMetadata(score, scoreId);
   });
+}
+
+export function fetchScoreSaberReplayFile(scoreId: string, options: ResolveOptions = {}) {
+  return /^\d+$/.test(scoreId)
+    ? requestArrayBuffer(`${env.VITE_SCORESABER_API_URL}/api/v2/scores/${scoreId}/replay`, {
+        ...options,
+        source: 'scoresaber',
+        label: `ScoreSaber replay ${scoreId}`,
+        operation: 'download-replay',
+      })
+    : Promise.resolve(
+        Result.err(
+          new SourceError({
+            message: 'invalid ScoreSaber score ID',
+            source: 'scoresaber',
+            operation: 'parse-score-id',
+          }),
+        ),
+      );
 }

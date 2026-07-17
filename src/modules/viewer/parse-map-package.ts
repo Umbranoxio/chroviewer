@@ -106,12 +106,10 @@ export async function parseMapPackage(
   replay: Replay | null,
 ): Promise<ParsedMapPackage> {
   const texts = new Map<string, string>();
-  for (const file of files) {
-    if (/\.(dat|json)$/i.test(file.name)) texts.set(file.name.toLowerCase(), await file.text());
-  }
-
-  const infoText = texts.get('info.dat');
-  if (infoText === undefined) throw new Error('drop an Info.dat together with its difficulty .dat files');
+  const infoFile = files.findLast((file) => file.name.toLowerCase() === 'info.dat');
+  if (infoFile === undefined) throw new Error('drop an Info.dat together with its difficulty .dat files');
+  const infoText = await infoFile.text();
+  texts.set('info.dat', infoText);
 
   const info = await parser.parseInfo(infoText);
   const mapper =
@@ -129,53 +127,86 @@ export async function parseMapPackage(
     mapper,
   };
 
+  const fileNames = new Set(files.map((file) => file.name.toLowerCase()));
+  const replayDifficulty = replay?.metadata.difficulty;
+  const replayCharacteristic = replay?.metadata.characteristic.toLowerCase();
+  const replayTextFiles = new Set<string>();
+  for (const set of info.difficultySets) {
+    for (const difficulty of set.difficulties) {
+      if (
+        difficultyRank(difficulty.difficulty) !== replayDifficulty ||
+        set.characteristic.toLowerCase() !== replayCharacteristic ||
+        !/\.(dat|json)$/i.test(difficulty.beatmapFilename) ||
+        !fileNames.has(difficulty.beatmapFilename.toLowerCase())
+      )
+        continue;
+      replayTextFiles.add(difficulty.beatmapFilename.toLowerCase());
+      replayTextFiles.add(difficulty.lightshowFilename.toLowerCase());
+      replayTextFiles.add(difficulty.bookmarkFilename.toLowerCase());
+      replayTextFiles.add(info.audioDataFilename.toLowerCase());
+    }
+  }
+  const hasPlayableReplayDifficulty = replayTextFiles.size > 0;
+  const textFiles = files.filter(
+    (file) =>
+      file !== infoFile &&
+      /\.(dat|json)$/i.test(file.name) &&
+      (!hasPlayableReplayDifficulty || replayTextFiles.has(file.name.toLowerCase())),
+  );
+  const fileTexts = await Promise.all(textFiles.map((file) => file.text()));
+  for (const [index, file] of textFiles.entries()) {
+    const text = fileTexts[index];
+    if (text !== undefined) texts.set(file.name.toLowerCase(), text);
+  }
+
   const coverFile =
     info.coverImageFilename === ''
       ? undefined
       : files.find((file) => file.name.toLowerCase() === info.coverImageFilename.toLowerCase());
-  const cover =
+  const coverPromise =
     coverFile?.arrayBuffer === undefined
-      ? null
-      : { data: await coverFile.arrayBuffer(), type: coverMimeType(coverFile.name) };
+      ? Promise.resolve(null)
+      : coverFile.arrayBuffer().then((data) => ({ data, type: coverMimeType(coverFile.name) }));
 
   const audioFile = files.find((file) => file.name.toLowerCase() === info.songFilename.toLowerCase());
-  const audioData = audioFile?.arrayBuffer === undefined ? null : await audioFile.arrayBuffer();
+  const audioDataPromise = audioFile?.arrayBuffer === undefined ? Promise.resolve(null) : audioFile.arrayBuffer();
   const audioDataText = texts.get(info.audioDataFilename.toLowerCase());
-  const rows: DifficultyRow[] = [];
-  for (const set of info.difficultySets) {
-    for (const infoDifficulty of set.difficulties) {
-      const label = difficultyLabel(infoDifficulty);
-      const key = `${set.characteristic}/${infoDifficulty.difficulty}/${infoDifficulty.beatmapFilename}`;
-      const text = texts.get(infoDifficulty.beatmapFilename.toLowerCase());
-      if (text === undefined) {
-        rows.push({ key, label });
-        continue;
-      }
-      const difficulty = await parser.parseDifficulty(text, info.beatsPerMinute, {
-        lightshowText: texts.get(infoDifficulty.lightshowFilename.toLowerCase()),
-        audioDataText,
-        bookmarkText: texts.get(infoDifficulty.bookmarkFilename.toLowerCase()),
-      });
-      const replayMatch =
-        replay?.metadata.difficulty === difficultyRank(infoDifficulty.difficulty) &&
-        replay.metadata.characteristic.toLowerCase() === set.characteristic.toLowerCase();
-      if (replayMatch) convertLegacyScoreSaberReplay(replay, difficulty, info.beatsPerMinute);
-      const mapScheme = colorSchemeForDifficulty(info, infoDifficulty);
-      rows.push({
-        key,
-        label,
-        difficulty,
-        infoDifficulty,
-        environmentId: resolveEnvironmentId(
-          replayMatch && replay.metadata.environment !== ''
-            ? replay.metadata.environment
-            : environmentNameForDifficulty(info, infoDifficulty),
-        ),
-        colorScheme: replayMatch ? replayColorScheme(replay, mapScheme) : mapScheme,
-        replayMatch,
-      });
-    }
-  }
+  const rowsPromise = Promise.all(
+    info.difficultySets.flatMap((set) =>
+      set.difficulties.map(async (infoDifficulty): Promise<DifficultyRow> => {
+        const label = difficultyLabel(infoDifficulty);
+        const key = `${set.characteristic}/${infoDifficulty.difficulty}/${infoDifficulty.beatmapFilename}`;
+        const text = texts.get(infoDifficulty.beatmapFilename.toLowerCase());
+        const replayMatch =
+          replay !== null &&
+          replay.metadata.difficulty === difficultyRank(infoDifficulty.difficulty) &&
+          replay.metadata.characteristic.toLowerCase() === set.characteristic.toLowerCase();
+        if (hasPlayableReplayDifficulty && !replayMatch) return { key, label, infoDifficulty, replayMatch };
+        if (text === undefined) return { key, label };
+        const difficulty = await parser.parseDifficulty(text, info.beatsPerMinute, {
+          lightshowText: texts.get(infoDifficulty.lightshowFilename.toLowerCase()),
+          audioDataText,
+          bookmarkText: texts.get(infoDifficulty.bookmarkFilename.toLowerCase()),
+        });
+        if (replayMatch) convertLegacyScoreSaberReplay(replay, difficulty, info.beatsPerMinute);
+        const mapScheme = colorSchemeForDifficulty(info, infoDifficulty);
+        return {
+          key,
+          label,
+          difficulty,
+          infoDifficulty,
+          environmentId: resolveEnvironmentId(
+            replayMatch && replay.metadata.environment !== ''
+              ? replay.metadata.environment
+              : environmentNameForDifficulty(info, infoDifficulty),
+          ),
+          colorScheme: replayMatch ? replayColorScheme(replay, mapScheme) : mapScheme,
+          replayMatch,
+        };
+      }),
+    ),
+  );
 
+  const [rows, cover, audioData] = await Promise.all([rowsPromise, coverPromise, audioDataPromise]);
   return { mapMeta, songBpm: info.beatsPerMinute, rows, cover, audioData };
 }

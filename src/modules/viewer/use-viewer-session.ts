@@ -146,7 +146,7 @@ export function useViewerSession({
     setError(`${t('errors.failedEnvironment')}: ${error.message}`);
   }
 
-  async function selectDifficulty(row: DifficultyRow) {
+  async function selectDifficulty(row: DifficultyRow, initialBeat = 0) {
     const viewer = viewerRef.current;
     if (
       viewer === null ||
@@ -191,6 +191,14 @@ export function useViewerSession({
     };
 
     const hitsoundEvents = buildHitsoundEvents([...data.notes, ...data.chainLinks], sources.songBpm);
+    const currentReplayHeights = sources.replayRef.current?.heights ?? [];
+    applyReplayHeightEvents(data, currentReplayHeights.slice(data.replayHeights.length));
+    viewer.view.setBeatSource(() => initialBeat);
+    viewer.view.setMap(data, colorOverride(settings, row.colorScheme));
+    viewer.view.setReplay(sources.replayRef.current);
+    viewer.view.setReplayCameraSettings(settings);
+    setActivePanel(null);
+
     let clock = transport.clockRef.current;
     if (clock === null) {
       const replayEnd = sources.replayRef.current?.poses.at(-1)?.time ?? 0;
@@ -209,14 +217,8 @@ export function useViewerSession({
       transport.setHitsoundEvents(hitsoundEvents);
     }
 
-    const currentReplayHeights = sources.replayRef.current?.heights ?? [];
-    applyReplayHeightEvents(data, currentReplayHeights.slice(data.replayHeights.length));
-    viewer.view.setMap(data, colorOverride(settings, row.colorScheme));
     viewer.view.setSongDuration(clock.duration);
-    viewer.view.setReplay(sources.replayRef.current);
-    viewer.view.setReplayCameraSettings(settings);
     viewer.view.setBeatSource(() => clock.currentBeat());
-    setActivePanel(null);
     setSelectedKey(row.key);
   }
 
@@ -238,7 +240,7 @@ export function useViewerSession({
   }
 
   async function applyPendingView(row: DifficultyRow, beat: number | undefined) {
-    await selectDifficulty(row);
+    await selectDifficulty(row, beat);
     const clock = transport.clockRef.current;
     if (clock === null) return;
     transport.seek(songBpmTimeToSeconds(beat ?? 0, sources.songBpm));

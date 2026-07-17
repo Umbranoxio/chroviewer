@@ -14,7 +14,8 @@ import { fetchBeatSaverHash, fetchBeatSaverMap } from '../../sources/beatsaver/p
 import { requestArrayBuffer } from '../../sources/http';
 import {
   fetchScoreSaberLeaderboards,
-  fetchScoreSaberReplay,
+  fetchScoreSaberReplayFile,
+  fetchScoreSaberReplayMetadata,
   lookupScoreSaber,
   scoreSaberReference,
 } from '../../sources/scoresaber/provider';
@@ -92,9 +93,17 @@ export function useViewerRemoteSource({
 
   async function loadScoreSaberScore(scoreId: string, pending: { beat?: number; autoplay?: boolean } = {}) {
     return Result.gen(async function* () {
-      const source = yield* Result.await(fetchScoreSaberReplay(scoreId, downloadOptions('scoresaber')));
+      const metadataPromise = fetchScoreSaberReplayMetadata(scoreId, downloadOptions('scoresaber'));
+      const initialReplayPromise = fetchScoreSaberReplayFile(scoreId, downloadOptions('scoresaber'));
+      const source = yield* Result.await(metadataPromise);
+      const replayFilePromise =
+        source.scoreId === scoreId
+          ? initialReplayPromise
+          : fetchScoreSaberReplayFile(source.scoreId, downloadOptions('scoresaber'));
       const [replayResult, mapResult] = await Promise.all([
-        parseReplay(source.replay, 'scoresaber'),
+        replayFilePromise.then((result) =>
+          result.isErr() ? Result.err(result.error) : parseReplay(result.value, 'scoresaber'),
+        ),
         fetchBeatSaverHash(source.hash, downloadOptions('beatsaver')),
       ]);
       const replay = yield* replayResult;

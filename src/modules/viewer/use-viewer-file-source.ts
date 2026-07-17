@@ -82,14 +82,15 @@ export function useViewerFileSource({
     coverUrlRef.current = null;
   }
 
-  useEffect(
-    () => () => {
-      parserRef.current?.dispose();
+  useEffect(() => {
+    const parser = new BeatmapParser();
+    parserRef.current = parser;
+    return () => {
+      parser.dispose();
       parserRef.current = null;
       revokeCover();
-    },
-    [],
-  );
+    };
+  }, []);
 
   async function parseReplay(data: ArrayBuffer, source: SourceError['source'] = 'local') {
     parserRef.current ??= new BeatmapParser();
