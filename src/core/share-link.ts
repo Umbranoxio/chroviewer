@@ -24,6 +24,7 @@ export function settingsForShareCategories(
     Object.assign(shared, {
       graphicsQuality: settings.graphicsQuality,
       screenDisplacementEffects: settings.screenDisplacementEffects,
+      previewNotesLookAtPlayer: settings.previewNotesLookAtPlayer,
       renderScale: settings.renderScale,
       staticLights: settings.staticLights,
       customColors: settings.customColors,

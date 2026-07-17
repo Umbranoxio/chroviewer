@@ -244,6 +244,10 @@ export class MapView implements RenderView {
     this.mapObjects.setScreenDisplacementEffects(enabled);
   }
 
+  setPreviewNotesLookAtPlayer(enabled: boolean) {
+    this.mapObjects.setPreviewNotesLookAtPlayer(enabled);
+  }
+
   setMap(data: MapRenderData, override?: InfoColorScheme) {
     this.clearMap();
     this.data = data;

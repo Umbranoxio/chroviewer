@@ -24,6 +24,11 @@ export interface MapIdentity {
   hash: string;
 }
 
+export interface ViewerSourceLink {
+  type: 'map' | 'replay';
+  url: string;
+}
+
 export interface ActiveSelection {
   data: MapRenderData;
   environmentId: string;
@@ -32,4 +37,4 @@ export interface ActiveSelection {
 
 export type ViewerPanel = 'share' | 'shortcuts' | 'speed' | 'lights' | 'camera' | 'volume' | null;
 
-export type ViewerSource = 'beatsaver' | 'scoresaber';
+export type ViewerSource = 'beatsaver' | 'link' | 'scoresaber';

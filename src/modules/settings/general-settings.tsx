@@ -13,6 +13,7 @@ interface GeneralSettingsProps {
   settings: ViewerSettings;
   environmentId: string;
   environments: readonly { id: string; title: string }[];
+  isMapPreview: boolean;
   onChange: (settings: ViewerSettings) => void;
   onEnvironmentChange: (id: string) => void;
 }
@@ -21,6 +22,7 @@ export function GeneralSettings({
   settings,
   environmentId,
   environments,
+  isMapPreview,
   onChange,
   onEnvironmentChange,
 }: GeneralSettingsProps) {
@@ -52,6 +54,22 @@ export function GeneralSettings({
           </SettingRow>
         </SettingSection>
         <Separator />
+        {isMapPreview && (
+          <>
+            <SettingSection title={t('mapPreview')}>
+              <SettingRow label={t('playerFacingNotes')} detail={t('playerFacingNotesDescription')}>
+                <Switch
+                  aria-label={t('playerFacingNotes')}
+                  checked={settings.previewNotesLookAtPlayer}
+                  onCheckedChange={(previewNotesLookAtPlayer) => {
+                    update('previewNotesLookAtPlayer', previewNotesLookAtPlayer);
+                  }}
+                />
+              </SettingRow>
+            </SettingSection>
+            <Separator />
+          </>
+        )}
         <SettingSection title={t('interface')}>
           <SettingRow label={t('timelineBookmarks')}>
             <Switch

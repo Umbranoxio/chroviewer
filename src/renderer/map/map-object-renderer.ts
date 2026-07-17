@@ -107,6 +107,7 @@ export class MapObjectRenderer {
   private wallCoreLowMaterial: Material | null = null;
   private wallCoreHighMaterial: Material | null = null;
   private screenDisplacementEffects = true;
+  private previewNotesLookAtPlayer = false;
   private instanceGroups: InstancedGroup[] = [];
   private arcEntries: ArcEntry[] = [];
   private noteReplayWindows: ActiveWindowIndex | null = null;
@@ -248,6 +249,12 @@ export class MapObjectRenderer {
     this.wallCores.mesh.layers.set(enabled ? SCREEN_DISPLACEMENT_LAYER : 0);
   }
 
+  setPreviewNotesLookAtPlayer(enabled: boolean) {
+    if (enabled === this.previewNotesLookAtPlayer) return;
+    this.previewNotesLookAtPlayer = enabled;
+    this.invalidate();
+  }
+
   invalidate() {
     this.objectBeat = Number.NaN;
     this.noteLookStates.clear();
@@ -281,7 +288,7 @@ export class MapObjectRenderer {
         const y = note.startY + (note.y - note.startY) * jump + spawnFlipYOffset(note, now, note.flipYSide);
         const rotation = note.rotationDeg * spawnRotationProgress(note, now);
         const noteTime = songBpmTimeToSeconds(note.beat, data.songBpm);
-        if (note.lookAtPlayer) {
+        if (note.lookAtPlayer && (replayLoaded || this.previewNotesLookAtPlayer)) {
           this.composeLookNoteAt(
             note,
             now,

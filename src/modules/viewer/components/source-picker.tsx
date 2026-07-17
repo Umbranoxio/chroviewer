@@ -1,9 +1,10 @@
 import { useState } from 'react';
 
-import { ArrowRight, FolderOpen } from 'lucide-react';
+import { ArrowRight, FolderOpen, Link as LinkIcon } from 'lucide-react';
 import { useTranslations } from 'use-intl';
 
 import type { MapLookup } from '../../../sources/source-types';
+import { isRemoteSourceUrl } from '../viewer-search';
 import type { ViewerSource } from '../viewer-types';
 
 import { Button } from '@/components/ui/button';
@@ -33,7 +34,16 @@ export function SourcePicker({
   const t = useTranslations('source');
   const [source, setSource] = useState<ViewerSource>('beatsaver');
   const scoreSaber = source === 'scoresaber';
-  const validInput = input.trim() !== '' && (!scoreSaber || /^\d+$/.test(input.trim()));
+  const link = source === 'link';
+  const trimmedInput = input.trim();
+  const validInput =
+    trimmedInput !== '' && (!scoreSaber || /^\d+$/.test(trimmedInput)) && (!link || isRemoteSourceUrl(trimmedInput));
+  const inputLabel = scoreSaber ? t('scoresaberInputLabel') : link ? t('linkInputLabel') : t('beatsaverInputLabel');
+  const inputPlaceholder = scoreSaber
+    ? t('scoresaberInputPlaceholder')
+    : link
+      ? t('linkInputPlaceholder')
+      : t('beatsaverInputPlaceholder');
 
   return (
     <>
@@ -45,12 +55,12 @@ export function SourcePicker({
         >
           <h1 className="mb-4 text-center text-base font-semibold">ChroViewer</h1>
           <ToggleGroup
-            className="bg-muted/60 mb-3 grid grid-cols-2 rounded-lg border p-1"
+            className="bg-muted/60 mb-3 grid grid-cols-3 rounded-lg border p-1"
             type="single"
             value={source}
             aria-label={t('sourceType')}
             onValueChange={(value) => {
-              if (value === 'beatsaver' || value === 'scoresaber') setSource(value);
+              if (value === 'beatsaver' || value === 'link' || value === 'scoresaber') setSource(value);
             }}
           >
             <ToggleGroupItem
@@ -69,6 +79,14 @@ export function SourcePicker({
               <img className="size-5" src={`${import.meta.env.BASE_URL}scoresaber.svg`} alt="" aria-hidden="true" />
               {t('scoresaber')}
             </ToggleGroupItem>
+            <ToggleGroupItem
+              className="data-[state=on]:bg-background data-[state=on]:text-foreground h-9 gap-3 data-[state=on]:shadow-sm"
+              value="link"
+              aria-label={t('link')}
+            >
+              <LinkIcon />
+              {t('link')}
+            </ToggleGroupItem>
           </ToggleGroup>
           <form
             onSubmit={(event) => {
@@ -78,22 +96,24 @@ export function SourcePicker({
           >
             <InputGroup>
               <InputGroupInput
-                type="text"
-                inputMode={scoreSaber ? 'numeric' : 'text'}
+                type={link ? 'url' : 'text'}
+                inputMode={scoreSaber ? 'numeric' : link ? 'url' : 'text'}
                 pattern={scoreSaber ? '[0-9]*' : undefined}
                 value={input}
-                aria-label={scoreSaber ? t('scoresaberInputLabel') : t('beatsaverInputLabel')}
-                placeholder={scoreSaber ? t('scoresaberInputPlaceholder') : t('beatsaverInputPlaceholder')}
+                aria-label={inputLabel}
+                placeholder={inputPlaceholder}
                 onChange={(event) => {
                   onInputChange(event.currentTarget.value);
                 }}
               />
-              <InputGroupButton aria-label={t('openFiles')} title={t('openFiles')} onClick={onOpenFiles}>
-                <FolderOpen />
-              </InputGroupButton>
+              {!link && (
+                <InputGroupButton aria-label={t('openFiles')} title={t('openFiles')} onClick={onOpenFiles}>
+                  <FolderOpen />
+                </InputGroupButton>
+              )}
               <InputGroupButton
                 type="submit"
-                aria-label={scoreSaber ? t('loadReplay') : t('loadMap')}
+                aria-label={scoreSaber ? t('loadReplay') : link ? t('loadLink') : t('loadMap')}
                 disabled={!validInput}
               >
                 <ArrowRight />

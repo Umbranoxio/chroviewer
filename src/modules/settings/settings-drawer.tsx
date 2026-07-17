@@ -17,6 +17,7 @@ interface SettingsDrawerProps {
   environmentId: string;
   environments: readonly { id: string; title: string }[];
   hasReplay: boolean;
+  isMapPreview: boolean;
   onChange: (settings: ViewerSettings) => void;
   onClose: () => void;
   onEnvironmentChange: (id: string) => void;
@@ -28,6 +29,7 @@ export function SettingsDrawer({
   environmentId,
   environments,
   hasReplay,
+  isMapPreview,
   onChange,
   onClose,
   onEnvironmentChange,
@@ -60,6 +62,7 @@ export function SettingsDrawer({
             settings={settings}
             environmentId={environmentId}
             environments={environments}
+            isMapPreview={isMapPreview}
             onChange={onChange}
             onEnvironmentChange={onEnvironmentChange}
           />

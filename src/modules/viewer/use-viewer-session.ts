@@ -71,6 +71,10 @@ export function useViewerSession({
   }, [settings.screenDisplacementEffects]);
 
   useEffect(() => {
+    viewerRef.current?.view.setPreviewNotesLookAtPlayer(settings.previewNotesLookAtPlayer);
+  }, [settings.previewNotesLookAtPlayer]);
+
+  useEffect(() => {
     const mode: LightshowMode = settings.staticLights ? 'static' : 'full';
     if (isForcedLightshowMode(lightshowModeRef.current) && mode === 'full') return;
     lightshowModeRef.current = mode;

@@ -229,11 +229,13 @@ export function ViewerShell() {
   );
   const share = useViewerShare({
     beat: displayBeat,
+    lightshowMode,
     liveTarget: liveTarget ?? undefined,
     mapIdentity: sources.mapIdentity,
     scoreId: sources.shareScoreId,
     selectedDifficultyIndex: session.selectedDifficultyIndex,
     settings,
+    sourceLink: sources.sourceLink,
     setError,
   });
   const liveInterruption =
@@ -564,6 +566,7 @@ export function ViewerShell() {
         environmentId={session.environmentId}
         environments={environmentCatalog}
         hasReplay={sources.replayRef.current !== null}
+        isMapPreview={session.selectedKey !== '' && sources.replayRef.current === null}
         onChange={setSettings}
         onClose={() => {
           setSettingsOpen(false);

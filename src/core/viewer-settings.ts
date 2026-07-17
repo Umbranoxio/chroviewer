@@ -7,6 +7,7 @@ import type { Rgb } from './colors';
 export interface ViewerSettings {
   graphicsQuality: 'none' | 'low' | 'medium' | 'high';
   screenDisplacementEffects: boolean;
+  previewNotesLookAtPlayer: boolean;
   renderScale: number;
   staticLights: boolean;
   customColors: boolean;
@@ -193,6 +194,7 @@ export const DEFAULT_REPLAY_SABER_SETTINGS: ReplaySaberSettings = {
 export const DEFAULT_VIEWER_SETTINGS: ViewerSettings = {
   graphicsQuality: 'high',
   screenDisplacementEffects: true,
+  previewNotesLookAtPlayer: false,
   renderScale: 1,
   staticLights: false,
   customColors: false,
@@ -249,6 +251,7 @@ function hexColorSchema(fallback: string) {
 const viewerSettingsObjectSchema = z.object({
   graphicsQuality: z.catch(z.enum(['none', 'low', 'medium', 'high']), DEFAULT_VIEWER_SETTINGS.graphicsQuality),
   screenDisplacementEffects: z.catch(z.boolean(), DEFAULT_VIEWER_SETTINGS.screenDisplacementEffects),
+  previewNotesLookAtPlayer: z.catch(z.boolean(), DEFAULT_VIEWER_SETTINGS.previewNotesLookAtPlayer),
   renderScale: numberSetting(DEFAULT_VIEWER_SETTINGS.renderScale, 0.5, 1.5),
   staticLights: z.catch(z.boolean(), DEFAULT_VIEWER_SETTINGS.staticLights),
   customColors: z.catch(z.boolean(), DEFAULT_VIEWER_SETTINGS.customColors),

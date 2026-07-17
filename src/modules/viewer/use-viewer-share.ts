@@ -4,29 +4,34 @@ import { useRouter } from '@tanstack/react-router';
 import { Result } from 'better-result';
 import { useTranslations } from 'use-intl';
 
+import { isForcedLightshowMode, type LightshowMode } from '../../core/lighting/basic-light';
 import { settingsForShareCategories, type ShareSettingsCategory } from '../../core/share-link';
 import type { ViewerSettings } from '../../core/viewer-settings';
 import type { LiveTarget } from '../live/live-types';
 import { viewerSearchForShare, type ViewerShareSource } from './viewer-search';
-import type { MapIdentity } from './viewer-types';
+import type { MapIdentity, ViewerSourceLink } from './viewer-types';
 
 interface UseViewerShareOptions {
   beat: number;
+  lightshowMode: LightshowMode;
   liveTarget?: LiveTarget;
   mapIdentity: MapIdentity | null;
   scoreId: string | null;
   selectedDifficultyIndex: number;
   settings: ViewerSettings;
+  sourceLink: ViewerSourceLink | null;
   setError: Dispatch<SetStateAction<string>>;
 }
 
 export function useViewerShare({
   beat,
+  lightshowMode,
   liveTarget,
   mapIdentity,
   scoreId,
   selectedDifficultyIndex,
   settings,
+  sourceLink,
   setError,
 }: UseViewerShareOptions) {
   const router = useRouter();
@@ -54,6 +59,16 @@ export function useViewerShare({
           matchId: liveTarget.matchId,
         };
   if (source === null && scoreId !== null) source = { type: 'score', scoreId };
+  if (source === null && sourceLink !== null) {
+    source =
+      sourceLink.type === 'map'
+        ? {
+            type: 'map',
+            mapKey: sourceLink.url,
+            difficultyIndex: selectedDifficultyIndex < 0 ? undefined : selectedDifficultyIndex,
+          }
+        : { type: 'replay', replayUrl: sourceLink.url };
+  }
   if (source === null && mapIdentity !== null) {
     source = {
       type: 'map',
@@ -70,6 +85,7 @@ export function useViewerShare({
         source,
         includeBeat ? beat : undefined,
         settingsForShareCategories(settings, selectedCategories),
+        isForcedLightshowMode(lightshowMode) ? lightshowMode : undefined,
       ),
     });
     return new URL(location.href, window.location.origin).href;
