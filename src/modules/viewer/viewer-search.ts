@@ -20,6 +20,7 @@ const remoteSourceUrlSchema = z.pipe(
   z.string().check(z.maxLength(4096)),
   z.url({ protocol: /^https?$/ }).check(
     z.refine((value) => {
+      if (!URL.canParse(value)) return false;
       const url = new URL(value);
       return url.protocol === 'https:' || loopbackHostnames.has(url.hostname);
     }),
