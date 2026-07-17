@@ -10,6 +10,9 @@ export interface HitScoreDisplay {
 export interface HitScoreTextRun {
   text: string;
   scale: number;
+  color?: string;
+  baselineOffset?: number;
+  underline?: boolean;
 }
 
 interface ColoredText {
@@ -57,13 +60,36 @@ const richTextTag = /<([^>]*)>/g;
 export function hitScoreTextRuns(value: string) {
   const runs: HitScoreTextRun[] = [];
   const sizes = [1];
+  const colors: (string | undefined)[] = [undefined];
+  const scripts = [{ scale: 1, baselineOffset: 0 }];
+  let underlineDepth = 0;
   let offset = 0;
   function append(text: string) {
     if (text === '') return;
-    const scale = sizes.at(-1) ?? 1;
+    const script = scripts.at(-1) ?? scripts[0];
+    if (script === undefined) return;
+    const scale = (sizes.at(-1) ?? 1) * script.scale;
+    if (scale === 0) return;
+    const color = colors.at(-1);
+    const baselineOffset = script.baselineOffset === 0 ? undefined : script.baselineOffset;
+    const underline = underlineDepth === 0 ? undefined : true;
     const previous = runs.at(-1);
-    if (previous?.scale === scale) previous.text += text;
-    else runs.push({ text, scale });
+    if (
+      previous?.scale === scale &&
+      previous.color === color &&
+      previous.baselineOffset === baselineOffset &&
+      previous.underline === underline
+    ) {
+      previous.text += text;
+    } else {
+      runs.push({
+        text,
+        scale,
+        ...(color === undefined ? {} : { color }),
+        ...(baselineOffset === undefined ? {} : { baselineOffset }),
+        ...(underline === undefined ? {} : { underline }),
+      });
+    }
   }
   for (const match of value.matchAll(richTextTag)) {
     const index = match.index;
@@ -72,8 +98,32 @@ export function hitScoreTextRuns(value: string) {
     if (/^\/size$/i.test(tag)) {
       if (sizes.length > 1) sizes.pop();
     } else {
-      const size = /^size\s*=\s*["']?([\d.]+)%["']?$/i.exec(tag);
-      if (size !== null) sizes.push(((sizes.at(-1) ?? 1) * Number(size[1])) / 100);
+      const size = /^size\s*=\s*["']?([\d.]+)(%)?["']?$/i.exec(tag);
+      const color = /^color\s*=\s*["']?(#[\da-f]{3,8}|[a-z]+)["']?$/i.exec(tag);
+      if (size !== null) {
+        const value = Number(size[1]);
+        sizes.push(size[2] === '%' ? ((sizes.at(-1) ?? 1) * value) / 100 : value === 0 ? 0 : (sizes.at(-1) ?? 1));
+      } else if (/^\/color$/i.test(tag)) {
+        if (colors.length > 1) colors.pop();
+      } else if (color !== null) {
+        colors.push(color[1]);
+      } else if (/^sup$/i.test(tag)) {
+        const current = scripts.at(-1) ?? scripts[0];
+        if (current !== undefined)
+          scripts.push({ scale: current.scale * 0.5, baselineOffset: current.baselineOffset + 0.25 });
+      } else if (/^\/sup$/i.test(tag)) {
+        if (scripts.length > 1) scripts.pop();
+      } else if (/^sub$/i.test(tag)) {
+        const current = scripts.at(-1) ?? scripts[0];
+        if (current !== undefined)
+          scripts.push({ scale: current.scale * 0.5, baselineOffset: current.baselineOffset - 0.25 });
+      } else if (/^\/sub$/i.test(tag)) {
+        if (scripts.length > 1) scripts.pop();
+      } else if (/^u$/i.test(tag)) {
+        underlineDepth++;
+      } else if (/^\/u$/i.test(tag)) {
+        underlineDepth = Math.max(underlineDepth - 1, 0);
+      }
     }
     offset = index + match[0].length;
   }
