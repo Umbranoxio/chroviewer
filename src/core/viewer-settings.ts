@@ -186,23 +186,23 @@ export const DEFAULT_REPLAY_SABER_SETTINGS: ReplaySaberSettings = {
   showSabers: true,
   saberScale: 1,
   saberBladeLength: 1,
-  saberBladeThickness: 0.0045,
-  saberCoreThickness: 0.0018,
+  saberBladeThickness: 0.0075,
+  saberCoreThickness: 0.003,
   saberCoreInset: 0.004,
   ...DEFAULT_REPLAY_TRAIL_SETTINGS,
-  saberGripLength: 0.089,
-  saberGripThickness: 0.005,
-  saberGuardSize: 0.02,
-  saberGuardThickness: 0.001,
-  saberCollarSize: 0.006,
-  saberCollarThickness: 0.001,
-  saberCollarSpacing: 0.088,
+  saberGripLength: 0.1424,
+  saberGripThickness: 0.009,
+  saberGuardSize: 0.033,
+  saberGuardThickness: 0.002,
+  saberCollarSize: 0.0106,
+  saberCollarThickness: 0.002,
+  saberCollarSpacing: 0.1408,
   saberRingCount: 5,
-  saberRingSize: 0.0054,
-  saberRingThickness: 0.0025,
-  saberRingSpacing: 0.014,
-  saberPommelLength: 0.009,
-  saberPommelThickness: 0.0055,
+  saberRingSize: 0.0096,
+  saberRingThickness: 0.005,
+  saberRingSpacing: 0.0224,
+  saberPommelLength: 0.0144,
+  saberPommelThickness: 0.0098,
   saberXOffset: 0,
   saberYOffset: 0,
   saberZOffset: 0,
@@ -249,8 +249,9 @@ export const DEFAULT_VIEWER_SETTINGS: ViewerSettings = {
   autoHide: true,
 };
 
-const storageKey = 'chroviewer.settings.v6';
-const previousStorageKey = 'chroviewer.settings.v5';
+const storageKey = 'chroviewer.settings.v7';
+const previousStorageKey = 'chroviewer.settings.v6';
+const incorrectColorStorageKey = 'chroviewer.settings.v5';
 const olderStorageKey = 'chroviewer.settings.v4';
 const legacyStorageKey = 'chroviewer.settings.v3';
 const oldestStorageKey = 'chroviewer.settings.v2';
@@ -402,6 +403,13 @@ export function loadViewerSettings(
   if (previousText !== null) {
     const parsed = Result.try((): unknown => JSON.parse(previousText));
     if (parsed.isErr()) return defaults;
+    return resetSaberModel(sanitizeViewerSettings(parsed.value));
+  }
+
+  const incorrectColorText = storage.getItem(incorrectColorStorageKey);
+  if (incorrectColorText !== null) {
+    const parsed = Result.try((): unknown => JSON.parse(incorrectColorText));
+    if (parsed.isErr()) return defaults;
     return resetSaberSettings(migrateIncorrectDefaultColors(sanitizeViewerSettings(parsed.value)));
   }
 
@@ -439,6 +447,26 @@ export function loadViewerSettings(
 
 function resetSaberSettings(settings: ViewerSettings): ViewerSettings {
   return { ...settings, ...DEFAULT_REPLAY_SABER_SETTINGS };
+}
+
+function resetSaberModel(settings: ViewerSettings): ViewerSettings {
+  return {
+    ...settings,
+    saberBladeThickness: DEFAULT_REPLAY_SABER_SETTINGS.saberBladeThickness,
+    saberCoreThickness: DEFAULT_REPLAY_SABER_SETTINGS.saberCoreThickness,
+    saberGripLength: DEFAULT_REPLAY_SABER_SETTINGS.saberGripLength,
+    saberGripThickness: DEFAULT_REPLAY_SABER_SETTINGS.saberGripThickness,
+    saberGuardSize: DEFAULT_REPLAY_SABER_SETTINGS.saberGuardSize,
+    saberGuardThickness: DEFAULT_REPLAY_SABER_SETTINGS.saberGuardThickness,
+    saberCollarSize: DEFAULT_REPLAY_SABER_SETTINGS.saberCollarSize,
+    saberCollarThickness: DEFAULT_REPLAY_SABER_SETTINGS.saberCollarThickness,
+    saberCollarSpacing: DEFAULT_REPLAY_SABER_SETTINGS.saberCollarSpacing,
+    saberRingSize: DEFAULT_REPLAY_SABER_SETTINGS.saberRingSize,
+    saberRingThickness: DEFAULT_REPLAY_SABER_SETTINGS.saberRingThickness,
+    saberRingSpacing: DEFAULT_REPLAY_SABER_SETTINGS.saberRingSpacing,
+    saberPommelLength: DEFAULT_REPLAY_SABER_SETTINGS.saberPommelLength,
+    saberPommelThickness: DEFAULT_REPLAY_SABER_SETTINGS.saberPommelThickness,
+  };
 }
 
 function migrateIncorrectDefaultColors(settings: ViewerSettings): ViewerSettings {
