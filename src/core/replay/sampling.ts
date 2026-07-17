@@ -10,7 +10,7 @@ export function sampleReplayFrames(frames: ReplayPose[], time: number): ReplayFr
   const first = frames[0];
   const last = frames.at(-1);
   if (first === undefined || last === undefined) return null;
-  if (time <= first.time) return { from: first, to: first, amount: 0 };
+  if (time < first.time) return { from: first, to: first, amount: 0 };
   if (time >= last.time) return { from: last, to: last, amount: 0 };
   let low = 0;
   let high = frames.length - 1;
