@@ -38,6 +38,7 @@ export const Route = createFileRoute('/')({
     const alt = 'ScoreSaber replay score card';
     return {
       meta: [
+        { property: 'og:site_name', content: 'ScoreSaber - ChroViewer' },
         { property: 'og:image', content: image },
         { property: 'og:image:width', content: '1200' },
         { property: 'og:image:height', content: '630' },
