@@ -316,6 +316,9 @@ export function ViewerShell() {
         <canvas
           ref={session.canvasRef}
           className="absolute inset-0 size-full"
+          onPointerDown={() => {
+            setSettingsOpen(false);
+          }}
           onWheel={(event) => {
             if (liveActive || session.selectedKey === '' || event.deltaY === 0 || event.ctrlKey || event.metaKey)
               return;

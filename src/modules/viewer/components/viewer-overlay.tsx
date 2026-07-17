@@ -32,9 +32,9 @@ export function ViewerOverlay({
   return (
     <div
       className={cn(
-        'animate-in fade-in fixed inset-x-0 top-0 bottom-0 z-40 flex items-center justify-center bg-black/35 transition-[bottom] duration-300 ease-out',
-        backdropBlur && 'backdrop-blur-sm',
-        !actionable && 'pointer-events-none',
+        'animate-in fade-in pointer-events-none fixed inset-x-0 top-0 bottom-0 z-40 flex items-center justify-center transition-[bottom] duration-300 ease-out',
+        !actionable && 'bg-black/35',
+        !actionable && backdropBlur && 'backdrop-blur-sm',
         className,
       )}
       role={actionable ? undefined : 'status'}
@@ -43,7 +43,7 @@ export function ViewerOverlay({
       <div className="flex flex-col items-center gap-4 text-white drop-shadow-2xl">
         {actionable ? (
           <Button
-            className="size-24 rounded-full backdrop-blur-xl [&_svg]:size-11"
+            className="pointer-events-auto size-24 rounded-full backdrop-blur-xl [&_svg]:size-11"
             variant="outline"
             size="icon"
             aria-label={actionLabel ?? label}

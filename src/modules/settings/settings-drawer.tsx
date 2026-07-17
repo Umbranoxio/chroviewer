@@ -40,12 +40,19 @@ export function SettingsDrawer({
 
   return (
     <Sheet
+      modal={false}
       open={open}
       onOpenChange={(nextOpen) => {
         if (!nextOpen) onClose();
       }}
     >
-      <SheetContent showOverlay={false} className="w-[92vw] max-w-none gap-0 overflow-hidden p-0 sm:max-w-lg">
+      <SheetContent
+        showOverlay={false}
+        className="w-[92vw] max-w-none gap-0 overflow-hidden p-0 sm:max-w-lg"
+        onInteractOutside={(event) => {
+          event.preventDefault();
+        }}
+      >
         <SheetHeader className="shrink-0 border-b-0 px-5 pt-5 pb-0">
           <SheetTitle className="text-lg tracking-tight">{t('title')}</SheetTitle>
         </SheetHeader>
