@@ -4,6 +4,7 @@ import { useTranslations } from 'use-intl';
 
 import type { SongClock } from '../../core/clock/song-clock';
 import type { LightshowMode } from '../../core/lighting/basic-light';
+import { hitScoreVisualizerForSettings } from '../../core/replay/replay-display';
 import type { Replay } from '../../core/replay/types';
 import { colorOverride, type ViewerSettings } from '../../core/viewer-settings';
 import { resolveEnvironmentId } from '../../renderer/environment/environment-catalog';
@@ -107,7 +108,7 @@ export function useViewerRenderer({
           selection.data,
           colorOverride(settingsRef.current, selection.mapColorScheme, replayRef.current?.metadata),
         );
-        view.setReplay(replayRef.current);
+        view.setReplay(replayRef.current, hitScoreVisualizerForSettings(settingsRef.current, replayRef.current));
         view.setBeatSource(() => clock.currentBeat());
       }
 

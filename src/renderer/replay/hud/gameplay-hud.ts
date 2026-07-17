@@ -1,6 +1,7 @@
 import { Group, MathUtils, type Mesh, type MeshBasicMaterial, PlaneGeometry, RingGeometry } from 'three';
 import type { Text } from 'troika-three-text';
 
+import type { HitScoreVisualizerConfig } from '../../../core/replay/hit-score-visualizer';
 import { buildReplayTimeline, type ReplayTimeline } from '../../../core/replay/replay-display';
 import { firstComboBreakTime, replayScoreAt, type ReplayScoreState } from '../../../core/replay/scoring';
 import type { Replay } from '../../../core/replay/types';
@@ -145,8 +146,13 @@ export class ReplayGameplayHud {
     ];
   }
 
-  setReplay(replay: Replay | null) {
-    this.timeline = replay === null ? null : buildReplayTimeline(replay);
+  setReplay(replay: Replay | null, hitScoreVisualizer?: HitScoreVisualizerConfig | null) {
+    this.timeline =
+      replay === null
+        ? null
+        : hitScoreVisualizer === undefined
+          ? buildReplayTimeline(replay)
+          : buildReplayTimeline(replay, hitScoreVisualizer);
     this.comboBreakTime = replay === null ? null : firstComboBreakTime(replay);
     this.root.visible = replay !== null;
     this.flyingScores.clear();
@@ -166,11 +172,17 @@ export class ReplayGameplayHud {
     this.root.visible = enabled && this.timeline !== null;
   }
 
+  setHitScoreVisualizer(hitScoreVisualizer: HitScoreVisualizerConfig | null) {
+    if (this.timeline === null) return;
+    this.timeline = { ...this.timeline, hitScoreVisualizer };
+    this.flyingScores.clear();
+  }
+
   refreshTimeline() {
-    const replay = this.timeline?.replay;
-    if (replay === undefined) return;
-    this.timeline = buildReplayTimeline(replay);
-    this.comboBreakTime = firstComboBreakTime(replay);
+    const timeline = this.timeline;
+    if (timeline === null) return;
+    this.timeline = buildReplayTimeline(timeline.replay, timeline.hitScoreVisualizer);
+    this.comboBreakTime = firstComboBreakTime(timeline.replay);
     this.refreshDuration();
   }
 

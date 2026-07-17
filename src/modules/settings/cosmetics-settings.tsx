@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 
 import { RotateCcw } from 'lucide-react';
 import { useFormatter, useTranslations } from 'use-intl';
 
+import { MAX_HSV_PROFILE_BYTES, parseHitScoreVisualizerProfile } from '../../core/replay/hit-score-visualizer-profile';
 import {
   DEFAULT_REPLAY_SABER_SETTINGS,
   DEFAULT_VIEWER_SETTINGS,
@@ -16,6 +17,7 @@ import { SliderSetting } from './components/slider-setting';
 
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Button } from '@/components/ui/button';
+import { InputGroup, InputGroupTextarea } from '@/components/ui/input-group';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
@@ -50,9 +52,9 @@ type ColorSetting = Extract<
   | 'environmentWhiteBoostColor'
 >;
 
-type CosmeticSection = 'colors' | 'sabers';
+type CosmeticSection = 'colors' | 'hsv' | 'sabers';
 
-const cosmeticSections: CosmeticSection[] = ['colors', 'sabers'];
+const cosmeticSections: CosmeticSection[] = ['colors', 'hsv', 'sabers'];
 const colorSettings: ColorSetting[] = [
   'leftColor',
   'rightColor',
@@ -81,6 +83,10 @@ export function CosmeticsSettings({ settings, environments, onChange }: Cosmetic
   const t = useTranslations('settings.saber');
   const tc = useTranslations('settings.cosmetics');
   const [openSections, setOpenSections] = useState(loadOpenSections);
+  const hsvProfile = useMemo(
+    () => (settings.hsvProfile.trim() === '' ? null : parseHitScoreVisualizerProfile(settings.hsvProfile)),
+    [settings.hsvProfile],
+  );
 
   function update<K extends keyof ViewerSettings>(key: K, value: ViewerSettings[K]) {
     onChange({ ...settings, [key]: value });
@@ -252,9 +258,66 @@ export function CosmeticsSettings({ settings, environments, onChange }: Cosmetic
             </SettingSection>
           </AccordionContent>
         </AccordionItem>
+        <AccordionItem value="hsv">
+          <AccordionTrigger className="text-base font-semibold tracking-tight">{tc('hsv')}</AccordionTrigger>
+          <AccordionContent className="flex flex-col gap-4">
+            <SettingRow label={tc('enableHsvOverride')}>
+              <Switch
+                checked={settings.overrideHsvProfile}
+                onCheckedChange={(overrideHsvProfile) => {
+                  update('overrideHsvProfile', overrideHsvProfile);
+                }}
+              />
+            </SettingRow>
+            <SettingRow label={tc('preferReplayHsv')} detail={tc('preferReplayHsvDescription')}>
+              <Switch
+                checked={settings.preferReplayHsvProfile}
+                onCheckedChange={(preferReplayHsvProfile) => {
+                  update('preferReplayHsvProfile', preferReplayHsvProfile);
+                }}
+              />
+            </SettingRow>
+            <div className="flex min-w-0 flex-col gap-1.5">
+              <InputGroup className="h-auto min-h-20 items-stretch">
+                <InputGroupTextarea
+                  id="viewer-hsv-profile"
+                  className="[field-sizing:fixed] max-h-40 min-h-20 resize-none overflow-auto font-mono text-xs"
+                  value={settings.hsvProfile}
+                  maxLength={MAX_HSV_PROFILE_BYTES}
+                  placeholder={tc('hsvProfilePlaceholder')}
+                  aria-label={tc('hsvProfileInput')}
+                  spellCheck={false}
+                  aria-invalid={hsvProfile?.isErr() === true}
+                  onChange={(event) => {
+                    update('hsvProfile', event.target.value);
+                  }}
+                />
+              </InputGroup>
+              {hsvProfile?.isErr() === true && (
+                <p className="text-destructive text-xs">
+                  {tc('hsvProfileInvalid', {
+                    reason: hsvProfile.error.message,
+                  })}
+                </p>
+              )}
+            </div>
+          </AccordionContent>
+        </AccordionItem>
         <AccordionItem value="sabers">
           <AccordionTrigger className="text-base font-semibold tracking-tight">{tc('sabers')}</AccordionTrigger>
           <AccordionContent className="flex flex-col gap-5">
+            <Button
+              className="self-end"
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                onChange({ ...settings, ...DEFAULT_REPLAY_SABER_SETTINGS });
+              }}
+            >
+              <RotateCcw data-icon="inline-start" />
+              {ts('resetAll')}
+            </Button>
             <SettingSection title={t('blade')}>
               <SettingRow label={t('showSabers')}>
                 <Switch

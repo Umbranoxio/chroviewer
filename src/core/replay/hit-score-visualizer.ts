@@ -205,7 +205,7 @@ class PayloadReader {
   }
 }
 
-export function decodeHitScoreVisualizer(payload: Uint8Array | undefined) {
+export function decodeHitScoreVisualizer(payload: Uint8Array | undefined): HitScoreVisualizerConfig | null {
   if (payload === undefined || payload.length === 0 || payload.length > 128 * 1024) return null;
   try {
     const reader = new PayloadReader(payload);

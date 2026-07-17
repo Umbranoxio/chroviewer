@@ -2,6 +2,7 @@ import { Group, Object3D, PerspectiveCamera, Quaternion, ShaderMaterial, Vector3
 
 import { DEFAULT_COLORS, type ColorScheme, type Rgb } from '../../core/colors';
 import { isForcedLightshowMode, type LightshowMode } from '../../core/lighting/basic-light';
+import type { HitScoreVisualizerConfig } from '../../core/replay/hit-score-visualizer';
 import { sampleReplayFrames } from '../../core/replay/sampling';
 import type { Replay, ReplayTransform } from '../../core/replay/types';
 import {
@@ -162,9 +163,9 @@ export class ReplayView {
     this.replayHeadset.root.visible = this.cameraController.cameraMode !== 'first-person';
   }
 
-  setReplay(replay: Replay | null) {
+  setReplay(replay: Replay | null, hitScoreVisualizer?: HitScoreVisualizerConfig | null) {
     this.replay = replay;
-    this.gameplayHud.setReplay(replay);
+    this.gameplayHud.setReplay(replay, hitScoreVisualizer);
     this.gameplayHud.setEnabled(!isForcedLightshowMode(this.lightshowMode));
     this.clearTrails();
     this.cameraController.reset();
@@ -172,6 +173,10 @@ export class ReplayView {
     this.applySaberOffsets();
     this.cameraController.setReplayPresence(this.hasReplay);
     this.replayHeadset.root.visible = this.cameraController.cameraMode !== 'first-person';
+  }
+
+  setHitScoreVisualizer(hitScoreVisualizer: HitScoreVisualizerConfig | null) {
+    this.gameplayHud.setHitScoreVisualizer(hitScoreVisualizer);
   }
 
   setMapHasNotes(hasMapNotes: boolean) {

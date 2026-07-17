@@ -6,6 +6,7 @@ import type { InfoColorScheme } from '../core/beatmap/info';
 import { DEFAULT_COLORS, resolveColorScheme } from '../core/colors';
 import { isForcedLightshowMode, type LightshowMode } from '../core/lighting/basic-light';
 import { applyReplayHeightEvents, applyReplayNoteEvents, type MapRenderData } from '../core/placement/map-render-data';
+import type { HitScoreVisualizerConfig } from '../core/replay/hit-score-visualizer';
 import type { Replay, ReplayHeightEvent, ReplayNoteEvent } from '../core/replay/types';
 import {
   DEFAULT_REPLAY_CAMERA_SETTINGS,
@@ -204,9 +205,13 @@ export class MapView implements RenderView {
     this.setReplay(null);
   }
 
-  setReplay(replay: Replay | null) {
-    this.replayView.setReplay(replay);
+  setReplay(replay: Replay | null, hitScoreVisualizer?: HitScoreVisualizerConfig | null) {
+    this.replayView.setReplay(replay, hitScoreVisualizer);
     this.mapObjects.invalidate();
+  }
+
+  setHitScoreVisualizer(hitScoreVisualizer: HitScoreVisualizerConfig | null) {
+    this.replayView.setHitScoreVisualizer(hitScoreVisualizer);
   }
 
   setSongDuration(duration: number | null) {

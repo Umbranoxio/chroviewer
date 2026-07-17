@@ -3,6 +3,7 @@ import * as z from 'zod/mini';
 
 import type { InfoColorScheme } from './beatmap/info';
 import type { Rgb } from './colors';
+import { MAX_HSV_PROFILE_BYTES } from './replay/hit-score-visualizer-profile';
 import { replayColorScheme } from './replay/play-settings';
 import type { ReplayMetadata } from './replay/types';
 
@@ -28,6 +29,9 @@ export interface ViewerSettings {
   environmentLeftBoostColor: string;
   environmentRightBoostColor: string;
   environmentWhiteBoostColor: string;
+  overrideHsvProfile: boolean;
+  preferReplayHsvProfile: boolean;
+  hsvProfile: string;
   showSabers: boolean;
   saberScale: number;
   saberBladeLength: number;
@@ -228,6 +232,9 @@ export const DEFAULT_VIEWER_SETTINGS: ViewerSettings = {
   environmentLeftBoostColor: '#d91616',
   environmentRightBoostColor: '#30acff',
   environmentWhiteBoostColor: '#b9b9b9',
+  overrideHsvProfile: false,
+  preferReplayHsvProfile: true,
+  hsvProfile: '',
   ...DEFAULT_REPLAY_SABER_SETTINGS,
   hitsounds: true,
   masterMuted: false,
@@ -300,6 +307,9 @@ const viewerSettingsObjectSchema = z.object({
   environmentLeftBoostColor: hexColorSchema(DEFAULT_VIEWER_SETTINGS.environmentLeftBoostColor),
   environmentRightBoostColor: hexColorSchema(DEFAULT_VIEWER_SETTINGS.environmentRightBoostColor),
   environmentWhiteBoostColor: hexColorSchema(DEFAULT_VIEWER_SETTINGS.environmentWhiteBoostColor),
+  overrideHsvProfile: z.catch(z.boolean(), DEFAULT_VIEWER_SETTINGS.overrideHsvProfile),
+  preferReplayHsvProfile: z.catch(z.boolean(), DEFAULT_VIEWER_SETTINGS.preferReplayHsvProfile),
+  hsvProfile: z.catch(z.string().check(z.maxLength(MAX_HSV_PROFILE_BYTES)), DEFAULT_VIEWER_SETTINGS.hsvProfile),
   showSabers: z.catch(z.boolean(), DEFAULT_VIEWER_SETTINGS.showSabers),
   saberScale: numberSetting(DEFAULT_VIEWER_SETTINGS.saberScale, 0.25, 3),
   saberBladeLength: numberSetting(DEFAULT_VIEWER_SETTINGS.saberBladeLength, 0.1, 2),

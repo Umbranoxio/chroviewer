@@ -8,6 +8,7 @@ import { buildHitsoundEvents } from '../../core/clock/hitsounds';
 import { isForcedLightshowMode, type LightshowMode } from '../../core/lighting/basic-light';
 import { applyReplayHeightEvents, buildMapRenderData } from '../../core/placement/map-render-data';
 import { replayLightshowMode } from '../../core/replay/play-settings';
+import { hitScoreVisualizerForSettings } from '../../core/replay/replay-display';
 import type { ReplayHeightEvent, ReplayNoteEvent } from '../../core/replay/types';
 import {
   colorOverride,
@@ -152,6 +153,10 @@ export function useViewerSession({
   ]);
 
   useEffect(() => {
+    viewerRef.current?.view.setHitScoreVisualizer(hitScoreVisualizerForSettings(settings, sources.replayRef.current));
+  }, [settings.overrideHsvProfile, settings.preferReplayHsvProfile, settings.hsvProfile]);
+
+  useEffect(() => {
     const active = activeSelectionRef.current;
     const view = viewerRef.current?.view;
     if (active === null || view === undefined) return;
@@ -248,7 +253,10 @@ export function useViewerSession({
     applyReplayHeightEvents(data, currentReplayHeights.slice(data.replayHeights.length));
     viewer.view.setBeatSource(() => initialBeat);
     viewer.view.setMap(data, colorOverride(settings, row.colorScheme, sources.replayRef.current?.metadata));
-    viewer.view.setReplay(sources.replayRef.current);
+    viewer.view.setReplay(
+      sources.replayRef.current,
+      hitScoreVisualizerForSettings(settings, sources.replayRef.current),
+    );
     viewer.view.setReplayCameraSettings(settings);
     setActivePanel(null);
 
