@@ -3,6 +3,8 @@ import * as z from 'zod/mini';
 
 import type { InfoColorScheme } from './beatmap/info';
 import type { Rgb } from './colors';
+import { replayColorScheme } from './replay/play-settings';
+import type { ReplayMetadata } from './replay/types';
 
 export interface ViewerSettings {
   graphicsQuality: 'none' | 'low' | 'medium' | 'high';
@@ -12,9 +14,20 @@ export interface ViewerSettings {
   previewNotesLookAtPlayer: boolean;
   renderScale: number;
   staticLights: boolean;
+  preferReplayColors: boolean;
+  preferReplayEnvironment: boolean;
+  overrideEnvironment: boolean;
+  environmentOverrideId: string;
   customColors: boolean;
   leftColor: string;
   rightColor: string;
+  obstacleColor: string;
+  environmentLeftColor: string;
+  environmentRightColor: string;
+  environmentWhiteColor: string;
+  environmentLeftBoostColor: string;
+  environmentRightBoostColor: string;
+  environmentWhiteBoostColor: string;
   showSabers: boolean;
   saberScale: number;
   saberBladeLength: number;
@@ -201,9 +214,20 @@ export const DEFAULT_VIEWER_SETTINGS: ViewerSettings = {
   previewNotesLookAtPlayer: false,
   renderScale: 1,
   staticLights: false,
+  preferReplayColors: true,
+  preferReplayEnvironment: true,
+  overrideEnvironment: false,
+  environmentOverrideId: 'BigMirrorEnvironment',
   customColors: false,
-  leftColor: '#bb0000',
-  rightColor: '#005ebc',
+  leftColor: '#c81414',
+  rightColor: '#288ed2',
+  obstacleColor: '#ff3030',
+  environmentLeftColor: '#d91616',
+  environmentRightColor: '#30acff',
+  environmentWhiteColor: '#b9b9b9',
+  environmentLeftBoostColor: '#d91616',
+  environmentRightBoostColor: '#30acff',
+  environmentWhiteBoostColor: '#b9b9b9',
   ...DEFAULT_REPLAY_SABER_SETTINGS,
   hitsounds: true,
   masterMuted: false,
@@ -216,10 +240,11 @@ export const DEFAULT_VIEWER_SETTINGS: ViewerSettings = {
   autoHide: true,
 };
 
-const storageKey = 'chroviewer.settings.v4';
-const previousStorageKey = 'chroviewer.settings.v3';
-const olderStorageKey = 'chroviewer.settings.v2';
-const legacyStorageKey = 'chroviewer.settings.v1';
+const storageKey = 'chroviewer.settings.v5';
+const previousStorageKey = 'chroviewer.settings.v4';
+const olderStorageKey = 'chroviewer.settings.v3';
+const legacyStorageKey = 'chroviewer.settings.v2';
+const oldestStorageKey = 'chroviewer.settings.v1';
 const hexPattern = /^#[0-9a-f]{6}$/i;
 const mobileUserAgent = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i;
 
@@ -260,9 +285,20 @@ const viewerSettingsObjectSchema = z.object({
   previewNotesLookAtPlayer: z.catch(z.boolean(), DEFAULT_VIEWER_SETTINGS.previewNotesLookAtPlayer),
   renderScale: numberSetting(DEFAULT_VIEWER_SETTINGS.renderScale, 0.5, 1.5),
   staticLights: z.catch(z.boolean(), DEFAULT_VIEWER_SETTINGS.staticLights),
+  preferReplayColors: z.catch(z.boolean(), DEFAULT_VIEWER_SETTINGS.preferReplayColors),
+  preferReplayEnvironment: z.catch(z.boolean(), DEFAULT_VIEWER_SETTINGS.preferReplayEnvironment),
+  overrideEnvironment: z.catch(z.boolean(), DEFAULT_VIEWER_SETTINGS.overrideEnvironment),
+  environmentOverrideId: z.catch(z.string(), DEFAULT_VIEWER_SETTINGS.environmentOverrideId),
   customColors: z.catch(z.boolean(), DEFAULT_VIEWER_SETTINGS.customColors),
   leftColor: hexColorSchema(DEFAULT_VIEWER_SETTINGS.leftColor),
   rightColor: hexColorSchema(DEFAULT_VIEWER_SETTINGS.rightColor),
+  obstacleColor: hexColorSchema(DEFAULT_VIEWER_SETTINGS.obstacleColor),
+  environmentLeftColor: hexColorSchema(DEFAULT_VIEWER_SETTINGS.environmentLeftColor),
+  environmentRightColor: hexColorSchema(DEFAULT_VIEWER_SETTINGS.environmentRightColor),
+  environmentWhiteColor: hexColorSchema(DEFAULT_VIEWER_SETTINGS.environmentWhiteColor),
+  environmentLeftBoostColor: hexColorSchema(DEFAULT_VIEWER_SETTINGS.environmentLeftBoostColor),
+  environmentRightBoostColor: hexColorSchema(DEFAULT_VIEWER_SETTINGS.environmentRightBoostColor),
+  environmentWhiteBoostColor: hexColorSchema(DEFAULT_VIEWER_SETTINGS.environmentWhiteBoostColor),
   showSabers: z.catch(z.boolean(), DEFAULT_VIEWER_SETTINGS.showSabers),
   saberScale: numberSetting(DEFAULT_VIEWER_SETTINGS.saberScale, 0.25, 3),
   saberBladeLength: numberSetting(DEFAULT_VIEWER_SETTINGS.saberBladeLength, 0.1, 2),
@@ -345,37 +381,82 @@ export function loadViewerSettings(
   const text = storage.getItem(storageKey);
   if (text !== null) {
     const parsed = Result.try((): unknown => JSON.parse(text));
-    return parsed.isOk() ? sanitizeViewerSettings(parsed.value) : defaults;
+    return parsed.isOk() ? migrateIncorrectDefaultColors(sanitizeViewerSettings(parsed.value)) : defaults;
   }
 
   const previousText = storage.getItem(previousStorageKey);
   if (previousText !== null) {
     const parsed = Result.try((): unknown => JSON.parse(previousText));
     if (parsed.isErr()) return defaults;
-    const settings = migrateDefaultSaberZOffset(sanitizeViewerSettings(parsed.value));
-    return settings;
+    return migrateLegacyColorOverrides(sanitizeViewerSettings(parsed.value));
   }
 
   const olderText = storage.getItem(olderStorageKey);
   if (olderText !== null) {
     const parsed = Result.try((): unknown => JSON.parse(olderText));
     if (parsed.isErr()) return defaults;
-    const settings = migrateDefaultSaberZOffset(sanitizeViewerSettings(parsed.value));
+    const settings = migrateLegacyColorOverrides(migrateDefaultSaberZOffset(sanitizeViewerSettings(parsed.value)));
+    return settings;
+  }
+
+  const legacyText = storage.getItem(legacyStorageKey);
+  if (legacyText !== null) {
+    const parsed = Result.try((): unknown => JSON.parse(legacyText));
+    if (parsed.isErr()) return defaults;
+    const settings = migrateLegacyColorOverrides(migrateDefaultSaberZOffset(sanitizeViewerSettings(parsed.value)));
     return settings.graphicsQuality === 'medium'
       ? { ...settings, graphicsQuality: defaults.graphicsQuality }
       : settings;
   }
 
-  const legacyText = storage.getItem(legacyStorageKey);
-  if (legacyText === null) return defaults;
-  const parsed = Result.try((): unknown => JSON.parse(legacyText));
+  const oldestText = storage.getItem(oldestStorageKey);
+  if (oldestText === null) return defaults;
+  const parsed = Result.try((): unknown => JSON.parse(oldestText));
   if (parsed.isErr()) return defaults;
-  const settings = migrateDefaultSaberZOffset(sanitizeViewerSettings(parsed.value));
+  const settings = migrateLegacyColorOverrides(migrateDefaultSaberZOffset(sanitizeViewerSettings(parsed.value)));
   return settings.graphicsQuality === 'high' ? { ...settings, graphicsQuality: defaults.graphicsQuality } : settings;
 }
 
 function migrateDefaultSaberZOffset(settings: ViewerSettings) {
   return settings.saberZOffset === 0.15 ? { ...settings, saberZOffset: 0 } : settings;
+}
+
+function migrateIncorrectDefaultColors(settings: ViewerSettings): ViewerSettings {
+  if (
+    settings.leftColor !== '#bb0000' ||
+    settings.rightColor !== '#005ebc' ||
+    settings.obstacleColor !== '#ff0000' ||
+    settings.environmentLeftColor !== '#ff0000' ||
+    settings.environmentRightColor !== '#0048ff' ||
+    settings.environmentWhiteColor !== '#b9b9b9' ||
+    settings.environmentLeftBoostColor !== '#ff0000' ||
+    settings.environmentRightBoostColor !== '#0048ff' ||
+    settings.environmentWhiteBoostColor !== '#b9b9b9'
+  )
+    return settings;
+  return {
+    ...settings,
+    leftColor: DEFAULT_VIEWER_SETTINGS.leftColor,
+    rightColor: DEFAULT_VIEWER_SETTINGS.rightColor,
+    obstacleColor: DEFAULT_VIEWER_SETTINGS.obstacleColor,
+    environmentLeftColor: DEFAULT_VIEWER_SETTINGS.environmentLeftColor,
+    environmentRightColor: DEFAULT_VIEWER_SETTINGS.environmentRightColor,
+    environmentWhiteColor: DEFAULT_VIEWER_SETTINGS.environmentWhiteColor,
+    environmentLeftBoostColor: DEFAULT_VIEWER_SETTINGS.environmentLeftBoostColor,
+    environmentRightBoostColor: DEFAULT_VIEWER_SETTINGS.environmentRightBoostColor,
+    environmentWhiteBoostColor: DEFAULT_VIEWER_SETTINGS.environmentWhiteBoostColor,
+  };
+}
+
+function migrateLegacyColorOverrides(settings: ViewerSettings): ViewerSettings {
+  return {
+    ...settings,
+    obstacleColor: settings.leftColor,
+    environmentLeftColor: settings.leftColor,
+    environmentRightColor: settings.rightColor,
+    environmentLeftBoostColor: settings.leftColor,
+    environmentRightBoostColor: settings.rightColor,
+  };
 }
 
 export function saveViewerSettings(settings: ViewerSettings, storage: Pick<Storage, 'setItem'> = localStorage) {
@@ -390,7 +471,25 @@ export function hexToRgb(hex: string): Rgb {
   ];
 }
 
-export function colorOverride(settings: ViewerSettings, mapScheme?: InfoColorScheme): InfoColorScheme | undefined {
+export function environmentForSettings(
+  settings: Pick<ViewerSettings, 'preferReplayEnvironment' | 'overrideEnvironment' | 'environmentOverrideId'>,
+  mapEnvironmentId: string,
+  replayEnvironmentId?: string,
+) {
+  if (settings.preferReplayEnvironment && replayEnvironmentId !== undefined) return replayEnvironmentId;
+  return settings.overrideEnvironment ? settings.environmentOverrideId : mapEnvironmentId;
+}
+
+export function colorOverride(
+  settings: ViewerSettings,
+  mapScheme?: InfoColorScheme,
+  replayMetadata?: ReplayMetadata,
+): InfoColorScheme | undefined {
+  const base = manualColorOverride(settings, mapScheme);
+  return settings.preferReplayColors ? replayColorScheme(replayMetadata, base) : base;
+}
+
+function manualColorOverride(settings: ViewerSettings, mapScheme?: InfoColorScheme): InfoColorScheme | undefined {
   if (!settings.customColors) return mapScheme;
   const left = hexToRgb(settings.leftColor);
   const right = hexToRgb(settings.rightColor);
@@ -399,12 +498,14 @@ export function colorOverride(settings: ViewerSettings, mapScheme?: InfoColorSch
     overrideNotes: true,
     leftNote: left,
     rightNote: right,
-    obstacle: left,
+    obstacle: hexToRgb(settings.obstacleColor),
     overrideLights: true,
     supportsEnvironmentColorBoost: true,
-    environmentLeft: left,
-    environmentRight: right,
-    environmentLeftBoost: left,
-    environmentRightBoost: right,
+    environmentLeft: hexToRgb(settings.environmentLeftColor),
+    environmentRight: hexToRgb(settings.environmentRightColor),
+    environmentWhite: hexToRgb(settings.environmentWhiteColor),
+    environmentLeftBoost: hexToRgb(settings.environmentLeftBoostColor),
+    environmentRightBoost: hexToRgb(settings.environmentRightBoostColor),
+    environmentWhiteBoost: hexToRgb(settings.environmentWhiteBoostColor),
   };
 }

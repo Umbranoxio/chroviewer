@@ -16,6 +16,7 @@
     "lzma-web": "^3.0.1",
     "radix-ui": "^1.6.2",
     "react": "^19.2.7",
+    "react-colorful": "^5.8.0",
     "react-dom": "^19.2.7",
     "tailwind-merge": "^3.6.0",
     "three": "^0.185.1",

@@ -566,16 +566,12 @@ export function ViewerShell() {
       <SettingsDrawer
         open={settingsOpen}
         settings={settings}
-        environmentId={session.environmentId}
         environments={environmentCatalog}
         hasReplay={sources.replayRef.current !== null}
         isMapPreview={session.selectedKey !== '' && sources.replayRef.current === null}
         onChange={setSettings}
         onClose={() => {
           setSettingsOpen(false);
-        }}
-        onEnvironmentChange={(id) => {
-          void session.selectEnvironment(id);
         }}
       />
     </main>

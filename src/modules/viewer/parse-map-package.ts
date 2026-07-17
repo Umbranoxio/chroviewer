@@ -6,7 +6,6 @@ import {
 } from '../../core/beatmap/info';
 import type { Difficulty } from '../../core/beatmap/types';
 import { convertLegacyScoreSaberReplay } from '../../core/replay/legacy-scoresaber';
-import { replayColorScheme } from '../../core/replay/play-settings';
 import type { Replay } from '../../core/replay/types';
 import { resolveEnvironmentId } from '../../renderer/environment/environment-catalog';
 import type { MapSourceFile } from '../../sources/source-types';
@@ -138,12 +137,12 @@ export async function parseMapPackage(
           label,
           difficulty,
           infoDifficulty,
-          environmentId: resolveEnvironmentId(
+          environmentId: resolveEnvironmentId(environmentNameForDifficulty(info, infoDifficulty)),
+          replayEnvironmentId:
             replayMatch && replay.metadata.environment !== ''
-              ? replay.metadata.environment
-              : environmentNameForDifficulty(info, infoDifficulty),
-          ),
-          colorScheme: replayMatch ? replayColorScheme(replay.metadata, mapScheme) : mapScheme,
+              ? resolveEnvironmentId(replay.metadata.environment)
+              : undefined,
+          colorScheme: mapScheme,
           replayMatch,
         };
       }),

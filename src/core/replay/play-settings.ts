@@ -36,47 +36,46 @@ function mapColors(mapScheme?: InfoColorScheme) {
 }
 
 export function replayColorScheme(metadata: ReplayMetadata | undefined, mapScheme?: InfoColorScheme) {
-  if (
-    metadata?.hasPlaySettings !== true ||
-    metadata.leftSaberColor === undefined ||
-    metadata.rightSaberColor === undefined
-  )
-    return mapScheme;
+  if (metadata?.hasPlaySettings !== true) return mapScheme;
 
   const base = mapColors(mapScheme);
+  const overrideNotes =
+    mapScheme?.overrideNotes === true ||
+    (metadata.leftSaberColor !== undefined && metadata.rightSaberColor !== undefined);
   const overrideLights =
-    metadata.obstacleColor !== undefined &&
-    metadata.environmentColor0 !== undefined &&
-    metadata.environmentColor1 !== undefined &&
-    metadata.environmentColor0Boost !== undefined &&
-    metadata.environmentColor1Boost !== undefined;
+    mapScheme?.overrideLights === true ||
+    (metadata.environmentColor0 !== undefined &&
+      metadata.environmentColor1 !== undefined &&
+      metadata.environmentColor0Boost !== undefined &&
+      metadata.environmentColor1Boost !== undefined);
+  const hasRecordedColors =
+    metadata.leftSaberColor !== undefined ||
+    metadata.rightSaberColor !== undefined ||
+    metadata.obstacleColor !== undefined ||
+    metadata.environmentColor0 !== undefined ||
+    metadata.environmentColor1 !== undefined ||
+    metadata.environmentColorW !== undefined ||
+    metadata.environmentColor0Boost !== undefined ||
+    metadata.environmentColor1Boost !== undefined ||
+    metadata.environmentColorWBoost !== undefined;
+  if (!hasRecordedColors) return mapScheme;
 
   return {
     name: 'ScoreSaber replay',
-    overrideNotes: true,
+    overrideNotes,
     leftNote: rgb(metadata.leftSaberColor, base.leftNote),
     rightNote: rgb(metadata.rightSaberColor, base.rightNote),
-    obstacle: overrideLights ? rgb(metadata.obstacleColor, base.obstacle) : base.obstacle,
+    obstacle: rgb(metadata.obstacleColor, base.obstacle),
     overrideLights,
     supportsEnvironmentColorBoost: overrideLights
       ? (metadata.supportsEnvironmentColorBoost ?? mapScheme?.supportsEnvironmentColorBoost ?? true)
       : (mapScheme?.supportsEnvironmentColorBoost ?? true),
-    environmentLeft: overrideLights ? rgb(metadata.environmentColor0, base.environmentLeft) : base.environmentLeft,
-    environmentRight: overrideLights ? rgb(metadata.environmentColor1, base.environmentRight) : base.environmentRight,
-    environmentWhite:
-      overrideLights && metadata.environmentColorW !== undefined
-        ? rgb(metadata.environmentColorW, base.environmentWhite)
-        : undefined,
-    environmentLeftBoost: overrideLights
-      ? rgb(metadata.environmentColor0Boost, base.environmentLeftBoost)
-      : base.environmentLeftBoost,
-    environmentRightBoost: overrideLights
-      ? rgb(metadata.environmentColor1Boost, base.environmentRightBoost)
-      : base.environmentRightBoost,
-    environmentWhiteBoost:
-      overrideLights && metadata.environmentColorWBoost !== undefined
-        ? rgb(metadata.environmentColorWBoost, base.environmentWhiteBoost)
-        : undefined,
+    environmentLeft: rgb(metadata.environmentColor0, base.environmentLeft),
+    environmentRight: rgb(metadata.environmentColor1, base.environmentRight),
+    environmentWhite: rgb(metadata.environmentColorW, base.environmentWhite),
+    environmentLeftBoost: rgb(metadata.environmentColor0Boost, base.environmentLeftBoost),
+    environmentRightBoost: rgb(metadata.environmentColor1Boost, base.environmentRightBoost),
+    environmentWhiteBoost: rgb(metadata.environmentColorWBoost, base.environmentWhiteBoost),
   } satisfies InfoColorScheme;
 }
 

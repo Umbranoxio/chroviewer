@@ -15,6 +15,7 @@ export interface DifficultyRow {
   difficulty?: Difficulty;
   infoDifficulty?: InfoDifficulty;
   environmentId?: string;
+  replayEnvironmentId?: string;
   colorScheme?: InfoColorScheme;
   replayMatch?: boolean;
 }
@@ -32,6 +33,8 @@ export interface ViewerSourceLink {
 export interface ActiveSelection {
   data: MapRenderData;
   environmentId: string;
+  mapEnvironmentId: string;
+  replayEnvironmentId?: string;
   mapColorScheme?: InfoColorScheme;
 }
 

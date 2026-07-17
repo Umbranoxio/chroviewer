@@ -41,6 +41,7 @@ import {
   createObstacleMaterial,
   createObstacleOutlineMaterial,
 } from '../materials/map-object-materials';
+import { linearColor, shaderColorUniform, shaderUniformValue } from '../materials/shared';
 import { SCREEN_DISPLACEMENT_LAYER } from '../mirror/planar-mirror';
 import { NoteLookRotation } from '../note-look-rotation';
 import { createNoteReflection } from '../note-reflection';
@@ -124,6 +125,8 @@ export class MapObjectRenderer {
   private arcWindows: ActiveWindowIndex | null = null;
   private objectBeat = Number.NaN;
   private ownedMaterials: Material[] = [];
+  private noteColorMaterials: ShaderMaterial[] = [];
+  private obstacleColorMaterials: ShaderMaterial[] = [];
 
   constructor(
     private readonly root: Group,
@@ -161,6 +164,8 @@ export class MapObjectRenderer {
     this.wallCoreLowMaterial = wallCoreLowMaterial;
     this.wallCoreHighMaterial = wallCoreHighMaterial;
     const wallFrameMaterial = createObstacleOutlineMaterial(this.fog, colors.obstacle);
+    this.noteColorMaterials = noteMaterials;
+    this.obstacleColorMaterials = [wallCoreLowMaterial, wallCoreHighMaterial, wallFrameMaterial];
     this.ownedMaterials = [
       ...noteMaterials,
       ...directionalMaterials,
@@ -249,6 +254,30 @@ export class MapObjectRenderer {
       (index) => data.arcs[index]?.despawnBeat ?? -Infinity,
       true,
     );
+  }
+
+  setColors(colors: ColorScheme) {
+    this.colors = colors;
+    [colors.leftNote, colors.rightNote].forEach((color, index) => {
+      const material = this.noteColorMaterials[index];
+      if (material !== undefined)
+        shaderColorUniform(material, '_Color')
+          ?.setRGB(...color)
+          .convertSRGBToLinear();
+    });
+    for (const material of this.obstacleColorMaterials) {
+      shaderColorUniform(material, '_Color')
+        ?.setRGB(...colors.obstacle)
+        .convertSRGBToLinear();
+    }
+    const arcColors = [linearColor(colors.leftNote), linearColor(colors.rightNote)];
+    for (const { arc, mesh } of this.arcEntries) {
+      if (arc.customColor !== undefined) continue;
+      const color = arcColors[arc.colorIndex] ?? arcColors[0];
+      if (color === undefined) continue;
+      shaderUniformValue(mesh.material, '_ArcColor')?.set(color.r, color.g, color.b, 1);
+    }
+    this.invalidate();
   }
 
   setScreenDisplacementEffects(enabled: boolean) {
@@ -418,6 +447,8 @@ export class MapObjectRenderer {
     this.linkReplayWindows = this.linkPreviewWindows = null;
     this.wallWindows = this.arcWindows = null;
     this.ownedMaterials = [];
+    this.noteColorMaterials = [];
+    this.obstacleColorMaterials = [];
     this.noteLookStates.clear();
     this.hitLine.visible = false;
     this.data = null;

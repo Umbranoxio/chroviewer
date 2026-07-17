@@ -269,14 +269,11 @@ export class MapView implements RenderView {
   }
 
   refreshMapColors(override?: InfoColorScheme) {
-    const data = this.data;
-    if (data === null) return;
+    if (this.data === null) return;
     const colors = this.resolveMapColors(override);
     this.environmentLights.setColors(colors);
     this.replayView.setColors(colors);
-    this.mapObjects.clear();
-    this.mapObjects.setMap(data, colors);
-    this.mirror.updateMaterials(this.scene);
+    this.mapObjects.setColors(colors);
   }
 
   private resolveMapColors(override?: InfoColorScheme) {

@@ -1,6 +1,6 @@
 import { sanitizeViewerSettings, type ViewerSettings } from './viewer-settings';
 
-export type ShareSettingsCategory = 'general' | 'graphics' | 'sabers' | 'camera';
+export type ShareSettingsCategory = 'general' | 'graphics' | 'cosmetics' | 'camera';
 export type SharedViewerSettings = Partial<ViewerSettings>;
 
 export function settingsForShareCategories(
@@ -29,13 +29,24 @@ export function settingsForShareCategories(
       previewNotesLookAtPlayer: settings.previewNotesLookAtPlayer,
       renderScale: settings.renderScale,
       staticLights: settings.staticLights,
+    });
+  }
+  if (categories.includes('cosmetics')) {
+    Object.assign(shared, {
+      preferReplayColors: settings.preferReplayColors,
+      preferReplayEnvironment: settings.preferReplayEnvironment,
+      overrideEnvironment: settings.overrideEnvironment,
+      environmentOverrideId: settings.environmentOverrideId,
       customColors: settings.customColors,
       leftColor: settings.leftColor,
       rightColor: settings.rightColor,
-    });
-  }
-  if (categories.includes('sabers')) {
-    Object.assign(shared, {
+      obstacleColor: settings.obstacleColor,
+      environmentLeftColor: settings.environmentLeftColor,
+      environmentRightColor: settings.environmentRightColor,
+      environmentWhiteColor: settings.environmentWhiteColor,
+      environmentLeftBoostColor: settings.environmentLeftBoostColor,
+      environmentRightBoostColor: settings.environmentRightBoostColor,
+      environmentWhiteBoostColor: settings.environmentWhiteBoostColor,
       showSabers: settings.showSabers,
       saberScale: settings.saberScale,
       saberBladeLength: settings.saberBladeLength,
