@@ -57,6 +57,24 @@ export function GeneralSettings({
         {isMapPreview && (
           <>
             <SettingSection title={t('mapPreview')}>
+              <SettingRow label={t('hitNotes')} detail={t('hitNotesDescription')}>
+                <Switch
+                  aria-label={t('hitNotes')}
+                  checked={settings.previewHitNotes}
+                  onCheckedChange={(previewHitNotes) => {
+                    update('previewHitNotes', previewHitNotes);
+                  }}
+                />
+              </SettingRow>
+              <SettingRow label={t('hitLine')} detail={t('hitLineDescription')}>
+                <Switch
+                  aria-label={t('hitLine')}
+                  checked={settings.previewHitLine}
+                  onCheckedChange={(previewHitLine) => {
+                    update('previewHitLine', previewHitLine);
+                  }}
+                />
+              </SettingRow>
               <SettingRow label={t('playerFacingNotes')} detail={t('playerFacingNotesDescription')}>
                 <Switch
                   aria-label={t('playerFacingNotes')}

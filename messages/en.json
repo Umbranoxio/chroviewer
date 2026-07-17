@@ -76,6 +76,10 @@
     "general": {
       "autoHideControls": "Auto-hide controls",
       "environment": "Environment",
+      "hitLine": "Hit line",
+      "hitLineDescription": "Show the note hit position on the platform",
+      "hitNotes": "Hit notes",
+      "hitNotesDescription": "Remove notes when they reach the hit plane",
       "interface": "Interface",
       "mapPreview": "Map preview",
       "playerFacingNotes": "Player-facing notes",

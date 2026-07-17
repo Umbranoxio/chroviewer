@@ -1,6 +1,7 @@
 import {
   Matrix4,
   Mesh,
+  PlaneGeometry,
   Quaternion,
   RepeatWrapping,
   ShaderMaterial,
@@ -34,6 +35,7 @@ import {
   createArcMaterial,
   createBombMaterial,
   createDirectionalMaterial,
+  createHitLineMaterial,
   createNoteMaterial,
   createObstacleDisplacementMaterial,
   createObstacleMaterial,
@@ -80,6 +82,7 @@ const white: Rgb = [1, 1, 1];
 const bombGray: Rgb = [64 / 255, 64 / 255, 64 / 255];
 
 export class MapObjectRenderer {
+  private readonly hitLine = new Mesh(new PlaneGeometry(2.5, 0.025), createHitLineMaterial());
   private readonly noteReflection = createNoteReflection();
   private readonly sliderMistNoise = new TextureLoader().load(
     `${import.meta.env.BASE_URL}textures/slider-mist-noise.png`,
@@ -107,6 +110,8 @@ export class MapObjectRenderer {
   private wallCoreLowMaterial: Material | null = null;
   private wallCoreHighMaterial: Material | null = null;
   private screenDisplacementEffects = true;
+  private previewHitNotes = true;
+  private previewHitLine = false;
   private previewNotesLookAtPlayer = false;
   private instanceGroups: InstancedGroup[] = [];
   private arcEntries: ArcEntry[] = [];
@@ -129,6 +134,11 @@ export class MapObjectRenderer {
     this.sliderMistNoise.wrapT = RepeatWrapping;
     this.obstacleDisplacementNoise.wrapS = RepeatWrapping;
     this.obstacleDisplacementNoise.wrapT = RepeatWrapping;
+    this.hitLine.name = 'preview-hit-line';
+    this.hitLine.geometry.rotateX(-Math.PI / 2);
+    this.hitLine.position.set(0, 0.01, -Z_OFFSET);
+    this.hitLine.visible = false;
+    this.root.add(this.hitLine);
   }
 
   setMap(data: MapRenderData, colors: ColorScheme) {
@@ -255,6 +265,18 @@ export class MapObjectRenderer {
     this.invalidate();
   }
 
+  setPreviewHitNotes(enabled: boolean) {
+    if (enabled === this.previewHitNotes) return;
+    this.previewHitNotes = enabled;
+    this.invalidate();
+  }
+
+  setPreviewHitLine(enabled: boolean) {
+    if (enabled === this.previewHitLine) return;
+    this.previewHitLine = enabled;
+    this.invalidate();
+  }
+
   invalidate() {
     this.objectBeat = Number.NaN;
     this.noteLookStates.clear();
@@ -274,14 +296,16 @@ export class MapObjectRenderer {
     const replayTime = songBpmTimeToSeconds(now, data.songBpm);
     for (const group of this.instanceGroups) group.begin();
     const replayLoaded = replayView.hasReplay;
+    const hitPreviewNotes = !replayLoaded && this.previewHitNotes;
+    this.hitLine.visible = !replayLoaded && this.previewHitLine;
     const poseFrames = replayView.poseFrames;
 
-    const activeNotes = (replayLoaded ? this.noteReplayWindows : this.notePreviewWindows)?.at(now) ?? [];
+    const activeNotes = (hitPreviewNotes ? this.notePreviewWindows : this.noteReplayWindows)?.at(now) ?? [];
     for (let colorIndex = 0; colorIndex < 2; colorIndex++) {
       for (const index of activeNotes) {
         const note = data.notes[index];
         if (note?.colorIndex !== colorIndex) continue;
-        const visible = replayLoaded ? isVisible(note, now) : isVisibleBeforeHit(note, now);
+        const visible = hitPreviewNotes ? isVisibleBeforeHit(note, now) : isVisible(note, now);
         if (!visible || (note.replayEndTime !== undefined && replayTime >= note.replayEndTime)) continue;
         const jump = spawnProgress(note, now);
         const x = note.startX + (note.x - note.startX) * spawnFlipProgress(note, now);
@@ -321,12 +345,12 @@ export class MapObjectRenderer {
       this.bombs?.push(this.matrix, bomb.customColor ?? bombGray);
     }
 
-    const activeLinks = (replayLoaded ? this.linkReplayWindows : this.linkPreviewWindows)?.at(now) ?? [];
+    const activeLinks = (hitPreviewNotes ? this.linkPreviewWindows : this.linkReplayWindows)?.at(now) ?? [];
     for (let colorIndex = 0; colorIndex < 2; colorIndex++) {
       for (const index of activeLinks) {
         const link = data.chainLinks[index];
         if (link?.colorIndex !== colorIndex) continue;
-        const visible = replayLoaded ? isVisible(link, now) : isVisibleBeforeHit(link, now);
+        const visible = hitPreviewNotes ? isVisibleBeforeHit(link, now) : isVisible(link, now);
         if (!visible || (link.replayEndTime !== undefined && replayTime >= link.replayEndTime)) continue;
         const jump = spawnProgress(link, now);
         const y = Y_OFFSET + (link.y - Y_OFFSET) * jump;
@@ -395,6 +419,7 @@ export class MapObjectRenderer {
     this.wallWindows = this.arcWindows = null;
     this.ownedMaterials = [];
     this.noteLookStates.clear();
+    this.hitLine.visible = false;
     this.data = null;
     this.colors = null;
     this.objectBeat = Number.NaN;
@@ -402,6 +427,9 @@ export class MapObjectRenderer {
 
   dispose() {
     this.clear();
+    this.root.remove(this.hitLine);
+    this.hitLine.geometry.dispose();
+    this.hitLine.material.dispose();
     this.noteReflection.dispose();
     this.sliderMistNoise.dispose();
     this.obstacleDisplacementNoise.dispose();

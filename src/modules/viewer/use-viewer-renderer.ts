@@ -72,6 +72,8 @@ export function useViewerRenderer({
       view.setReplayCameraSettings(settings);
       view.setReplaySaberSettings(settingsRef.current);
       view.setScreenDisplacementEffects(settingsRef.current.screenDisplacementEffects);
+      view.setPreviewHitNotes(settingsRef.current.previewHitNotes);
+      view.setPreviewHitLine(settingsRef.current.previewHitLine);
       view.setPreviewNotesLookAtPlayer(settingsRef.current.previewNotesLookAtPlayer);
       viewerRef.current = { view, lifecycle };
       setViewerReady(true);

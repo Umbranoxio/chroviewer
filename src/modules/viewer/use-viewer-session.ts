@@ -75,6 +75,14 @@ export function useViewerSession({
   }, [settings.previewNotesLookAtPlayer]);
 
   useEffect(() => {
+    viewerRef.current?.view.setPreviewHitNotes(settings.previewHitNotes);
+  }, [settings.previewHitNotes]);
+
+  useEffect(() => {
+    viewerRef.current?.view.setPreviewHitLine(settings.previewHitLine);
+  }, [settings.previewHitLine]);
+
+  useEffect(() => {
     const mode: LightshowMode = settings.staticLights ? 'static' : 'full';
     if (isForcedLightshowMode(lightshowModeRef.current) && mode === 'full') return;
     lightshowModeRef.current = mode;

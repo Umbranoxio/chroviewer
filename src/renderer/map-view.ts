@@ -248,6 +248,14 @@ export class MapView implements RenderView {
     this.mapObjects.setPreviewNotesLookAtPlayer(enabled);
   }
 
+  setPreviewHitNotes(enabled: boolean) {
+    this.mapObjects.setPreviewHitNotes(enabled);
+  }
+
+  setPreviewHitLine(enabled: boolean) {
+    this.mapObjects.setPreviewHitLine(enabled);
+  }
+
   setMap(data: MapRenderData, override?: InfoColorScheme) {
     this.clearMap();
     this.data = data;

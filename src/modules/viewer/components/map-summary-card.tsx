@@ -243,27 +243,21 @@ export function MapSummaryCard({
             </Button>
           )}
         </div>
-        <div className="flex min-w-0 flex-1 flex-col max-sm:hidden">
+        <div className="flex min-w-0 flex-1 flex-col">
           <p className="truncate text-sm font-semibold max-sm:hidden" title={fullTitle}>
             {fullTitle}
           </p>
           {author !== '' && (
-            <p
-              className={cn('text-muted-foreground truncate text-xs', mobileCollapsed && 'max-sm:hidden')}
-              title={author}
-            >
+            <p className="text-muted-foreground truncate text-xs max-sm:hidden" title={author}>
               {t('byAuthor', { author })}
             </p>
           )}
           {mapper !== '' && (
-            <p
-              className={cn('text-muted-foreground truncate text-xs', mobileCollapsed && 'max-sm:hidden')}
-              title={mapper}
-            >
+            <p className="text-muted-foreground truncate text-xs max-sm:hidden" title={mapper}>
               {t('mappedBy', { mapper })}
             </p>
           )}
-          <div className="mt-auto pt-2 max-sm:hidden max-sm:pt-1">
+          <div className="mt-auto pt-2 max-sm:pt-1">
             <Select value={selectedKey} onValueChange={onSelectDifficulty}>
               <SelectTrigger
                 className={cn(

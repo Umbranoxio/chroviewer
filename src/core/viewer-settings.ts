@@ -7,6 +7,8 @@ import type { Rgb } from './colors';
 export interface ViewerSettings {
   graphicsQuality: 'none' | 'low' | 'medium' | 'high';
   screenDisplacementEffects: boolean;
+  previewHitNotes: boolean;
+  previewHitLine: boolean;
   previewNotesLookAtPlayer: boolean;
   renderScale: number;
   staticLights: boolean;
@@ -194,6 +196,8 @@ export const DEFAULT_REPLAY_SABER_SETTINGS: ReplaySaberSettings = {
 export const DEFAULT_VIEWER_SETTINGS: ViewerSettings = {
   graphicsQuality: 'high',
   screenDisplacementEffects: true,
+  previewHitNotes: true,
+  previewHitLine: false,
   previewNotesLookAtPlayer: false,
   renderScale: 1,
   staticLights: false,
@@ -251,6 +255,8 @@ function hexColorSchema(fallback: string) {
 const viewerSettingsObjectSchema = z.object({
   graphicsQuality: z.catch(z.enum(['none', 'low', 'medium', 'high']), DEFAULT_VIEWER_SETTINGS.graphicsQuality),
   screenDisplacementEffects: z.catch(z.boolean(), DEFAULT_VIEWER_SETTINGS.screenDisplacementEffects),
+  previewHitNotes: z.catch(z.boolean(), DEFAULT_VIEWER_SETTINGS.previewHitNotes),
+  previewHitLine: z.catch(z.boolean(), DEFAULT_VIEWER_SETTINGS.previewHitLine),
   previewNotesLookAtPlayer: z.catch(z.boolean(), DEFAULT_VIEWER_SETTINGS.previewNotesLookAtPlayer),
   renderScale: numberSetting(DEFAULT_VIEWER_SETTINGS.renderScale, 0.5, 1.5),
   staticLights: z.catch(z.boolean(), DEFAULT_VIEWER_SETTINGS.staticLights),
