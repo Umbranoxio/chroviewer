@@ -71,6 +71,7 @@ export interface ViewerSettings {
   masterVolume: number;
   songVolume: number;
   hitsoundVolume: number;
+  audioOffsetMs: number;
   showBookmarks: boolean;
   reverseTimelineScroll: boolean;
   replayCamera: 'static' | 'follow' | 'first-person';
@@ -88,6 +89,9 @@ export interface ViewerSettings {
   replayCameraForceUpright: boolean;
   autoHide: boolean;
 }
+
+export const MIN_AUDIO_OFFSET_MS = -1000;
+export const MAX_AUDIO_OFFSET_MS = 1000;
 
 export type ReplayCameraSettings = Pick<
   ViewerSettings,
@@ -243,6 +247,7 @@ export const DEFAULT_VIEWER_SETTINGS: ViewerSettings = {
   masterVolume: 1,
   songVolume: 1,
   hitsoundVolume: 1,
+  audioOffsetMs: 0,
   showBookmarks: false,
   reverseTimelineScroll: false,
   ...DEFAULT_REPLAY_CAMERA_SETTINGS,
@@ -352,6 +357,7 @@ const viewerSettingsObjectSchema = z.object({
   masterVolume: numberSetting(DEFAULT_VIEWER_SETTINGS.masterVolume, 0, 1),
   songVolume: numberSetting(DEFAULT_VIEWER_SETTINGS.songVolume, 0, 1),
   hitsoundVolume: numberSetting(DEFAULT_VIEWER_SETTINGS.hitsoundVolume, 0, 1),
+  audioOffsetMs: integerSetting(DEFAULT_VIEWER_SETTINGS.audioOffsetMs, MIN_AUDIO_OFFSET_MS, MAX_AUDIO_OFFSET_MS),
   showBookmarks: z.catch(z.boolean(), DEFAULT_VIEWER_SETTINGS.showBookmarks),
   reverseTimelineScroll: z.catch(z.boolean(), DEFAULT_VIEWER_SETTINGS.reverseTimelineScroll),
   replayCamera: z.catch(z.enum(['static', 'follow', 'first-person']), DEFAULT_VIEWER_SETTINGS.replayCamera),

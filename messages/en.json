@@ -106,6 +106,10 @@
     },
     "general": {
       "advanced": "Advanced",
+      "audioCalibration": "Sync test",
+      "audioCalibrationDescription": "Adjust the offset until each hitsound matches the marker crossing the centre.",
+      "audioOffset": "Audio offset",
+      "audioOffsetDescription": "Shifts the song and hitsounds together. Negative values play them earlier; positive values play them later.",
       "autoHideControls": "Auto-hide controls",
       "hitLine": "Hit line",
       "hitLineDescription": "Show the note hit position on the platform",
@@ -116,10 +120,13 @@
       "mapCacheBlocked": "Map caching is unavailable. Check your browser's site permissions and try again.",
       "mapCacheUnavailable": "Unavailable",
       "mapPreview": "Map preview",
+      "milliseconds": "{value} ms",
       "playerFacingNotes": "Player-facing notes",
       "playerFacingNotesDescription": "Rotate notes toward the \"player's\" head",
       "reverseTimelineScroll": "Reverse timeline scrolling",
       "retryMapCache": "Try again",
+      "startAudioCalibration": "Start",
+      "stopAudioCalibration": "Stop",
       "timelineBookmarks": "Timeline bookmarks"
     },
     "graphics": {

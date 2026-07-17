@@ -8,6 +8,7 @@ interface SliderSettingProps {
   defaultValue: number;
   id: string;
   label: string;
+  detail?: string;
   value: number;
   minimum: number;
   maximum: number;
@@ -20,6 +21,7 @@ export function SliderSetting({
   defaultValue,
   id,
   label,
+  detail,
   value,
   minimum,
   maximum,
@@ -33,9 +35,12 @@ export function SliderSetting({
   return (
     <div className="flex flex-col gap-3 py-2">
       <div className="flex items-center justify-between gap-4 text-sm">
-        <label htmlFor={id}>{label}</label>
+        <div className="min-w-0">
+          <label htmlFor={id}>{label}</label>
+          {detail !== undefined && <p className="text-muted-foreground text-xs">{detail}</p>}
+        </div>
         <div className="flex items-center gap-1">
-          <output htmlFor={id} className="text-muted-foreground tabular-nums">
+          <output htmlFor={id} className="text-muted-foreground whitespace-nowrap tabular-nums">
             {display(value)}
           </output>
           <Button

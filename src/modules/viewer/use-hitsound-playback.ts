@@ -6,13 +6,20 @@ import { isForcedLightshowMode, type LightshowMode } from '../../core/lighting/b
 import type { ViewerSettings } from '../../core/viewer-settings';
 
 interface HitsoundPlaybackOptions {
+  audioOffset: number;
   clockRef: RefObject<SongClock | null>;
   lightshowModeRef: RefObject<LightshowMode>;
   settingsRef: RefObject<ViewerSettings>;
   volume: number;
 }
 
-export function useHitsoundPlayback({ clockRef, lightshowModeRef, settingsRef, volume }: HitsoundPlaybackOptions) {
+export function useHitsoundPlayback({
+  audioOffset,
+  clockRef,
+  lightshowModeRef,
+  settingsRef,
+  volume,
+}: HitsoundPlaybackOptions) {
   const [player] = useState(() => new HitsoundPlayer());
   const eventsRef = useRef<HitsoundEvent[]>([]);
   const timeRef = useRef(0);
@@ -23,33 +30,43 @@ export function useHitsoundPlayback({ clockRef, lightshowModeRef, settingsRef, v
   }, [player, volume]);
 
   useEffect(() => {
+    player.stop();
+    const clock = clockRef.current;
+    const time = clock?.currentTime() ?? 0;
+    const scaledAudioOffset = audioOffset * (clock?.getRate() ?? 1);
+    timeRef.current = time;
+    indexRef.current = firstHitsoundAfter(eventsRef.current, time - scaledAudioOffset);
+  }, [audioOffset, clockRef, player]);
+
+  useEffect(() => {
     let frame = 0;
 
     function schedule() {
       const clock = clockRef.current;
       if (clock !== null) {
         const currentTime = clock.currentTime();
+        const rate = clock.getRate();
+        const scaledAudioOffset = audioOffset * rate;
         if (!clock.isPlaying()) {
           timeRef.current = currentTime - 1e-6;
-          indexRef.current = firstHitsoundAfter(eventsRef.current, timeRef.current);
+          indexRef.current = firstHitsoundAfter(eventsRef.current, timeRef.current - scaledAudioOffset);
         } else {
-          const rate = clock.getRate();
           const horizon = Math.min(currentTime + 0.04 * rate, clock.duration);
           const events = eventsRef.current;
           let index = indexRef.current;
           if (currentTime > timeRef.current) {
             timeRef.current = currentTime - 1e-6;
-            index = firstHitsoundAfter(events, timeRef.current);
+            index = firstHitsoundAfter(events, timeRef.current - scaledAudioOffset);
           }
           while (index < events.length) {
             const event = events[index];
-            if (event === undefined || event.time > horizon) break;
+            if (event === undefined || event.time + scaledAudioOffset > horizon) break;
             if (
-              event.time > timeRef.current &&
+              event.time + scaledAudioOffset > timeRef.current &&
               settingsRef.current.hitsounds &&
               !isForcedLightshowMode(lightshowModeRef.current)
             ) {
-              player.play(event.good, (event.time - currentTime) / rate);
+              player.play(event.good, (event.time + scaledAudioOffset - currentTime) / rate);
             }
             index++;
           }
@@ -64,7 +81,7 @@ export function useHitsoundPlayback({ clockRef, lightshowModeRef, settingsRef, v
     return () => {
       cancelAnimationFrame(frame);
     };
-  }, [clockRef, lightshowModeRef, settingsRef]);
+  }, [audioOffset, clockRef, lightshowModeRef, settingsRef]);
 
   useEffect(
     () => () => {
@@ -82,7 +99,8 @@ export function useHitsoundPlayback({ clockRef, lightshowModeRef, settingsRef, v
   function load(events: HitsoundEvent[]) {
     eventsRef.current = events;
     timeRef.current = 0;
-    indexRef.current = 0;
+    const rate = clockRef.current?.getRate() ?? 1;
+    indexRef.current = firstHitsoundAfter(events, -audioOffset * rate);
   }
 
   function resume() {
@@ -91,7 +109,8 @@ export function useHitsoundPlayback({ clockRef, lightshowModeRef, settingsRef, v
 
   function seek(time: number) {
     timeRef.current = time;
-    indexRef.current = firstHitsoundAfter(eventsRef.current, time);
+    const rate = clockRef.current?.getRate() ?? 1;
+    indexRef.current = firstHitsoundAfter(eventsRef.current, time - audioOffset * rate);
   }
 
   return {

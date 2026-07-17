@@ -1,8 +1,15 @@
-import { useTranslations } from 'use-intl';
+import { useFormatter, useTranslations } from 'use-intl';
 
-import type { ViewerSettings } from '../../core/viewer-settings';
+import {
+  DEFAULT_VIEWER_SETTINGS,
+  MAX_AUDIO_OFFSET_MS,
+  MIN_AUDIO_OFFSET_MS,
+  type ViewerSettings,
+} from '../../core/viewer-settings';
+import { AudioOffsetCalibration } from './audio-offset-calibration';
 import { SettingRow } from './components/setting-row';
 import { SettingSection } from './components/setting-section';
+import { SliderSetting } from './components/slider-setting';
 import { MapCacheSetting } from './map-cache-setting';
 
 import { Separator } from '@/components/ui/separator';
@@ -17,6 +24,7 @@ interface GeneralSettingsProps {
 }
 
 export function GeneralSettings({ active, settings, isMapPreview, onChange }: GeneralSettingsProps) {
+  const format = useFormatter();
   const t = useTranslations('settings.general');
 
   function update<K extends keyof ViewerSettings>(key: K, value: ViewerSettings[K]) {
@@ -88,6 +96,25 @@ export function GeneralSettings({ active, settings, isMapPreview, onChange }: Ge
         </SettingSection>
         <Separator />
         <SettingSection title={t('advanced')}>
+          <SliderSetting
+            defaultValue={DEFAULT_VIEWER_SETTINGS.audioOffsetMs}
+            id="viewer-audio-offset"
+            label={t('audioOffset')}
+            detail={t('audioOffsetDescription')}
+            value={settings.audioOffsetMs}
+            minimum={MIN_AUDIO_OFFSET_MS}
+            maximum={MAX_AUDIO_OFFSET_MS}
+            step={10}
+            display={(value) =>
+              t('milliseconds', {
+                value: format.number(value, { maximumFractionDigits: 0, signDisplay: 'exceptZero' }),
+              })
+            }
+            onChange={(audioOffsetMs) => {
+              update('audioOffsetMs', audioOffsetMs);
+            }}
+          />
+          <AudioOffsetCalibration active={active} audioOffsetMs={settings.audioOffsetMs} />
           <MapCacheSetting active={active} />
         </SettingSection>
       </div>
