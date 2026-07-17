@@ -2,13 +2,12 @@ import {
   colorSchemeForDifficulty,
   difficultyRank,
   environmentNameForDifficulty,
-  type InfoColorScheme,
   type MapInfo,
 } from '../../core/beatmap/info';
 import type { Difficulty } from '../../core/beatmap/types';
-import { DEFAULT_COLORS, type Rgb } from '../../core/colors';
 import { convertLegacyScoreSaberReplay } from '../../core/replay/legacy-scoresaber';
-import type { Replay, ReplayColor } from '../../core/replay/types';
+import { replayColorScheme } from '../../core/replay/play-settings';
+import type { Replay } from '../../core/replay/types';
 import { resolveEnvironmentId } from '../../renderer/environment/environment-catalog';
 import type { MapSourceFile } from '../../sources/source-types';
 import type { DifficultyRow, MapMeta } from './viewer-types';
@@ -28,62 +27,6 @@ export interface ParsedMapPackage {
   rows: DifficultyRow[];
   cover: { data: ArrayBuffer; type: string } | null;
   audioData: ArrayBuffer | null;
-}
-
-function rgb(color: ReplayColor | undefined, fallback: Rgb): Rgb {
-  return color === undefined ? fallback : [color.x, color.y, color.z];
-}
-
-function replayColorScheme(replay: Replay | null, mapScheme?: InfoColorScheme) {
-  const metadata = replay?.metadata;
-  if (metadata?.hasPlaySettings !== true) return mapScheme;
-  const custom = mapScheme?.customColors;
-  const base = {
-    leftNote: custom?.leftNote ?? mapScheme?.leftNote ?? DEFAULT_COLORS.leftNote,
-    rightNote: custom?.rightNote ?? mapScheme?.rightNote ?? DEFAULT_COLORS.rightNote,
-    obstacle: custom?.obstacle ?? mapScheme?.obstacle ?? DEFAULT_COLORS.obstacle,
-    environmentLeft:
-      custom?.environmentLeft ?? custom?.leftNote ?? mapScheme?.environmentLeft ?? DEFAULT_COLORS.environmentLeft,
-    environmentRight:
-      custom?.environmentRight ?? custom?.rightNote ?? mapScheme?.environmentRight ?? DEFAULT_COLORS.environmentRight,
-    environmentWhite: custom?.environmentWhite ?? mapScheme?.environmentWhite ?? DEFAULT_COLORS.environmentWhite,
-    environmentLeftBoost:
-      custom?.environmentLeftBoost ??
-      custom?.environmentLeft ??
-      custom?.leftNote ??
-      mapScheme?.environmentLeftBoost ??
-      DEFAULT_COLORS.environmentLeftBoost,
-    environmentRightBoost:
-      custom?.environmentRightBoost ??
-      custom?.environmentRight ??
-      custom?.rightNote ??
-      mapScheme?.environmentRightBoost ??
-      DEFAULT_COLORS.environmentRightBoost,
-    environmentWhiteBoost:
-      custom?.environmentWhiteBoost ?? mapScheme?.environmentWhiteBoost ?? DEFAULT_COLORS.environmentWhiteBoost,
-  };
-  return {
-    name: 'ScoreSaber replay',
-    overrideNotes:
-      metadata.leftSaberColor !== undefined ||
-      metadata.rightSaberColor !== undefined ||
-      metadata.obstacleColor !== undefined,
-    leftNote: rgb(metadata.leftSaberColor, base.leftNote),
-    rightNote: rgb(metadata.rightSaberColor, base.rightNote),
-    obstacle: rgb(metadata.obstacleColor, base.obstacle),
-    overrideLights:
-      metadata.environmentColor0 !== undefined ||
-      metadata.environmentColor1 !== undefined ||
-      metadata.environmentColorW !== undefined,
-    supportsEnvironmentColorBoost:
-      metadata.supportsEnvironmentColorBoost ?? mapScheme?.supportsEnvironmentColorBoost ?? true,
-    environmentLeft: rgb(metadata.environmentColor0, base.environmentLeft),
-    environmentRight: rgb(metadata.environmentColor1, base.environmentRight),
-    environmentWhite: rgb(metadata.environmentColorW, base.environmentWhite),
-    environmentLeftBoost: rgb(metadata.environmentColor0Boost, base.environmentLeftBoost),
-    environmentRightBoost: rgb(metadata.environmentColor1Boost, base.environmentRightBoost),
-    environmentWhiteBoost: rgb(metadata.environmentColorWBoost, base.environmentWhiteBoost),
-  } satisfies InfoColorScheme;
 }
 
 function coverMimeType(name: string) {
@@ -200,7 +143,7 @@ export async function parseMapPackage(
               ? replay.metadata.environment
               : environmentNameForDifficulty(info, infoDifficulty),
           ),
-          colorScheme: replayMatch ? replayColorScheme(replay, mapScheme) : mapScheme,
+          colorScheme: replayMatch ? replayColorScheme(replay.metadata, mapScheme) : mapScheme,
           replayMatch,
         };
       }),
