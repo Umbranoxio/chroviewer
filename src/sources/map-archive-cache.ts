@@ -27,8 +27,6 @@ export interface MapArchiveCache {
   set(map: CachedMapArchive): Promise<Result<void, MapArchiveCacheError>>;
   usage(): Promise<Result<number, MapArchiveCacheError>>;
   clear(): Promise<Result<void, MapArchiveCacheError>>;
-  isPersistent(): Promise<Result<boolean, MapArchiveCacheError>>;
-  requestPersistence(): Promise<Result<boolean, MapArchiveCacheError>>;
 }
 
 function isMissingEntry(error: MapArchiveCacheError) {
@@ -36,9 +34,7 @@ function isMissingEntry(error: MapArchiveCacheError) {
 }
 
 export class OpfsMapArchiveCache implements MapArchiveCache {
-  private persistenceRequested = false;
-
-  constructor(private readonly storage: Pick<StorageManager, 'getDirectory' | 'persist' | 'persisted'>) {}
+  constructor(private readonly storage: Pick<StorageManager, 'getDirectory'>) {}
 
   async get(hash: string) {
     const result = await Result.tryPromise({
@@ -78,10 +74,6 @@ export class OpfsMapArchiveCache implements MapArchiveCache {
         const metadata = await metadataHandle.createWritable();
         await metadata.write(JSON.stringify({ version: 1, key: map.key, hash: map.hash }));
         await metadata.close();
-        if (!this.persistenceRequested) {
-          this.persistenceRequested = true;
-          await this.storage.persist();
-        }
       },
       catch: (cause) => new MapArchiveCacheError({ message: `map ${map.hash} could not be cached`, cause }),
     });
@@ -121,21 +113,6 @@ export class OpfsMapArchiveCache implements MapArchiveCache {
       catch: (cause) => new MapArchiveCacheError({ message: 'map cache could not be cleared', cause }),
     });
     return result.isErr() && isMissingEntry(result.error) ? Result.ok(undefined) : result;
-  }
-
-  async isPersistent() {
-    return Result.tryPromise({
-      try: () => this.storage.persisted(),
-      catch: (cause) => new MapArchiveCacheError({ message: 'persistent storage status could not be read', cause }),
-    });
-  }
-
-  async requestPersistence() {
-    this.persistenceRequested = true;
-    return Result.tryPromise({
-      try: () => this.storage.persist(),
-      catch: (cause) => new MapArchiveCacheError({ message: 'persistent storage could not be requested', cause }),
-    });
   }
 }
 

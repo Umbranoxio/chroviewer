@@ -21,7 +21,6 @@ interface MapCacheSettingProps {
   active: boolean;
 }
 
-type PersistenceState = 'checking' | 'persistent' | 'best-effort' | 'denied' | 'unavailable';
 type CacheUsage = { state: 'loading' } | { state: 'unavailable' } | { state: 'ready'; bytes: number };
 
 export function MapCacheSetting({ active }: MapCacheSettingProps) {
@@ -30,8 +29,7 @@ export function MapCacheSetting({ active }: MapCacheSettingProps) {
   const tc = useTranslations('common');
   const [cacheUsage, setCacheUsage] = useState<CacheUsage>({ state: 'loading' });
   const [clearing, setClearing] = useState(false);
-  const [persistence, setPersistence] = useState<PersistenceState>('checking');
-  const [requestingPersistence, setRequestingPersistence] = useState(false);
+  const [retry, setRetry] = useState(0);
 
   useEffect(() => {
     if (!active) return;
@@ -40,25 +38,19 @@ export function MapCacheSetting({ active }: MapCacheSettingProps) {
     async function refreshCache() {
       if (browserMapArchiveCache === null) {
         setCacheUsage({ state: 'unavailable' });
-        setPersistence('unavailable');
         return;
       }
       setCacheUsage({ state: 'loading' });
-      setPersistence('checking');
-      const [usage, persisted] = await Promise.all([
-        browserMapArchiveCache.usage(),
-        browserMapArchiveCache.isPersistent(),
-      ]);
+      const usage = await browserMapArchiveCache.usage();
       if (cancelled) return;
       setCacheUsage(usage.isOk() ? { state: 'ready', bytes: usage.value } : { state: 'unavailable' });
-      setPersistence(persisted.isErr() ? 'unavailable' : persisted.value ? 'persistent' : 'best-effort');
     }
 
     void refreshCache();
     return () => {
       cancelled = true;
     };
-  }, [active]);
+  }, [active, retry]);
 
   async function clearCache() {
     if (browserMapArchiveCache === null) return;
@@ -68,14 +60,6 @@ export function MapCacheSetting({ active }: MapCacheSettingProps) {
     setClearing(false);
   }
 
-  async function requestPersistence() {
-    if (browserMapArchiveCache === null) return;
-    setRequestingPersistence(true);
-    const result = await browserMapArchiveCache.requestPersistence();
-    setPersistence(result.isErr() ? 'unavailable' : result.value ? 'persistent' : 'denied');
-    setRequestingPersistence(false);
-  }
-
   let cacheSizeLabel = '...';
   if (cacheUsage.state === 'unavailable') {
     cacheSizeLabel = t('mapCacheUnavailable');
@@ -83,31 +67,22 @@ export function MapCacheSetting({ active }: MapCacheSettingProps) {
     const cacheSize = scaledMapCacheSize(cacheUsage.bytes);
     cacheSizeLabel = `${format.number(cacheSize.value, { maximumFractionDigits: cacheSize.value < 10 ? 1 : 0 })} ${cacheSize.unit}`;
   }
-  const persistenceMessage =
-    persistence === 'best-effort'
-      ? t('mapCachePersistenceMessage')
-      : persistence === 'denied'
-        ? t('mapCachePersistenceDenied')
-        : persistence === 'unavailable'
-          ? t('mapCachePersistenceUnavailable')
-          : undefined;
-  const canRequestPersistence = persistence === 'best-effort' || persistence === 'denied';
+  const unavailable = cacheUsage.state === 'unavailable';
 
   return (
-    <SettingRow label={t('mapCache')} detail={persistenceMessage}>
+    <SettingRow label={t('mapCache')} detail={unavailable ? t('mapCacheBlocked') : undefined}>
       <div className="flex items-center gap-2">
         <span className="text-muted-foreground min-w-16 text-right text-xs tabular-nums">{cacheSizeLabel}</span>
-        {canRequestPersistence && (
+        {unavailable && (
           <Button
             type="button"
             variant="outline"
             size="sm"
-            disabled={requestingPersistence}
             onClick={() => {
-              void requestPersistence();
+              setRetry((value) => value + 1);
             }}
           >
-            {persistence === 'denied' ? t('retryPersistentStorage') : t('allowPersistentStorage')}
+            {t('retryMapCache')}
           </Button>
         )}
         <Button
@@ -115,10 +90,7 @@ export function MapCacheSetting({ active }: MapCacheSettingProps) {
           variant="outline"
           size="sm"
           disabled={
-            browserMapArchiveCache === null ||
-            clearing ||
-            cacheUsage.state === 'loading' ||
-            (cacheUsage.state === 'ready' && cacheUsage.bytes === 0)
+            browserMapArchiveCache === null || clearing || cacheUsage.state !== 'ready' || cacheUsage.bytes === 0
           }
           onClick={() => {
             void clearCache();
