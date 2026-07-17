@@ -53,7 +53,12 @@ export function flyingScoresAt(timeline: ReplayTimeline, time: number, duration 
         event.cutScore.total <= event.cutScore.maximum * 0.9
           ? 0.3
           : 1,
-      showCenterIndicator: timeline.hitScoreVisualizer === null && event.cutScore?.accuracy === 15,
+      showCenterIndicator:
+        timeline.hitScoreVisualizer === null &&
+        event.cutScore !== undefined &&
+        (timeline.replay.metadata.version === 'ScoreSaberLegacy'
+          ? event.cutScore.total === event.cutScore.maximum
+          : event.cutScore.accuracy === 15),
     });
   }
   return scores;
