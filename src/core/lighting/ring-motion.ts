@@ -40,6 +40,13 @@ interface TargetChange {
   speed: number;
 }
 
+interface SampledTargetChange {
+  tick: number;
+  target: number;
+  speed: number;
+  valueBefore: number;
+}
+
 const custom = (event: BasicEvent, v2: string, v3: string) => event.customData?.[v2] ?? event.customData?.[v3];
 const tickAt = (seconds: number) => Math.max(1, Math.ceil(seconds / FIXED_DELTA));
 const lerp = (start: number, end: number, time: number) => start + (end - start) * Math.min(Math.max(time, 0), 1);
@@ -72,9 +79,12 @@ function addPropagation(
   }
 }
 
-function valueAfterTicks(initial: number, source: TargetChange[], ticks: number) {
-  if (ticks <= 0) return initial;
-  const changes = source;
+function approachTarget(value: number, target: number, speed: number, ticks: number) {
+  return target + (value - target) * (1 - Math.min(Math.max(FIXED_DELTA * speed, 0), 1)) ** ticks;
+}
+
+function compileChanges(initial: number, changes: TargetChange[]) {
+  const sampled: SampledTargetChange[] = [];
   let value = initial;
   let target = initial;
   let speed = 0;
@@ -82,22 +92,35 @@ function valueAfterTicks(initial: number, source: TargetChange[], ticks: number)
   let index = 0;
   while (index < changes.length) {
     const tick = changes[index]?.tick ?? Infinity;
-    if (tick > ticks) break;
     const count = tick - nextTick;
-    if (count > 0) value = target + (value - target) * (1 - Math.min(Math.max(FIXED_DELTA * speed, 0), 1)) ** count;
+    if (count > 0) value = approachTarget(value, target, speed, count);
     while (changes[index]?.tick === tick) {
       target = changes[index]?.target ?? target;
       speed = changes[index]?.speed ?? speed;
       index++;
     }
+    sampled.push({ tick, target, speed, valueBefore: value });
     nextTick = tick;
   }
-  const count = ticks - nextTick + 1;
-  if (count > 0) value = target + (value - target) * (1 - Math.min(Math.max(FIXED_DELTA * speed, 0), 1)) ** count;
-  return value;
+  return sampled;
 }
 
-function sampleChanges(initial: number, changes: TargetChange[], seconds: number) {
+function valueAfterTicks(initial: number, changes: SampledTargetChange[], ticks: number) {
+  if (ticks <= 0) return initial;
+  let low = 0;
+  let high = changes.length;
+  while (low < high) {
+    const middle = (low + high) >>> 1;
+    if ((changes[middle]?.tick ?? Infinity) <= ticks) low = middle + 1;
+    else high = middle;
+  }
+  const change = changes[low - 1];
+  return change === undefined
+    ? initial
+    : approachTarget(change.valueBefore, change.target, change.speed, ticks - change.tick + 1);
+}
+
+function sampleChanges(initial: number, changes: SampledTargetChange[], seconds: number) {
   const ticks = Math.floor(seconds / FIXED_DELTA);
   const fraction = seconds / FIXED_DELTA - ticks;
   const previous = valueAfterTicks(initial, changes, Math.max(ticks - 1, 0));
@@ -182,12 +205,14 @@ export function createRingRotationSampler(
     rotationInitial += signedRotation;
   });
 
-  sortChanges(changes);
+  const sampledChanges = sortChanges(changes).map((entries, index) =>
+    compileChanges(initialRotations[index] ?? 0, entries),
+  );
   const result = initialRotations.map(() => 0);
   return (beat: number) => {
     const seconds = (beat * 60) / songBpm;
-    for (let index = 0; index < changes.length; index++) {
-      result[index] = sampleChanges(initialRotations[index] ?? 0, changes[index] ?? [], seconds);
+    for (let index = 0; index < sampledChanges.length; index++) {
+      result[index] = sampleChanges(initialRotations[index] ?? 0, sampledChanges[index] ?? [], seconds);
     }
     return result;
   };
@@ -215,12 +240,14 @@ export function createRingPositionSampler(events: BasicEvent[], songBpm: number,
       });
     });
   });
-  sortChanges(changes);
+  const sampledChanges = sortChanges(changes).map((entries, index) =>
+    compileChanges(config.initialPositions[index] ?? 0, entries),
+  );
   const result = config.initialPositions.map(() => 0);
   return (beat: number) => {
     const seconds = (beat * 60) / songBpm;
-    for (let index = 0; index < changes.length; index++) {
-      result[index] = sampleChanges(config.initialPositions[index] ?? 0, changes[index] ?? [], seconds);
+    for (let index = 0; index < sampledChanges.length; index++) {
+      result[index] = sampleChanges(config.initialPositions[index] ?? 0, sampledChanges[index] ?? [], seconds);
     }
     return result;
   };

@@ -228,10 +228,12 @@ export function buildEnvironmentReflections(
   scene: EnvironmentSceneBuild,
   lighting: EnvironmentLighting,
 ) {
+  const sources = buildReflectionSources(data, scene, lighting);
+  if (sources.length === 0) return { apply: () => undefined, dispose: () => undefined };
+
   const collisionMaterial = new MeshBasicMaterial({ side: DoubleSide });
   const ownedGeometries: BoxGeometry[] = [];
   const colliders = buildReflectionColliders(data, scene, collisionMaterial, ownedGeometries);
-  const sources = buildReflectionSources(data, scene, lighting);
 
   const raycaster = new Raycaster();
   raycaster.near = RAY_EPSILON;

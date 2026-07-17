@@ -19,6 +19,7 @@ export interface RouterContext {
 
 const searchKeyAliases: Record<string, string> = {
   map: 'map',
+  replayurl: 'replayUrl',
   scoreid: 'scoreId',
   ssscoreid: 'scoreId',
   difficulty: 'difficulty',
@@ -36,6 +37,7 @@ const searchKeyAliases: Record<string, string> = {
 
 const stringSearchAliases: Record<string, string[]> = {
   map: ['map'],
+  replayUrl: ['replayurl'],
   scoreId: ['scoreid', 'ssscoreid'],
   playerId: ['playerid'],
   tournamentId: ['tournamentid'],

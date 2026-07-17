@@ -11,6 +11,7 @@ import { replayMapHash } from '../../core/replay/types';
 import { applySharedViewerSettings } from '../../core/share-link';
 import type { ViewerSettings } from '../../core/viewer-settings';
 import { fetchBeatSaverHash, fetchBeatSaverMap } from '../../sources/beatsaver/provider';
+import { requestArrayBuffer } from '../../sources/http';
 import {
   fetchScoreSaberLeaderboards,
   fetchScoreSaberReplay,
@@ -33,10 +34,11 @@ type RemoteSourceCommand =
   | { type: 'lookup'; lookup: MapLookup }
   | { type: 'input'; input: string; source: ViewerSource }
   | { type: 'shared-map'; mapKey: string }
+  | { type: 'shared-replay'; replayUrl: string; beat?: number; autoplay?: boolean }
   | { type: 'shared-score'; scoreId: string; beat?: number; autoplay?: boolean };
 
 export interface SourceDownload {
-  kind: ViewerSource;
+  kind: ViewerSource | 'replay';
   progress: DownloadProgress;
 }
 
@@ -71,7 +73,7 @@ export function useViewerRemoteSource({
   const [sourceInput, setSourceInput] = useState('');
   const [sourceDownload, setSourceDownload] = useState<SourceDownload | null>(null);
 
-  function downloadOptions(kind: ViewerSource) {
+  function downloadOptions(kind: SourceDownload['kind']) {
     setSourceDownload({ kind, progress: null });
     return {
       onProgress: (progress: DownloadProgress) => {
@@ -132,6 +134,38 @@ export function useViewerRemoteSource({
     });
   }
 
+  async function loadReplayUrl(replayUrl: string, pending: { beat?: number; autoplay?: boolean } = {}) {
+    return Result.gen(async function* () {
+      const data = yield* Result.await(
+        requestArrayBuffer(replayUrl, {
+          source: 'local',
+          label: 'Replay',
+          operation: 'download-replay',
+          ...downloadOptions('replay'),
+        }),
+      );
+      const replay = yield* Result.await(parseReplay(data));
+      const hash = replayMapHash(replay);
+      if (hash === null) {
+        return Result.err(
+          new SourceError({
+            message: t('errors.replayMissingHash'),
+            source: 'local',
+            operation: 'validate-replay-map',
+          }),
+        );
+      }
+      const map = yield* Result.await(fetchBeatSaverHash(hash, downloadOptions('beatsaver')));
+      pendingSharedViewRef.current = pending;
+      yield* Result.await(
+        loadSourceFiles(map.files, replay, {
+          identity: { key: map.key, hash: map.hash },
+        }),
+      );
+      return Result.ok(undefined);
+    });
+  }
+
   async function loadSharedMap(mapKey: string) {
     return Result.gen(async function* () {
       const source = yield* Result.await(fetchBeatSaverMap(mapKey, downloadOptions('beatsaver')));
@@ -185,6 +219,8 @@ export function useViewerRemoteSource({
         return loadSourceInput(command.input, command.source);
       case 'shared-map':
         return loadSharedMap(command.mapKey);
+      case 'shared-replay':
+        return loadReplayUrl(command.replayUrl, { beat: command.beat, autoplay: command.autoplay });
       case 'shared-score':
         return loadScoreSaberScore(command.scoreId, { beat: command.beat, autoplay: command.autoplay });
     }
@@ -233,6 +269,20 @@ export function useViewerRemoteSource({
   useEffect(() => {
     if (startupRef.current) return;
     startupRef.current = true;
+    if (search.replayUrl !== undefined) {
+      const sharedSettings = search.settings;
+      if (sharedSettings !== undefined) {
+        setSettings((current) => applySharedViewerSettings(current, sharedSettings));
+      }
+      setSourceInput(search.replayUrl);
+      sourceMutation.mutate({
+        type: 'shared-replay',
+        replayUrl: search.replayUrl,
+        beat: search.beat,
+        autoplay: search.autoplay,
+      });
+      return;
+    }
     if (search.scoreId !== undefined) {
       const sharedSettings = search.settings;
       if (sharedSettings !== undefined) {

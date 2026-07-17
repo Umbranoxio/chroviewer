@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type CSSProperties, type MouseEvent as ReactMouseEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type MouseEvent as ReactMouseEvent } from 'react';
 
 import { useRouter, useSearch } from '@tanstack/react-router';
 import { AlertCircle, Download, LoaderCircle, Menu, Pause, Play, RotateCcw, Volume2, X } from 'lucide-react';
@@ -207,12 +207,25 @@ export function ViewerShell() {
 
   const beatStep = transport.beatStepNumerator / transport.beatStepDenominator;
   const displayBeat = quantizedBeatAt(transport.time, sources.songBpm, beatStep);
-  const selectedDifficulty = sources.rows.find((row) => row.key === session.selectedKey)?.difficulty ?? null;
-  const timelineMarkers = buildTimelineMarkers(
-    sources.replayRef.current,
-    selectedDifficulty,
-    sources.songBpm,
-    settings.showBookmarks,
+  const selectedDifficulty = useMemo(
+    () => sources.rows.find((row) => row.key === session.selectedKey)?.difficulty ?? null,
+    [session.selectedKey, sources.rows],
+  );
+  const replay = sources.replayRef.current;
+  const replayNoteCount = replay?.notes.length ?? 0;
+  const replayPauseCount = replay?.pauses.length ?? 0;
+  const latestPauseDuration = replay?.pauses.at(-1)?.duration;
+  const timelineMarkers = useMemo(
+    () => buildTimelineMarkers(replay, selectedDifficulty, sources.songBpm, settings.showBookmarks),
+    [
+      latestPauseDuration,
+      replay,
+      replayNoteCount,
+      replayPauseCount,
+      selectedDifficulty,
+      settings.showBookmarks,
+      sources.songBpm,
+    ],
   );
   const share = useViewerShare({
     beat: displayBeat,
@@ -241,7 +254,10 @@ export function ViewerShell() {
       ? {
           icon: Download,
           iconClassName: '',
-          label: sources.sourceDownload?.kind === 'scoresaber' ? t('downloadingReplay') : t('liveDownloadingMap'),
+          label:
+            sources.sourceDownload?.kind === 'scoresaber' || sources.sourceDownload?.kind === 'replay'
+              ? t('downloadingReplay')
+              : t('liveDownloadingMap'),
           progress: sources.sourceDownload?.progress ?? null,
         }
       : session.environmentLoading

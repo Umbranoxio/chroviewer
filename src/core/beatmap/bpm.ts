@@ -19,13 +19,15 @@ export function bootstrapBpmEvents(events: BpmEvent[], songBpm: number): BpmEven
 
 export function createBpmConverter(events: BpmEvent[], songBpm: number): (jsonTime: number) => number {
   return (jsonTime) => {
-    for (let i = events.length - 1; i >= 0; i--) {
-      const event = events[i];
-      if (event !== undefined && event.jsonTime < jsonTime) {
-        return event.songBpmTime + (jsonTime - event.jsonTime) * (songBpm / event.bpm);
-      }
+    let low = 0;
+    let high = events.length;
+    while (low < high) {
+      const middle = (low + high) >>> 1;
+      if ((events[middle]?.jsonTime ?? Infinity) < jsonTime) low = middle + 1;
+      else high = middle;
     }
-    return jsonTime;
+    const event = events[low - 1];
+    return event === undefined ? jsonTime : event.songBpmTime + (jsonTime - event.jsonTime) * (songBpm / event.bpm);
   };
 }
 

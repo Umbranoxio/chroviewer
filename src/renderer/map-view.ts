@@ -279,22 +279,22 @@ export class MapView implements RenderView {
     this.mirror.updateMaterials(this.scene);
   }
 
-  private update() {
+  private update(now: number) {
     const data = this.data;
-    if (this.environment !== null) this.environmentLights.update(this.beatSource());
+    if (this.environment !== null) this.environmentLights.update(now);
     if (data === null) return;
     if (isForcedLightshowMode(this.lightshowMode)) return;
-    const now = this.beatSource();
     const replayTime = songBpmTimeToSeconds(now, data.songBpm);
     this.replayView.update(replayTime);
     this.mapObjects.update(now, this.replayView);
   }
 
   render(renderer: WebGLRenderer) {
-    this.update();
+    const now = this.environment === null && this.data === null ? 0 : this.beatSource();
+    this.update(now);
     this.scene.updateMatrixWorld();
     if (this.environment?.applyConstraints() === true) this.scene.updateMatrixWorld();
-    if (this.environment !== null) this.environmentLights.updateWorldLights(this.beatSource());
+    if (this.environment !== null) this.environmentLights.updateWorldLights(now);
     this.pipeline.render(renderer, this.camera, this.environmentLights.lightSegments);
     if (this.environmentUsesMirror) this.mirror.render(renderer, this.scene, this.camera);
     this.postBloom.render(renderer, this.scene, this.camera, this.mapRoot.visible && this.mapObjects.wallsVisible);
