@@ -67,6 +67,14 @@ export function GeneralSettings({ settings, isMapPreview, onChange }: GeneralSet
               }}
             />
           </SettingRow>
+          <SettingRow label={t('reverseTimelineScroll')}>
+            <Switch
+              checked={settings.reverseTimelineScroll}
+              onCheckedChange={(checked) => {
+                update('reverseTimelineScroll', checked);
+              }}
+            />
+          </SettingRow>
           <SettingRow label={t('autoHideControls')}>
             <Switch
               checked={settings.autoHide}

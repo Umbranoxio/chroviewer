@@ -44,6 +44,7 @@ interface TransportControlsProps {
   songVolume: number;
   hitsounds: boolean;
   hitsoundVolume: number;
+  reverseTimelineScroll: boolean;
   markers: TimelineMarker[];
   onTogglePlay: () => void;
   onSeek: (time: number) => void;
@@ -86,6 +87,7 @@ export function TransportControls({
   songVolume,
   hitsounds,
   hitsoundVolume,
+  reverseTimelineScroll,
   markers,
   onTogglePlay,
   onSeek,
@@ -144,6 +146,7 @@ export function TransportControls({
         duration={duration}
         songBpm={songBpm}
         beatStep={beatStep}
+        reverseScroll={reverseTimelineScroll}
         interactive={!live}
         markers={markers}
         onSeek={onSeek}

@@ -72,6 +72,7 @@ export interface ViewerSettings {
   songVolume: number;
   hitsoundVolume: number;
   showBookmarks: boolean;
+  reverseTimelineScroll: boolean;
   replayCamera: 'static' | 'follow' | 'first-person';
   replayCameraSmoothing: boolean;
   replayCameraSmoothingSpeed: number;
@@ -243,6 +244,7 @@ export const DEFAULT_VIEWER_SETTINGS: ViewerSettings = {
   songVolume: 1,
   hitsoundVolume: 1,
   showBookmarks: false,
+  reverseTimelineScroll: false,
   ...DEFAULT_REPLAY_CAMERA_SETTINGS,
   autoHide: true,
 };
@@ -350,6 +352,7 @@ const viewerSettingsObjectSchema = z.object({
   songVolume: numberSetting(DEFAULT_VIEWER_SETTINGS.songVolume, 0, 1),
   hitsoundVolume: numberSetting(DEFAULT_VIEWER_SETTINGS.hitsoundVolume, 0, 1),
   showBookmarks: z.catch(z.boolean(), DEFAULT_VIEWER_SETTINGS.showBookmarks),
+  reverseTimelineScroll: z.catch(z.boolean(), DEFAULT_VIEWER_SETTINGS.reverseTimelineScroll),
   replayCamera: z.catch(z.enum(['static', 'follow', 'first-person']), DEFAULT_VIEWER_SETTINGS.replayCamera),
   replayCameraSmoothing: z.catch(z.boolean(), DEFAULT_VIEWER_SETTINGS.replayCameraSmoothing),
   replayCameraSmoothingSpeed: numberSetting(DEFAULT_VIEWER_SETTINGS.replayCameraSmoothingSpeed, 1, 20),

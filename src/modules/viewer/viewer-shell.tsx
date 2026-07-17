@@ -502,6 +502,7 @@ export function ViewerShell() {
           songVolume={settings.songVolume}
           hitsounds={settings.hitsounds}
           hitsoundVolume={settings.hitsoundVolume}
+          reverseTimelineScroll={settings.reverseTimelineScroll}
           markers={timelineMarkers}
           onTogglePlay={() => {
             transport.togglePlay();

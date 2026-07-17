@@ -113,6 +113,7 @@
       "mapPreview": "Map preview",
       "playerFacingNotes": "Player-facing notes",
       "playerFacingNotesDescription": "Rotate notes toward the \"player's\" head",
+      "reverseTimelineScroll": "Reverse timeline scrolling",
       "timelineBookmarks": "Timeline bookmarks"
     },
     "graphics": {

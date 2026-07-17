@@ -19,6 +19,7 @@ interface TimelineSliderProps {
   duration: number;
   songBpm: number;
   beatStep: number;
+  reverseScroll?: boolean;
   interactive?: boolean;
   markers: TimelineMarker[];
   onSeek: (time: number) => void;
@@ -69,6 +70,7 @@ export function TimelineSlider({
   duration,
   songBpm,
   beatStep,
+  reverseScroll = false,
   interactive = true,
   markers,
   onSeek,
@@ -97,7 +99,7 @@ export function TimelineSlider({
       }}
       onWheel={(event) => {
         if (!interactive || event.deltaY === 0 || event.ctrlKey || event.metaKey) return;
-        onSeekBeats(Math.sign(event.deltaY) * beatStep);
+        onSeekBeats(Math.sign(event.deltaY) * beatStep * (reverseScroll ? -1 : 1));
       }}
     >
       <Slider
