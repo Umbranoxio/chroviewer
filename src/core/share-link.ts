@@ -11,22 +11,15 @@ export function settingsForShareCategories(
   if (categories.includes('general')) {
     Object.assign(shared, {
       hitsounds: settings.hitsounds,
-      masterMuted: settings.masterMuted,
-      songMuted: settings.songMuted,
-      masterVolume: settings.masterVolume,
-      songVolume: settings.songVolume,
-      hitsoundVolume: settings.hitsoundVolume,
-      showBookmarks: settings.showBookmarks,
-      autoHide: settings.autoHide,
+      previewHitNotes: settings.previewHitNotes,
+      previewHitLine: settings.previewHitLine,
+      previewNotesLookAtPlayer: settings.previewNotesLookAtPlayer,
     });
   }
   if (categories.includes('graphics')) {
     Object.assign(shared, {
       graphicsQuality: settings.graphicsQuality,
       screenDisplacementEffects: settings.screenDisplacementEffects,
-      previewHitNotes: settings.previewHitNotes,
-      previewHitLine: settings.previewHitLine,
-      previewNotesLookAtPlayer: settings.previewNotesLookAtPlayer,
       renderScale: settings.renderScale,
       staticLights: settings.staticLights,
     });
