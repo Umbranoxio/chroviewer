@@ -41,13 +41,12 @@ export const Route = createFileRoute('/')({
       catch: (cause) => cause,
     });
     const title = titleResult.isOk() ? titleResult.value : 'ScoreSaber Replay';
-    const description = 'ChroViewer web replay';
+    const description = 'ChroViewer';
     const image = new URL(`/api/preview/replay?scoreId=${scoreId}`, requestOrigin()).toString();
     const alt = 'ScoreSaber replay score card';
     return {
       meta: [
         { title },
-        { property: 'og:site_name', content: 'ScoreSaber - ChroViewer' },
         { property: 'og:title', content: title },
         { property: 'og:description', content: description },
         { name: 'description', content: description },
