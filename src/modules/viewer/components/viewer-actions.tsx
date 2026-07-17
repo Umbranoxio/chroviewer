@@ -73,7 +73,7 @@ export function ViewerActions({
       {hasMap && (
         <Popover open={recordVideoOpen} onOpenChange={onRecordVideoOpenChange}>
           <PopoverTrigger asChild>
-            <Button variant="ghost" size="icon-sm" aria-label={tc('exportVideo')} title={tc('exportVideo')}>
+            <Button variant="ghost" size="icon-sm" aria-label={tc('recordVideo')} title={tc('recordVideo')}>
               <Video />
             </Button>
           </PopoverTrigger>

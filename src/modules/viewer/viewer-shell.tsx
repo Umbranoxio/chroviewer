@@ -212,7 +212,9 @@ export function ViewerShell() {
         const audioTracks = audioDestinationRef.current?.stream.getAudioTracks();
 
         if (audioTracks && audioTracks.length > 0) {
-          if (audioTracks[0]) stream.addTrack(audioTracks[0]);
+          for (const audioTrack of audioTracks) {
+            stream.addTrack(audioTrack);
+          }
         }
 
         mediaRecorderRef.current = new MediaRecorder(stream, options);

@@ -159,6 +159,7 @@
   "record": {
     "recordProgress": "Recording",
     "recordReady": "Ready to record",
+    "downloadVideo": "Download video",
     "endRecord": "Stop recording",
     "startRecord": "Start recording",
     "title": "Record gameplay"

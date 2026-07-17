@@ -1,25 +1,17 @@
-import { useEffect, useRef } from 'react';
-
+import { CirclePlay, CircleStop, Download } from 'lucide-react';
 import { useTranslations } from 'use-intl';
 
 import { Button } from '@/components/ui/button';
 
-interface SharePanelProps {
+interface RecordVideoPanelProps {
   videoUrl: string | null;
   recording: boolean;
   onStartRecord: () => void;
   onStopRecord: () => void;
 }
 
-export function RecordVideoPanel({ videoUrl, recording, onStartRecord, onStopRecord }: SharePanelProps) {
-  const copyTimeoutRef = useRef(0);
+export function RecordVideoPanel({ videoUrl, recording, onStartRecord, onStopRecord }: RecordVideoPanelProps) {
   const t = useTranslations('record');
-
-  useEffect(() => {
-    return () => {
-      window.clearTimeout(copyTimeoutRef.current);
-    };
-  }, []);
 
   return (
     <div className="grid gap-3">
@@ -27,19 +19,22 @@ export function RecordVideoPanel({ videoUrl, recording, onStartRecord, onStopRec
         <h2 className="text-sm font-semibold">{t('title')}</h2>
         <p className="text-muted-foreground mt-1 text-sm">{recording ? t('recordProgress') : t('recordReady')}</p>
       </div>
-      <Button size="sm" variant={'ghost'} onClick={onStartRecord} disabled={recording}>
+      <Button size="sm" variant={'outline'} onClick={onStartRecord} disabled={recording}>
+        <CirclePlay />
         {t('startRecord')}
       </Button>
       <Button size="sm" variant={'ghost'} onClick={onStopRecord} disabled={!recording}>
+        <CircleStop />
         {t('endRecord')}
       </Button>
       {videoUrl === null ? (
         <></>
       ) : (
         <>
-          <Button variant={'ghost'} asChild>
+          <Button variant={'outline'} asChild>
             <a href={videoUrl} download="beat-saber.webm">
-              Download
+              <Download />
+              {t('downloadVideo')}
             </a>
           </Button>
         </>
