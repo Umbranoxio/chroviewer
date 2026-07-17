@@ -1,14 +1,13 @@
 import { songBpmTimeToSeconds } from '../beatmap/bpm';
 import type { Difficulty } from '../beatmap/types';
 import { NoteType } from '../beatmap/types';
-import { beatSaberNumberSchema } from '../beatmap/value-schema';
 import { chromaColor } from '../chroma';
 import type { Rgb } from '../colors';
 import type { ReplayHeightEvent, ReplayNoteEvent, ReplayNoteEventType } from '../replay/types';
 import { createSpawnProvider, type SpawnState } from '../spawn/variable-njs';
 import { arcPath, type ArcPathPoint } from './arc-spline';
 import { chainLinks } from './chain-links';
-import { directionalize, gridPosition, NOTE_Y_OFFSET, obstacleBounds, obstaclePlacement, Y_OFFSET } from './grid';
+import { gridPosition, NOTE_Y_OFFSET, obstacleBounds, obstaclePlacement, Y_OFFSET } from './grid';
 import { maxConcurrent, preJumpTravelBeats, wallTailGraceBeats, type ObjectMotion } from './jump-path';
 import { buildNoteFormation } from './note-formation';
 
@@ -284,10 +283,7 @@ export function buildMapRenderData(difficulty: Difficulty, options: MapRenderOpt
         startX,
         startY,
         flipYSide: formation.flipYSide,
-        rotationDeg:
-          (majorVersion === 2 && note.customData?._cutDirection !== undefined
-            ? beatSaberNumberSchema.parse(note.customData._cutDirection)
-            : directionalize(note.cutDirection, note.angleOffset)) * (options.leftHanded === true ? -1 : 1),
+        rotationDeg: formation.rotationDeg * (options.leftHanded === true ? -1 : 1),
         colorIndex:
           options.leftHanded === true ? (note.type === NoteType.Blue ? 0 : 1) : note.type === NoteType.Blue ? 1 : 0,
         dot: note.cutDirection === anyCutDirection,

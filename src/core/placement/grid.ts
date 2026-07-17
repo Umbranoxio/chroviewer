@@ -1,6 +1,6 @@
 import type { Obstacle } from '../beatmap/types';
 
-const LANE_SIZE = 0.6;
+export const LANE_SIZE = 0.6;
 export const Y_OFFSET = 0.25;
 const PLAYER_Y_OFFSET = 0.6;
 const OBSTACLE_Y_OFFSET = -0.15;
