@@ -61,7 +61,7 @@ export function SettingsDrawer({
               <TabsTrigger value="cosmetics">{tc('cosmetics')}</TabsTrigger>
             </TabsList>
           </div>
-          <GeneralSettings settings={settings} isMapPreview={isMapPreview} onChange={onChange} />
+          <GeneralSettings active={open} settings={settings} isMapPreview={isMapPreview} onChange={onChange} />
           <GraphicsSettings settings={settings} onChange={onChange} />
           <CameraSettings settings={settings} hasReplay={hasReplay} onChange={onChange} />
           <CosmeticsSettings settings={settings} environments={environments} onChange={onChange} />

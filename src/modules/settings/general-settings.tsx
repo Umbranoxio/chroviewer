@@ -3,18 +3,20 @@ import { useTranslations } from 'use-intl';
 import type { ViewerSettings } from '../../core/viewer-settings';
 import { SettingRow } from './components/setting-row';
 import { SettingSection } from './components/setting-section';
+import { MapCacheSetting } from './map-cache-setting';
 
 import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
 import { TabsContent } from '@/components/ui/tabs';
 
 interface GeneralSettingsProps {
+  active: boolean;
   settings: ViewerSettings;
   isMapPreview: boolean;
   onChange: (settings: ViewerSettings) => void;
 }
 
-export function GeneralSettings({ settings, isMapPreview, onChange }: GeneralSettingsProps) {
+export function GeneralSettings({ active, settings, isMapPreview, onChange }: GeneralSettingsProps) {
   const t = useTranslations('settings.general');
 
   function update<K extends keyof ViewerSettings>(key: K, value: ViewerSettings[K]) {
@@ -83,6 +85,10 @@ export function GeneralSettings({ settings, isMapPreview, onChange }: GeneralSet
               }}
             />
           </SettingRow>
+        </SettingSection>
+        <Separator />
+        <SettingSection title={t('advanced')}>
+          <MapCacheSetting active={active} />
         </SettingSection>
       </div>
     </TabsContent>

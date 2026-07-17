@@ -2,6 +2,7 @@
   "common": {
     "back": "Back",
     "camera": "Camera",
+    "clear": "Clear",
     "close": "Close",
     "copied": "Copied",
     "cosmetics": "Cosmetics",
@@ -104,16 +105,24 @@
       "stage": "Stage"
     },
     "general": {
+      "advanced": "Advanced",
+      "allowPersistentStorage": "Allow",
       "autoHideControls": "Auto-hide controls",
       "hitLine": "Hit line",
       "hitLineDescription": "Show the note hit position on the platform",
       "hitNotes": "Hit notes",
       "hitNotesDescription": "Remove notes when they reach the hit plane",
       "interface": "Interface",
+      "mapCache": "Map cache",
+      "mapCachePersistenceDenied": "Persistent storage was not enabled. Try again, or check your browser's site permissions.",
+      "mapCachePersistenceMessage": "The browser may remove cached maps automatically. Allow persistent storage to protect them.",
+      "mapCachePersistenceUnavailable": "Persistent storage could not be enabled in this browser.",
+      "mapCacheUnavailable": "Unavailable",
       "mapPreview": "Map preview",
       "playerFacingNotes": "Player-facing notes",
       "playerFacingNotesDescription": "Rotate notes toward the \"player's\" head",
       "reverseTimelineScroll": "Reverse timeline scrolling",
+      "retryPersistentStorage": "Try again",
       "timelineBookmarks": "Timeline bookmarks"
     },
     "graphics": {
