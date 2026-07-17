@@ -18,6 +18,8 @@ import {
   replayDuration,
 } from './primitives';
 
+const scoreStackCenterX = -3.2;
+
 export class ReplayGameplayHud {
   readonly root = new Group();
 
@@ -25,12 +27,12 @@ export class ReplayGameplayHud {
   private readonly combo = hudText('0', 0.46, [0, -0.165, 0]);
   private readonly comboLabel = hudText('COMBO', 0.33, [0, 0.165, 0]);
   private readonly score = hudText('0', 0.33, [-3.2, 1.17, -6.99]);
-  private readonly rank = hudText('SS', 0.66, [-3.2, 0.52, -6.98]);
-  private readonly accuracy = hudText('100.0%', 0.27, [-3.2, 0.92, -6.98]);
+  private readonly rank = hudText('SS', 0.66, [-3.2, 0.48, -6.98]);
+  private readonly accuracy = hudText('100.00%', 0.27, [-3.2, 0.88, -6.98]);
   private readonly multiplierNumber = hudText('1', 0.6, [3.28, 1.68, -6.97]);
   private readonly multiplierX = hudText('x', 0.3, [3.01, 1.83, -6.97]);
-  private readonly songTime = hudText('0:00', 0.24, [2.96, 0.76, -6.97]);
-  private readonly songDuration = hudText('0:00', 0.24, [3.44, 0.76, -6.97]);
+  private readonly songTime = hudText('0:00', 0.24, [2.92, 0.76, -6.97]);
+  private readonly songDuration = hudText('0:00', 0.24, [3.48, 0.76, -6.97]);
   private readonly energyFill: Mesh<PlaneGeometry, MeshBasicMaterial>;
   private readonly songProgressFill: Mesh<PlaneGeometry, MeshBasicMaterial>;
   private readonly multiplierProgress: Mesh<RingGeometry, MeshBasicMaterial>;
@@ -42,6 +44,7 @@ export class ReplayGameplayHud {
   private timeline: ReplayTimeline | null = null;
   private comboBreakTime: number | null = null;
   private songDurationSeconds: number | null = null;
+  private scoreStackLayout = '';
 
   constructor() {
     this.root.visible = false;
@@ -193,9 +196,7 @@ export class ReplayGameplayHud {
 
   private updateState(state: ReplayScoreState) {
     this.setText(this.combo, String(state.combo));
-    this.setText(this.score, formatScore(state.score));
-    this.setText(this.rank, rankFor(state.accuracy));
-    this.setText(this.accuracy, formatAccuracy(state.accuracy));
+    this.updateScoreStack(formatScore(state.score), formatAccuracy(state.accuracy), rankFor(state.accuracy));
     this.setText(this.multiplierNumber, String(state.multiplier));
     this.energyFill.scale.x = state.energy;
     const progress = Math.min(Math.max(state.multiplierProgress, 0), 1);
@@ -222,6 +223,29 @@ export class ReplayGameplayHud {
     this.comboPanel.scale.set(state.comboScaleX, state.comboScaleY, 1);
     this.comboPanel.rotation.z = MathUtils.degToRad(state.comboRotationDegrees);
     this.comboPanel.position.z = -6.99 - state.comboDepth;
+  }
+
+  private updateScoreStack(score: string, accuracy: string, rank: string) {
+    const layout = `${score}\0${accuracy}\0${rank}`;
+    if (layout === this.scoreStackLayout) return;
+    this.scoreStackLayout = layout;
+    this.score.text = score;
+    this.accuracy.text = accuracy;
+    this.rank.text = rank;
+
+    const texts = [this.score, this.accuracy, this.rank];
+    let pending = texts.length;
+    const align = () => {
+      if (--pending > 0) return;
+      for (const text of texts) {
+        const bounds = text.textRenderInfo?.visibleBounds;
+        if (bounds !== undefined) {
+          const opticalOffset = text === this.accuracy ? 0.03 : 0;
+          text.position.x = scoreStackCenterX - (bounds[0] + bounds[2]) / 2 + opticalOffset;
+        }
+      }
+    };
+    for (const text of texts) text.sync(align);
   }
 
   private setText(mesh: Text, text: string) {
