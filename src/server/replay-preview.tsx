@@ -4,13 +4,10 @@ import { join } from 'node:path';
 import { Resvg } from '@resvg/resvg-js';
 import { Result, TaggedError } from 'better-result';
 import satori, { type SatoriOptions } from 'satori';
-import { z } from 'zod';
 
-import { env } from '../env';
-import { requestJson } from '../sources/http';
-import type { ScoreControllerGetScoreData } from '../sources/scoresaber/generated/api-contracts';
 import { fetchScoreSaberPlayer } from '../sources/scoresaber/provider';
 import type { ScoreSaberReplayPlayer } from '../sources/source-types';
+import { fetchReplayPreviewScore, type ReplayPreviewScore } from './replay-preview-data.server';
 
 const previewSize = { width: 1200, height: 630 };
 
@@ -25,52 +22,6 @@ class PreviewError extends TaggedError('PreviewError')<{
   status: number;
   cause?: unknown;
 }>() {}
-
-interface PreviewScoreContract {
-  leaderboard: {
-    difficulty: Pick<ScoreControllerGetScoreData['leaderboard']['difficulty'], 'difficulty'>;
-    map: Pick<
-      ScoreControllerGetScoreData['leaderboard']['map'],
-      'coverUrl' | 'levelAuthorName' | 'songAuthorName' | 'songName' | 'songSubName'
-    >;
-    realm: Pick<ScoreControllerGetScoreData['leaderboard']['realm'], 'stars'>;
-  };
-  score: Pick<
-    ScoreControllerGetScoreData['score'],
-    'accuracy' | 'badCuts' | 'fullCombo' | 'missedNotes' | 'modifiedScore' | 'pp' | 'rank'
-  > & {
-    player: Pick<ScoreControllerGetScoreData['score']['player'], 'avatar' | 'country' | 'id' | 'name'>;
-  };
-}
-
-const previewScoreSchema = z.object({
-  leaderboard: z.object({
-    difficulty: z.object({ difficulty: z.int() }),
-    map: z.object({
-      coverUrl: z.string(),
-      levelAuthorName: z.string(),
-      songAuthorName: z.string(),
-      songName: z.string(),
-      songSubName: z.string(),
-    }),
-    realm: z.object({ stars: z.number() }),
-  }),
-  score: z.object({
-    accuracy: z.number(),
-    badCuts: z.int().nonnegative(),
-    fullCombo: z.boolean(),
-    missedNotes: z.int().nonnegative(),
-    modifiedScore: z.int(),
-    pp: z.number(),
-    rank: z.int(),
-    player: z.object({
-      avatar: z.string(),
-      country: z.string(),
-      id: z.string().min(1),
-      name: z.string(),
-    }),
-  }),
-}) satisfies z.ZodType<PreviewScoreContract>;
 
 interface CacheEntry<T> {
   expires: number;
@@ -414,7 +365,7 @@ function ReplayPreviewCard({
   player,
   images,
 }: {
-  data: PreviewScoreContract;
+  data: ReplayPreviewScore;
   player: ScoreSaberReplayPlayer | null;
   images: PreviewImages;
 }) {
@@ -725,15 +676,7 @@ function ReplayPreviewCard({
 }
 
 async function fetchPreviewScore(scoreId: string) {
-  const result = await requestJson(
-    `${env.VITE_SCORESABER_API_URL}/api/v2/scores/${scoreId}?includeScoreStats=false`,
-    previewScoreSchema,
-    {
-      source: 'scoresaber',
-      label: `ScoreSaber score ${scoreId}`,
-      operation: 'load-score-preview',
-    },
-  );
+  const result = await fetchReplayPreviewScore(scoreId);
   if (result.isOk()) return result;
   return Result.err(
     new PreviewError({
