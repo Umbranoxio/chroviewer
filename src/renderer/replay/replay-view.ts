@@ -251,7 +251,15 @@ export class ReplayView {
     this.replayPosition.set(to.position.x, to.position.y, -to.position.z);
     target.position.lerp(this.replayPosition, amount);
     this.replayQuaternion.set(-to.rotation.x, -to.rotation.y, to.rotation.z, to.rotation.w);
-    target.quaternion.slerp(this.replayQuaternion, amount);
+    const sign = target.quaternion.dot(this.replayQuaternion) < 0 ? -1 : 1;
+    target.quaternion
+      .set(
+        target.quaternion.x + (this.replayQuaternion.x * sign - target.quaternion.x) * amount,
+        target.quaternion.y + (this.replayQuaternion.y * sign - target.quaternion.y) * amount,
+        target.quaternion.z + (this.replayQuaternion.z * sign - target.quaternion.z) * amount,
+        target.quaternion.w + (this.replayQuaternion.w * sign - target.quaternion.w) * amount,
+      )
+      .normalize();
   }
 
   private clearTrails() {
