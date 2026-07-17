@@ -92,6 +92,7 @@ export function useViewerRemoteSource({
   async function loadLookupSource(lookup: MapLookup) {
     return Result.gen(async function* () {
       const source = yield* Result.await(fetchBeatSaverHash(lookup.hash, downloadOptions('beatsaver')));
+      pendingSharedViewRef.current = {};
       yield* Result.await(loadSourceFiles(source.files, null, { identity: { key: source.key, hash: source.hash } }));
       return Result.ok(undefined);
     });
@@ -287,6 +288,7 @@ export function useViewerRemoteSource({
         return Result.ok(undefined);
       }
       const source = yield* Result.await(fetchBeatSaverMap(input, downloadOptions('beatsaver')));
+      pendingSharedViewRef.current = {};
       yield* Result.await(loadSourceFiles(source.files, null, { identity: { key: source.key, hash: source.hash } }));
       await navigate({ to: '/', search: { map: source.key }, replace: true });
       return Result.ok(undefined);
