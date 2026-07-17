@@ -1,5 +1,6 @@
 import { songBpmTimeToSeconds } from '../beatmap/bpm';
 import { NoteType, type Difficulty, type Note } from '../beatmap/types';
+import { gridPosition } from '../placement/grid';
 import type { LegacyScoreSaberFrame, Replay, ReplayNoteEvent, ReplayPose, ReplayVector3 } from './types';
 
 interface ComboChange {
@@ -227,7 +228,20 @@ function badCut(frames: ReplayPose[], note: Note, time: number) {
   return Math.abs(difference) > 45;
 }
 
-function noteEvent(note: Note, time: number, eventType: 1 | 2 | 3, baseScore = 0): ReplayNoteEvent {
+function approximateCutPoint(note: Note, playerHeight: number): ReplayVector3 {
+  const grid = gridPosition(note.posX, note.posY);
+  const heightOffset = clamp((playerHeight - 1.8) * 0.5, -0.2, 0.6);
+  const y = note.posY === 0 ? 0.85 : note.posY === 1 ? 1.4 : note.posY === 2 ? 1.9 : grid.y + 0.85;
+  return { x: grid.x, y: y + heightOffset, z: 0 };
+}
+
+function noteEvent(
+  note: Note,
+  time: number,
+  eventType: 1 | 2 | 3,
+  playerHeight: number,
+  baseScore = 0,
+): ReplayNoteEvent {
   const swingScore = Math.max(0, baseScore - 15);
   const beforeCutRating = eventType === 1 ? Math.min(1, swingScore / 70) : 0;
   const afterCutRating = eventType === 1 && swingScore >= 70 ? clamp((swingScore - 70) / 30, 0, 1) : 0;
@@ -240,7 +254,7 @@ function noteEvent(note: Note, time: number, eventType: 1 | 2 | 3, baseScore = 0
       cutDirection: note.cutDirection,
     },
     eventType,
-    cutPoint: { x: 0, y: 0, z: 0 },
+    cutPoint: approximateCutPoint(note, playerHeight),
     cutNormal: { x: 0, y: 0, z: 1 },
     saberDirection: { x: 0, y: 0, z: 1 },
     saberType: note.type,
@@ -274,12 +288,13 @@ export function convertLegacyScoreSaberReplay(replay: Replay, difficulty: Diffic
     if (index < 0 || note === undefined || time === undefined) continue;
     matched[index] = true;
     const eventType = action.hit ? 1 : badCut(replay.poses, note, time) ? 2 : 3;
-    events.push(noteEvent(note, time, eventType, action.baseScore));
+    events.push(noteEvent(note, time, eventType, replay.metadata.initialHeight, action.baseScore));
   }
   for (let index = 0; index < notes.length; index++) {
     const note = notes[index];
     const time = times[index];
-    if (matched[index] !== true && note !== undefined && time !== undefined) events.push(noteEvent(note, time, 3));
+    if (matched[index] !== true && note !== undefined && time !== undefined)
+      events.push(noteEvent(note, time, 3, replay.metadata.initialHeight));
   }
   events.sort((left, right) => left.time - right.time);
   replay.notes = events;
