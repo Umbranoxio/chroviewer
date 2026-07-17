@@ -44,6 +44,12 @@ export default defineConfig({
   resolve: {
     tsconfigPaths: true,
   },
+  ssr: {
+    external: ['@resvg/resvg-js'],
+  },
+  optimizeDeps: {
+    exclude: ['@resvg/resvg-js'],
+  },
   build: {
     sourcemap: false,
     minify: 'oxc',
