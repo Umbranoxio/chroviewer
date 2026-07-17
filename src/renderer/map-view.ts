@@ -24,6 +24,7 @@ import type { LoadedEnvironment } from './environment/environment-runtime';
 import { EnvironmentLightRuntime } from './map/environment-light-runtime';
 import { MapObjectRenderer } from './map/map-object-renderer';
 import { createMirrorMaterial, createSkyboxMaterial } from './materials/scene-materials';
+import { collectMirrorConsumers, hasVisibleMirrorConsumer } from './mirror/mirror-consumers';
 import { MAIN_ONLY_LAYER, PlanarMirror, SCREEN_DISPLACEMENT_LAYER } from './mirror/planar-mirror';
 import { PostBloomPipeline } from './post-bloom/pipeline';
 import { DEFAULT_QUALITY } from './quality';
@@ -50,7 +51,7 @@ export class MapView implements RenderView {
   private readonly mapObjects: MapObjectRenderer;
   private readonly environmentLights = new EnvironmentLightRuntime();
   private environment: LoadedEnvironment | null = null;
-  private environmentUsesMirror = false;
+  private environmentMirrorConsumers: Mesh[] = [];
   private environmentRequest: {
     id: string;
     controller: AbortController;
@@ -70,6 +71,7 @@ export class MapView implements RenderView {
     this.postBloom = new PostBloomPipeline();
     this.mirror = new PlanarMirror(quality, 6, 400);
     this.camera.position.set(...fixedCameraPosition(DEFAULT_REPLAY_CAMERA_SETTINGS.previewCameraDistance));
+    this.scene.matrixAutoUpdate = false;
     this.scene.matrixWorldAutoUpdate = false;
     this.camera.layers.enable(MAIN_ONLY_LAYER);
     this.camera.layers.enable(SCREEN_DISPLACEMENT_LAYER);
@@ -174,9 +176,7 @@ export class MapView implements RenderView {
     }
     this.environment = environment;
     this.environmentRequest = null;
-    this.environmentUsesMirror = environment.data.objects.some((object) =>
-      object.materials?.some((name) => name !== null && environment.data.materials[name]?.family === 'mirror'),
-    );
+    this.environmentMirrorConsumers = collectMirrorConsumers(environment.root);
     this.scene.add(environment.root);
     this.environmentLights.setEnvironment(environment);
     this.mirror.updateMaterials(this.scene);
@@ -296,8 +296,14 @@ export class MapView implements RenderView {
     if (this.environment?.applyConstraints() === true) this.scene.updateMatrixWorld();
     if (this.environment !== null) this.environmentLights.updateWorldLights(now);
     this.pipeline.render(renderer, this.camera, this.environmentLights.lightSegments);
-    if (this.environmentUsesMirror) this.mirror.render(renderer, this.scene, this.camera);
+    if (hasVisibleMirrorConsumer(this.environmentMirrorConsumers, this.camera)) {
+      this.mirror.render(renderer, this.scene, this.camera);
+    }
     this.postBloom.render(renderer, this.scene, this.camera, this.mapRoot.visible && this.mapObjects.wallsVisible);
+  }
+
+  contextRestored() {
+    this.pipeline.invalidate();
   }
 
   setSize(width: number, height: number) {

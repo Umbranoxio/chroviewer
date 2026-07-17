@@ -303,8 +303,44 @@ export function unpackGeometry(mesh: PackedMesh) {
   const bytes = unzlibSync(packed);
   const values = new Float32Array(bytes.buffer, bytes.byteOffset, bytes.byteLength / 4);
   const attributeLength = mesh.vertexCount * 3;
+  const sourceBits = new Uint32Array(values.buffer, values.byteOffset, values.length);
+  const positionBits = new Uint32Array(attributeLength);
+  const normalBits = new Uint32Array(attributeLength);
+  const indices: number[] = [];
+  const vertices = new Map<string, number>();
+  let vertexCount = 0;
+
+  for (let sourceIndex = 0; sourceIndex < mesh.vertexCount; sourceIndex++) {
+    const positionOffset = sourceIndex * 3;
+    const normalOffset = attributeLength + positionOffset;
+    const key = [
+      sourceBits[positionOffset],
+      sourceBits[positionOffset + 1],
+      sourceBits[positionOffset + 2],
+      sourceBits[normalOffset],
+      sourceBits[normalOffset + 1],
+      sourceBits[normalOffset + 2],
+    ].join(',');
+    let vertexIndex = vertices.get(key);
+    if (vertexIndex === undefined) {
+      vertexIndex = vertexCount++;
+      vertices.set(key, vertexIndex);
+      const targetOffset = vertexIndex * 3;
+      positionBits.set(sourceBits.subarray(positionOffset, positionOffset + 3), targetOffset);
+      normalBits.set(sourceBits.subarray(normalOffset, normalOffset + 3), targetOffset);
+    }
+    indices.push(vertexIndex);
+  }
+
   const geometry = new BufferGeometry();
-  geometry.setAttribute('position', new BufferAttribute(values.slice(0, attributeLength), 3));
-  geometry.setAttribute('normal', new BufferAttribute(values.slice(attributeLength), 3));
+  geometry.setAttribute(
+    'position',
+    new BufferAttribute(new Float32Array(positionBits.slice(0, vertexCount * 3).buffer), 3),
+  );
+  geometry.setAttribute(
+    'normal',
+    new BufferAttribute(new Float32Array(normalBits.slice(0, vertexCount * 3).buffer), 3),
+  );
+  geometry.setIndex(indices);
   return geometry;
 }

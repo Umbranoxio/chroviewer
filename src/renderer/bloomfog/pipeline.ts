@@ -44,6 +44,7 @@ import {
   bloomfogUpsampleWeights,
 } from './blur-math';
 import { createLightQuadScratch, writeLightQuad, type LightSegment, type Mat16 } from './light-quads';
+import { uint32PrefixEqual } from './output-cache';
 
 export interface FogUniforms {
   _BloomPrePassTexture: { value: Texture };
@@ -132,6 +133,18 @@ export class BloomfogPipeline {
   private viewPosArray = new Float32Array(0);
   private colorsArray = new Float32Array(0);
   private uvsArray = new Float32Array(0);
+  private positionsBits = new Uint32Array(0);
+  private viewPosBits = new Uint32Array(0);
+  private colorsBits = new Uint32Array(0);
+  private uvsBits = new Uint32Array(0);
+  private nextPositionsArray = new Float32Array(0);
+  private nextViewPosArray = new Float32Array(0);
+  private nextColorsArray = new Float32Array(0);
+  private nextUvsArray = new Float32Array(0);
+  private nextPositionsBits = new Uint32Array(0);
+  private nextViewPosBits = new Uint32Array(0);
+  private nextColorsBits = new Uint32Array(0);
+  private nextUvsBits = new Uint32Array(0);
 
   private readonly addCaptureMaterial: ShaderMaterial;
   private readonly maxCaptureMaterial: ShaderMaterial;
@@ -164,7 +177,11 @@ export class BloomfogPipeline {
   private readonly clearColorTmp = new Color();
   private readonly captureProjection = new Matrix4();
   private readonly lightQuadScratch = createLightQuadScratch();
-  private prepassBlack = false;
+  private cachedRenderer: WebGLRenderer | null = null;
+  private cachedQuadCount = -1;
+  private cachedAdditiveQuadCount = -1;
+  private cachedAutoExposureLimit = Number.NaN;
+  private cacheValid = false;
   private disposed = false;
 
   constructor() {
@@ -179,6 +196,7 @@ export class BloomfogPipeline {
       this.alphaMask = texture;
       this.captureUniforms._BloomfogAlphaMask.value = texture;
       previous.dispose();
+      this.invalidate();
     });
 
     this.fogUniforms = {
@@ -227,11 +245,24 @@ export class BloomfogPipeline {
     let capacity = Math.max(this.capacity, 256);
     while (capacity < count) capacity *= 2;
     if (capacity === this.capacity) return;
+    this.quadGeometry.dispose();
     this.capacity = capacity;
     this.positionsArray = new Float32Array(capacity * 12);
     this.viewPosArray = new Float32Array(capacity * 12);
     this.colorsArray = new Float32Array(capacity * 16);
     this.uvsArray = new Float32Array(capacity * 12);
+    this.nextPositionsArray = new Float32Array(capacity * 12);
+    this.nextViewPosArray = new Float32Array(capacity * 12);
+    this.nextColorsArray = new Float32Array(capacity * 16);
+    this.nextUvsArray = new Float32Array(capacity * 12);
+    this.positionsBits = new Uint32Array(this.positionsArray.buffer);
+    this.viewPosBits = new Uint32Array(this.viewPosArray.buffer);
+    this.colorsBits = new Uint32Array(this.colorsArray.buffer);
+    this.uvsBits = new Uint32Array(this.uvsArray.buffer);
+    this.nextPositionsBits = new Uint32Array(this.nextPositionsArray.buffer);
+    this.nextViewPosBits = new Uint32Array(this.nextViewPosArray.buffer);
+    this.nextColorsBits = new Uint32Array(this.nextColorsArray.buffer);
+    this.nextUvsBits = new Uint32Array(this.nextUvsArray.buffer);
     const index = new Uint32Array(capacity * 6);
     for (let i = 0; i < capacity; i++) {
       const vertex = i * 4;
@@ -251,6 +282,7 @@ export class BloomfogPipeline {
     });
     this.quadGeometry.setIndex(new BufferAttribute(index, 1));
     this.quadGeometry.setDrawRange(0, 0);
+    this.invalidate();
   }
 
   private writeQuads(lights: readonly LightSegment[], view: Mat16, projection: Mat16) {
@@ -265,10 +297,10 @@ export class BloomfogPipeline {
           view,
           projection,
           BLOOMFOG_LINE_WIDTH,
-          this.positionsArray,
-          this.viewPosArray,
-          this.colorsArray,
-          this.uvsArray,
+          this.nextPositionsArray,
+          this.nextViewPosArray,
+          this.nextColorsArray,
+          this.nextUvsArray,
           quadCount,
           this.lightQuadScratch,
         );
@@ -276,18 +308,65 @@ export class BloomfogPipeline {
       }
       if (blendMode === 'add') additiveQuadCount = quadCount;
     }
+    return { quadCount, additiveQuadCount };
+  }
+
+  private outputMatches(quadCount: number, additiveQuadCount: number) {
+    if (!this.cacheValid) return false;
+    if (quadCount !== this.cachedQuadCount || additiveQuadCount !== this.cachedAdditiveQuadCount) return false;
+    if (!Object.is(Math.fround(this.finalUpsampleUniforms._AutoExposureLimit.value), this.cachedAutoExposureLimit)) {
+      return false;
+    }
+    return (
+      uint32PrefixEqual(this.positionsBits, this.nextPositionsBits, quadCount * 12) &&
+      uint32PrefixEqual(this.viewPosBits, this.nextViewPosBits, quadCount * 12) &&
+      uint32PrefixEqual(this.colorsBits, this.nextColorsBits, quadCount * 16) &&
+      uint32PrefixEqual(this.uvsBits, this.nextUvsBits, quadCount * 12)
+    );
+  }
+
+  private uploadQuadOutput(quadCount: number, additiveQuadCount: number) {
+    [this.positionsArray, this.nextPositionsArray] = [this.nextPositionsArray, this.positionsArray];
+    [this.viewPosArray, this.nextViewPosArray] = [this.nextViewPosArray, this.viewPosArray];
+    [this.colorsArray, this.nextColorsArray] = [this.nextColorsArray, this.colorsArray];
+    [this.uvsArray, this.nextUvsArray] = [this.nextUvsArray, this.uvsArray];
+    [this.positionsBits, this.nextPositionsBits] = [this.nextPositionsBits, this.positionsBits];
+    [this.viewPosBits, this.nextViewPosBits] = [this.nextViewPosBits, this.viewPosBits];
+    [this.colorsBits, this.nextColorsBits] = [this.nextColorsBits, this.colorsBits];
+    [this.uvsBits, this.nextUvsBits] = [this.nextUvsBits, this.uvsBits];
+    const arrays = [this.positionsArray, this.viewPosArray, this.colorsArray, this.uvsArray];
     for (const attribute of this.quadAttributes) {
+      const array = arrays.shift();
+      if (array === undefined) continue;
+      attribute.array = array;
       attribute.clearUpdateRanges();
-      if (quadCount > 0) {
-        attribute.addUpdateRange(0, quadCount * 4 * attribute.itemSize);
-        attribute.needsUpdate = true;
-      }
+      attribute.addUpdateRange(0, quadCount * 4 * attribute.itemSize);
+      attribute.needsUpdate = true;
     }
     this.quadGeometry.setDrawRange(0, quadCount * 6);
     this.quadGeometry.clearGroups();
-    this.quadGeometry.addGroup(0, additiveQuadCount * 6, 0);
-    this.quadGeometry.addGroup(additiveQuadCount * 6, (quadCount - additiveQuadCount) * 6, 1);
-    return quadCount;
+    if (additiveQuadCount > 0) this.quadGeometry.addGroup(0, additiveQuadCount * 6, 0);
+    const maxQuadCount = quadCount - additiveQuadCount;
+    if (maxQuadCount > 0) this.quadGeometry.addGroup(additiveQuadCount * 6, maxQuadCount * 6, 1);
+  }
+
+  private commitOutput(renderer: WebGLRenderer, quadCount: number, additiveQuadCount: number) {
+    this.cachedRenderer = renderer;
+    this.cachedQuadCount = quadCount;
+    this.cachedAdditiveQuadCount = additiveQuadCount;
+    this.cachedAutoExposureLimit = Math.fround(this.finalUpsampleUniforms._AutoExposureLimit.value);
+    this.cacheValid = true;
+  }
+
+  private clearPrepass(renderer: WebGLRenderer) {
+    const previousTarget = renderer.getRenderTarget();
+    renderer.getClearColor(this.clearColorTmp);
+    const previousClearAlpha = renderer.getClearAlpha();
+    renderer.setClearColor(0x000000, 0);
+    renderer.setRenderTarget(this.prepass);
+    renderer.clear(true, false, false);
+    renderer.setRenderTarget(previousTarget);
+    renderer.setClearColor(this.clearColorTmp, previousClearAlpha);
   }
 
   setFogParams(params: FogParams) {
@@ -296,9 +375,16 @@ export class BloomfogPipeline {
     this.fogUniforms._CustomFogHeightFogStartY.value = params.startY;
     this.fogUniforms._CustomFogHeightFogHeight.value = params.height;
     this.finalUpsampleUniforms._AutoExposureLimit.value = params.autoExposureLimit;
+    this.invalidate();
+  }
+
+  invalidate() {
+    this.cachedRenderer = null;
+    this.cacheValid = false;
   }
 
   render(renderer: WebGLRenderer, camera: PerspectiveCamera, lights: readonly LightSegment[]) {
+    if (renderer !== this.cachedRenderer) this.invalidate();
     camera.updateMatrixWorld();
     const projection = this.captureProjection.copy(camera.projectionMatrix);
     const elements = projection.elements;
@@ -310,11 +396,15 @@ export class BloomfogPipeline {
     elements[5] *= ratioY;
     elements[9] *= ratioY;
     this.fogUniforms._CustomFogTextureToScreenRatio.value.set(ratioX, ratioY);
-    const quadCount = this.writeQuads(lights, camera.matrixWorldInverse.elements, elements);
+    const { quadCount, additiveQuadCount } = this.writeQuads(lights, camera.matrixWorldInverse.elements, elements);
 
-    // no visible quads renders an all-black prepass; skip the pyramid once it's already black
-    if (quadCount === 0 && this.prepassBlack) return;
-    this.prepassBlack = quadCount === 0;
+    if (this.outputMatches(quadCount, additiveQuadCount)) return;
+    if (quadCount === 0) {
+      this.clearPrepass(renderer);
+      this.commitOutput(renderer, quadCount, additiveQuadCount);
+      return;
+    }
+    this.uploadQuadOutput(quadCount, additiveQuadCount);
 
     const previousTarget = renderer.getRenderTarget();
     renderer.getClearColor(this.clearColorTmp);
@@ -358,6 +448,7 @@ export class BloomfogPipeline {
 
     renderer.setRenderTarget(previousTarget);
     renderer.setClearColor(this.clearColorTmp, previousClearAlpha);
+    this.commitOutput(renderer, quadCount, additiveQuadCount);
   }
 
   dispose() {

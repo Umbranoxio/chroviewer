@@ -54,6 +54,7 @@ import {
 } from '../object-geometry';
 import type { ReplayView } from '../replay/replay-view';
 import { wallTransform } from '../wall-transform';
+import { ActiveWindowIndex } from './active-window-index';
 import { InstancedGroup } from './instanced-group';
 
 interface ArcEntry {
@@ -108,6 +109,17 @@ export class MapObjectRenderer {
   private screenDisplacementEffects = true;
   private instanceGroups: InstancedGroup[] = [];
   private arcEntries: ArcEntry[] = [];
+  private noteReplayWindows: ActiveWindowIndex | null = null;
+  private notePreviewWindows: ActiveWindowIndex | null = null;
+  private bombWindows: ActiveWindowIndex | null = null;
+  private linkReplayWindows: ActiveWindowIndex | null = null;
+  private linkPreviewWindows: ActiveWindowIndex | null = null;
+  private wallWindows: ActiveWindowIndex | null = null;
+  private arcWindows: ActiveWindowIndex | null = null;
+  private noteBodiesMerged = false;
+  private arrowsMerged = false;
+  private dotsMerged = false;
+  private linksMerged = false;
   private objectBeat = Number.NaN;
   private ownedMaterials: Material[] = [];
 
@@ -126,11 +138,16 @@ export class MapObjectRenderer {
     this.data = data;
     this.colors = colors;
     const arcColors: Rgb[] = [colors.leftNote, colors.rightNote];
-    const noteBodyMaterials = [
-      createNoteMaterial(this.fog, colors.leftNote, this.noteReflection),
-      createNoteMaterial(this.fog, colors.rightNote, this.noteReflection),
-    ];
-    const directionalMaterials = [createDirectionalMaterial(this.fog), createDirectionalMaterial(this.fog)];
+    const hasNotes = data.notes.length > 0;
+    const hasLinks = data.chainLinks.length > 0;
+    const noteMaterials = Array.from({ length: hasNotes && hasLinks ? 2 : 1 }, (_, colorIndex) =>
+      createNoteMaterial(this.fog, colorIndex === 1 ? colors.rightNote : colors.leftNote, this.noteReflection),
+    );
+    const hasArrows = data.notes.some((note) => !note.dot);
+    const hasDots = data.notes.some((note) => note.dot);
+    const directionalMaterials = Array.from({ length: hasArrows && hasDots ? 2 : 1 }, () =>
+      createDirectionalMaterial(this.fog),
+    );
     const bombMaterial = createBombMaterial(this.fog, this.noteReflection);
     const wallCoreLowMaterial = createObstacleMaterial(this.fog, colors.obstacle);
     const wallCoreHighMaterial = createObstacleDisplacementMaterial(
@@ -143,7 +160,7 @@ export class MapObjectRenderer {
     this.wallCoreHighMaterial = wallCoreHighMaterial;
     const wallFrameMaterial = createObstacleOutlineMaterial(this.fog, colors.obstacle);
     this.ownedMaterials = [
-      ...noteBodyMaterials,
+      ...noteMaterials,
       ...directionalMaterials,
       bombMaterial,
       wallCoreLowMaterial,
@@ -151,19 +168,49 @@ export class MapObjectRenderer {
       wallFrameMaterial,
     ];
 
-    this.noteBodies = noteBodyMaterials.map(
-      (material) => new InstancedGroup(noteBodyGeometry(), material, data.capacity.notes),
-    );
-    this.arrows = directionalMaterials.map(
-      (material) => new InstancedGroup(arrowGeometry(), material, data.capacity.notes),
-    );
-    this.dots = directionalMaterials.map(
-      (material) => new InstancedGroup(dotGeometry(), material, data.capacity.notes),
-    );
+    const noteColorCapacity = Math.max(data.capacity.notes, 1);
+    const linkColorCapacity = Math.max(data.capacity.chainLinks, 1);
+    this.noteBodiesMerged = hasNotes && !hasLinks;
+    this.linksMerged = hasLinks && !hasNotes;
+    this.arrowsMerged = hasArrows && !hasDots;
+    this.dotsMerged = hasDots && !hasArrows;
+    this.noteBodies = hasNotes
+      ? noteMaterials.map(
+          (material) =>
+            new InstancedGroup(
+              noteBodyGeometry(),
+              material,
+              this.noteBodiesMerged ? noteColorCapacity * 2 : data.capacity.notes,
+            ),
+        )
+      : [];
+    this.arrows = hasArrows
+      ? directionalMaterials.map(
+          (material) =>
+            new InstancedGroup(
+              arrowGeometry(),
+              material,
+              this.arrowsMerged ? noteColorCapacity * 2 : data.capacity.notes,
+            ),
+        )
+      : [];
+    this.dots = hasDots
+      ? directionalMaterials.map(
+          (material) =>
+            new InstancedGroup(dotGeometry(), material, this.dotsMerged ? noteColorCapacity * 2 : data.capacity.notes),
+        )
+      : [];
     this.bombs = new InstancedGroup(bombGeometry(), bombMaterial, data.capacity.bombs);
-    this.links = noteBodyMaterials.map(
-      (material) => new InstancedGroup(chainLinkGeometry(), material, data.capacity.chainLinks),
-    );
+    this.links = hasLinks
+      ? noteMaterials.map(
+          (material) =>
+            new InstancedGroup(
+              chainLinkGeometry(),
+              material,
+              this.linksMerged ? linkColorCapacity * 2 : data.capacity.chainLinks,
+            ),
+        )
+      : [];
     this.wallCores = new InstancedGroup(wallCoreGeometry(), wallCoreLowMaterial, data.capacity.walls);
     this.wallFrames = new InstancedGroup(wallFrameGeometry(), wallFrameMaterial, data.capacity.walls);
     this.instanceGroups = [
@@ -188,6 +235,48 @@ export class MapObjectRenderer {
       this.root.add(mesh);
       return { mesh, arc };
     });
+    this.noteReplayWindows = new ActiveWindowIndex(
+      data.notes.length,
+      (index) => data.notes[index]?.enterBeat ?? Infinity,
+      (index) => data.notes[index]?.despawnBeat ?? -Infinity,
+      true,
+    );
+    this.notePreviewWindows = new ActiveWindowIndex(
+      data.notes.length,
+      (index) => data.notes[index]?.enterBeat ?? Infinity,
+      (index) => data.notes[index]?.beat ?? -Infinity,
+      false,
+    );
+    this.bombWindows = new ActiveWindowIndex(
+      data.bombs.length,
+      (index) => data.bombs[index]?.enterBeat ?? Infinity,
+      (index) => data.bombs[index]?.despawnBeat ?? -Infinity,
+      true,
+    );
+    this.linkReplayWindows = new ActiveWindowIndex(
+      data.chainLinks.length,
+      (index) => data.chainLinks[index]?.enterBeat ?? Infinity,
+      (index) => data.chainLinks[index]?.despawnBeat ?? -Infinity,
+      true,
+    );
+    this.linkPreviewWindows = new ActiveWindowIndex(
+      data.chainLinks.length,
+      (index) => data.chainLinks[index]?.enterBeat ?? Infinity,
+      (index) => data.chainLinks[index]?.beat ?? -Infinity,
+      false,
+    );
+    this.wallWindows = new ActiveWindowIndex(
+      data.walls.length,
+      (index) => data.walls[index]?.enterBeat ?? Infinity,
+      (index) => data.walls[index]?.despawnBeat ?? -Infinity,
+      true,
+    );
+    this.arcWindows = new ActiveWindowIndex(
+      data.arcs.length,
+      (index) => data.arcs[index]?.spawnBeat ?? Infinity,
+      (index) => data.arcs[index]?.despawnBeat ?? -Infinity,
+      true,
+    );
   }
 
   setScreenDisplacementEffects(enabled: boolean) {
@@ -219,56 +308,89 @@ export class MapObjectRenderer {
     const replayLoaded = replayView.hasReplay;
     const poseFrames = replayView.poseFrames;
 
-    for (const note of data.notes) {
-      const visible = replayLoaded ? isVisible(note, now) : isVisibleBeforeHit(note, now);
-      if (!visible || (note.replayEndTime !== undefined && replayTime >= note.replayEndTime)) continue;
-      const jump = spawnProgress(note, now);
-      const x = note.startX + (note.x - note.startX) * spawnFlipProgress(note, now);
-      const y = note.startY + (note.y - note.startY) * jump + spawnFlipYOffset(note, now, note.flipYSide);
-      const rotation = note.rotationDeg * spawnRotationProgress(note, now);
-      const noteTime = songBpmTimeToSeconds(note.beat, data.songBpm);
-      if (note.lookAtPlayer) {
-        this.composeLookNoteAt(
-          note,
-          now,
-          x,
-          y,
-          noteTime,
-          replayTime,
-          data.songBpm,
-          poseFrames,
-          replayView.headPosition,
-          data.tracksPlayerZ,
-          noteModelScale,
-        );
-      } else {
-        this.composeAt(note, now, x, y, rotation, noteModelScale);
+    const activeNotes = (replayLoaded ? this.noteReplayWindows : this.notePreviewWindows)?.at(now) ?? [];
+    const noteColorCapacity = Math.max(data.capacity.notes, 1);
+    for (let colorIndex = 0; colorIndex < 2; colorIndex++) {
+      let bodyCount = 0;
+      let arrowCount = 0;
+      let dotCount = 0;
+      for (const index of activeNotes) {
+        const note = data.notes[index];
+        if (note?.colorIndex !== colorIndex) continue;
+        const visible = replayLoaded ? isVisible(note, now) : isVisibleBeforeHit(note, now);
+        if (!visible || (note.replayEndTime !== undefined && replayTime >= note.replayEndTime)) continue;
+        const jump = spawnProgress(note, now);
+        const x = note.startX + (note.x - note.startX) * spawnFlipProgress(note, now);
+        const y = note.startY + (note.y - note.startY) * jump + spawnFlipYOffset(note, now, note.flipYSide);
+        const rotation = note.rotationDeg * spawnRotationProgress(note, now);
+        const noteTime = songBpmTimeToSeconds(note.beat, data.songBpm);
+        if (note.lookAtPlayer) {
+          this.composeLookNoteAt(
+            note,
+            now,
+            x,
+            y,
+            noteTime,
+            replayTime,
+            data.songBpm,
+            poseFrames,
+            replayView.headPosition,
+            data.tracksPlayerZ,
+            noteModelScale,
+          );
+        } else {
+          this.composeAt(note, now, x, y, rotation, noteModelScale);
+        }
+        const color = note.customColor ?? (note.colorIndex === 1 ? colors.rightNote : colors.leftNote);
+        if (bodyCount < noteColorCapacity) {
+          this.noteBodies[this.noteBodiesMerged ? 0 : colorIndex]?.push(this.matrix, color);
+          bodyCount++;
+        }
+        if (note.dot) {
+          if (dotCount < noteColorCapacity) {
+            this.dots[this.dotsMerged ? 0 : colorIndex]?.push(this.matrix, white);
+            dotCount++;
+          }
+        } else if (arrowCount < noteColorCapacity) {
+          this.arrows[this.arrowsMerged ? 0 : colorIndex]?.push(this.matrix, white);
+          arrowCount++;
+        }
       }
-      const color = note.customColor ?? (note.colorIndex === 1 ? colors.rightNote : colors.leftNote);
-      this.noteBodies[note.colorIndex]?.push(this.matrix, color);
-      if (note.dot) this.dots[note.colorIndex]?.push(this.matrix, white);
-      else this.arrows[note.colorIndex]?.push(this.matrix, white);
     }
 
-    for (const bomb of data.bombs) {
+    for (const index of this.bombWindows?.at(now) ?? []) {
+      const bomb = data.bombs[index];
+      if (bomb === undefined) continue;
       if (!isVisible(bomb, now) || (bomb.replayEndTime !== undefined && replayTime >= bomb.replayEndTime)) continue;
       const y = bomb.startY + (bomb.y - bomb.startY) * spawnProgress(bomb, now);
       this.composeAt(bomb, now, bomb.x, y, 0, 1);
       this.bombs?.push(this.matrix, bomb.customColor ?? bombGray);
     }
 
-    for (const link of data.chainLinks) {
-      const visible = replayLoaded ? isVisible(link, now) : isVisibleBeforeHit(link, now);
-      if (!visible || (link.replayEndTime !== undefined && replayTime >= link.replayEndTime)) continue;
-      const jump = spawnProgress(link, now);
-      const y = Y_OFFSET + (link.y - Y_OFFSET) * jump;
-      const rotation = link.rotationDeg * spawnRotationProgress(link, now);
-      this.composeAt(link, now, link.x, y, rotation, noteModelScale);
-      const color = link.customColor ?? (link.colorIndex === 1 ? colors.rightNote : colors.leftNote);
-      this.links[link.colorIndex]?.push(this.matrix, color);
+    const activeLinks = (replayLoaded ? this.linkReplayWindows : this.linkPreviewWindows)?.at(now) ?? [];
+    const linkColorCapacity = Math.max(data.capacity.chainLinks, 1);
+    for (let colorIndex = 0; colorIndex < 2; colorIndex++) {
+      let linkCount = 0;
+      for (const index of activeLinks) {
+        const link = data.chainLinks[index];
+        if (link?.colorIndex !== colorIndex) continue;
+        const visible = replayLoaded ? isVisible(link, now) : isVisibleBeforeHit(link, now);
+        if (!visible || (link.replayEndTime !== undefined && replayTime >= link.replayEndTime)) continue;
+        const jump = spawnProgress(link, now);
+        const y = Y_OFFSET + (link.y - Y_OFFSET) * jump;
+        const rotation = link.rotationDeg * spawnRotationProgress(link, now);
+        this.composeAt(link, now, link.x, y, rotation, noteModelScale);
+        const color = link.customColor ?? (link.colorIndex === 1 ? colors.rightNote : colors.leftNote);
+        if (linkCount < linkColorCapacity) {
+          this.links[this.linksMerged ? 0 : colorIndex]?.push(this.matrix, color);
+          linkCount++;
+        }
+      }
     }
 
-    for (const wall of data.walls) {
+    for (const index of this.wallWindows?.at(now) ?? []) {
+      const wall = data.walls[index];
+      if (wall === undefined) continue;
       if (!isVisible(wall, now)) continue;
       const reveal = wallSpawnScale(wall, now);
       if (reveal === 0) continue;
@@ -284,11 +406,15 @@ export class MapObjectRenderer {
       this.wallCores?.push(this.matrix, color);
     }
 
-    for (const entry of this.arcEntries) {
+    for (const index of this.arcWindows?.current ?? []) {
+      const entry = this.arcEntries[index];
+      if (entry !== undefined) entry.mesh.visible = false;
+    }
+    for (const index of this.arcWindows?.at(now) ?? []) {
+      const entry = this.arcEntries[index];
+      if (entry === undefined) continue;
       const arc = entry.arc;
-      const visible = now >= arc.spawnBeat && now <= arc.despawnBeat;
-      entry.mesh.visible = visible;
-      if (!visible) continue;
+      entry.mesh.visible = true;
       const headAhead = Z_OFFSET + (arc.headBeat - now) * arc.unitsPerBeat;
       entry.mesh.position.set(0, NOTE_Y_OFFSET, -headAhead);
       entry.mesh.scale.set(1, 1, 1);
@@ -310,14 +436,15 @@ export class MapObjectRenderer {
       entry.mesh.geometry.dispose();
     }
     for (const material of this.ownedMaterials) material.dispose();
-    this.noteBodies = [];
-    this.arrows = [];
-    this.dots = [];
-    this.links = [];
+    this.noteBodies = this.arrows = this.dots = this.links = [];
     this.bombs = this.wallCores = this.wallFrames = null;
     this.wallCoreLowMaterial = this.wallCoreHighMaterial = null;
     this.instanceGroups = [];
     this.arcEntries = [];
+    this.noteReplayWindows = this.notePreviewWindows = this.bombWindows = null;
+    this.linkReplayWindows = this.linkPreviewWindows = null;
+    this.wallWindows = this.arcWindows = null;
+    this.noteBodiesMerged = this.arrowsMerged = this.dotsMerged = this.linksMerged = false;
     this.ownedMaterials = [];
     this.noteLookStates.clear();
     this.data = null;

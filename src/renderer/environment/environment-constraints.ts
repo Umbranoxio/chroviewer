@@ -52,6 +52,7 @@ export function createPositionConstraintApplicator(data: EnvironmentData, nodes:
       localPosition.copy(constrainedPosition);
       constraint.target.parent?.worldToLocal(localPosition);
       constraint.target.position.copy(localPosition);
+      constraint.target.updateMatrix();
     }
     return true;
   };
