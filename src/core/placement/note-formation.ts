@@ -1,7 +1,8 @@
 import { songBpmTimeToSeconds } from '../beatmap/bpm';
 import { NoteType, type Difficulty, type Note } from '../beatmap/types';
 import { beatSaberNumberSchema } from '../beatmap/value-schema';
-import { cutDirectionEuler, directionalize, gridPosition, LANE_SIZE } from './grid';
+import { noodleCoordinates } from '../noodle';
+import { cutDirectionEuler, directionalize, objectPosition } from './grid';
 
 const rowTolerance = 0.001;
 const noCutDirection = 9;
@@ -86,15 +87,7 @@ function noteRotation(note: Note, majorVersion: number) {
 }
 
 function notePosition(note: Note) {
-  const position = gridPosition(note.posX, note.posY);
-  const coordinates = note.customData?._position ?? note.customData?.coordinates;
-  if (!Array.isArray(coordinates)) return position;
-  const x = beatSaberNumberSchema.safeParse(coordinates[0]);
-  const y = beatSaberNumberSchema.safeParse(coordinates[1]);
-  return {
-    x: x.success ? (x.data + 0.5) * LANE_SIZE : position.x,
-    y: y.success ? y.data * LANE_SIZE : position.y,
-  };
+  return objectPosition(note.posX, note.posY, noodleCoordinates(note.customData));
 }
 
 function applyWindowRotations(formedNotes: FormedNote[], majorVersion: number) {

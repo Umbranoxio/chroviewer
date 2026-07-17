@@ -12,6 +12,7 @@ import {
   type RotationEvent,
 } from './types';
 import {
+  beatSaberBooleanSchema as booleanSchema,
   beatSaberJsonObjectSchema as customDataSchema,
   beatSaberNumberSchema as numberSchema,
   beatSaberStringSchema,
@@ -85,7 +86,7 @@ function parseNote(node: V2Note): Note {
     cutDirection: node._cutDirection,
     angleOffset: 0,
     rotation: 0,
-    customFake: false,
+    customFake: booleanSchema.parse(node._customData?._fake),
     customData: node._customData,
   };
 }
@@ -103,7 +104,7 @@ function parseObstacle(node: V2Obstacle): Obstacle {
     durationSongBpmTime: 0,
     width: node._width,
     height: type === 1 ? 3 : 5,
-    customFake: false,
+    customFake: booleanSchema.parse(node._customData?._fake),
     customData: node._customData,
   };
 }

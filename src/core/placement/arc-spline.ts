@@ -1,5 +1,6 @@
 import { MidAnchorMode, type Arc } from '../beatmap/types';
-import { cutDirectionEuler, gridPosition } from './grid';
+import { noodleCoordinates, noodleTailCoordinates } from '../noodle';
+import { cutDirectionEuler, objectPosition } from './grid';
 
 export interface Vec3 {
   x: number;
@@ -74,8 +75,8 @@ function estimatedLength([p0, p1, p2, p3]: Segment) {
 }
 
 function segmentsFor(arc: Arc, zDistance: number, hasHeadNote: boolean, hasTailNote: boolean): Segment[] {
-  const head = gridPosition(arc.posX, arc.posY);
-  const tail = gridPosition(arc.tailPosX, arc.tailPosY);
+  const head = objectPosition(arc.posX, arc.posY, noodleCoordinates(arc.customData));
+  const tail = objectPosition(arc.tailPosX, arc.tailPosY, noodleTailCoordinates(arc.customData));
   const headDirection = cutDirectionVector(arc.cutDirection);
   const tailDirection = cutDirectionVector(arc.tailCutDirection);
   const headAttachment = scale(headDirection, noteRadius * (hasHeadNote ? 1 : 0.1));

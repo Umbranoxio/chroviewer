@@ -8,6 +8,7 @@ export interface HitsoundEvent {
 
 interface HitsoundNote {
   beat: number;
+  interactable?: boolean;
   replayEndTime?: number;
   replayEventType?: ReplayNoteEventType;
 }
@@ -15,6 +16,7 @@ interface HitsoundNote {
 export function buildHitsoundEvents(notes: HitsoundNote[], songBpm: number) {
   const events = notes
     .flatMap((note): HitsoundEvent[] => {
+      if (note.interactable === false) return [];
       if (note.replayEventType === 0 || note.replayEventType === 3 || note.replayEventType === 4) return [];
       if (note.replayEventType === 2) {
         return [{ time: note.replayEndTime ?? songBpmTimeToSeconds(note.beat, songBpm), good: false }];

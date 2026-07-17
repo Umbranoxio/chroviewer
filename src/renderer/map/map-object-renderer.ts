@@ -1,4 +1,5 @@
 import {
+  Euler,
   Matrix4,
   Mesh,
   PlaneGeometry,
@@ -15,6 +16,7 @@ import {
 
 import { secondsToSongBpmTime, songBpmTimeToSeconds } from '../../core/beatmap/bpm';
 import type { ColorScheme, Rgb } from '../../core/colors';
+import type { NoodleWorldRotation } from '../../core/noodle';
 import { NOTE_Y_OFFSET, Y_OFFSET, Z_OFFSET } from '../../core/placement/grid';
 import {
   aheadDistance,
@@ -26,9 +28,14 @@ import {
   spawnRotationProgress,
   wallAheadDistance,
   wallSpawnScale,
-  type ObjectMotion,
 } from '../../core/placement/jump-path';
-import type { ArcInstance, MapRenderData, NoteInstance } from '../../core/placement/map-render-data';
+import type {
+  ArcInstance,
+  BombInstance,
+  ChainLinkInstance,
+  MapRenderData,
+  NoteInstance,
+} from '../../core/placement/map-render-data';
 import type { ReplayPose } from '../../core/replay/types';
 import type { FogUniforms } from '../bloomfog/pipeline';
 import {
@@ -95,6 +102,8 @@ export class MapObjectRenderer {
   private readonly position = new Vector3();
   private readonly poseHeadPosition = new Vector3();
   private readonly quaternion = new Quaternion();
+  private readonly worldEuler = new Euler(0, 0, 0, 'ZXY');
+  private readonly worldQuaternion = new Quaternion();
   private readonly noteLookRotation = new NoteLookRotation();
   private readonly scale = new Vector3();
   private readonly noteLookStates = new Map<NoteInstance, NoteLookState>();
@@ -399,6 +408,7 @@ export class MapObjectRenderer {
       const transform = wallTransform(wall, wallAheadDistance(wall, wall.pullBeat, now), reveal);
       this.position.fromArray(transform.position);
       this.quaternion.setFromAxisAngle(yAxis, transform.yawDeg * degToRad);
+      this.applyWorldRotation(wall.worldRotation);
       this.scale.fromArray(transform.outlineScale);
       this.matrix.compose(this.position, this.quaternion, this.scale);
       const color = wall.customColor ?? colors.obstacle;
@@ -418,7 +428,15 @@ export class MapObjectRenderer {
       const arc = entry.arc;
       entry.mesh.visible = true;
       const headAhead = Z_OFFSET + (arc.headBeat - now) * arc.unitsPerBeat;
-      entry.mesh.position.set(0, NOTE_Y_OFFSET, -headAhead);
+      this.position.set(0, NOTE_Y_OFFSET, -headAhead);
+      if (arc.worldRotation === undefined) {
+        entry.mesh.quaternion.identity();
+      } else {
+        this.setWorldQuaternion(arc.worldRotation);
+        this.position.applyQuaternion(this.worldQuaternion);
+        entry.mesh.quaternion.copy(this.worldQuaternion);
+      }
+      entry.mesh.position.copy(this.position);
       entry.mesh.scale.set(1, 1, 1);
       const nowBeat = entry.mesh.material.uniforms._PlaybackBeat;
       const timeSeconds = entry.mesh.material.uniforms._ClockSeconds;
@@ -466,9 +484,17 @@ export class MapObjectRenderer {
     this.obstacleDisplacementNoise.dispose();
   }
 
-  private composeAt(motion: ObjectMotion, now: number, x: number, y: number, rotationDeg: number, scale: number) {
+  private composeAt(
+    motion: NoteInstance | BombInstance | ChainLinkInstance,
+    now: number,
+    x: number,
+    y: number,
+    rotationDeg: number,
+    scale: number,
+  ) {
     this.position.set(x, y, -aheadDistance(motion, now));
     this.quaternion.setFromAxisAngle(zAxis, rotationDeg * degToRad);
+    this.applyWorldRotation(motion.worldRotation);
     this.scale.setScalar(scale);
     this.matrix.compose(this.position, this.quaternion, this.scale);
   }
@@ -516,6 +542,7 @@ export class MapObjectRenderer {
         (now - note.spawnBeat) / (note.hjdBeats * 2),
       );
     }
+    this.applyWorldRotation(note.worldRotation);
     this.scale.setScalar(scale);
     this.matrix.compose(this.position, this.quaternion, this.scale);
   }
@@ -625,6 +652,18 @@ export class MapObjectRenderer {
     const x = note.startX + (note.x - note.startX) * spawnFlipProgress(note, now);
     const y = note.startY + (note.y - note.startY) * jump + spawnFlipYOffset(note, now, note.flipYSide);
     this.position.set(x, y, -aheadDistance(note, now));
+  }
+
+  private setWorldQuaternion(rotation: NoodleWorldRotation) {
+    this.worldEuler.set(-rotation[0] * degToRad, -rotation[1] * degToRad, rotation[2] * degToRad);
+    this.worldQuaternion.setFromEuler(this.worldEuler);
+  }
+
+  private applyWorldRotation(rotation: NoodleWorldRotation | undefined) {
+    if (rotation === undefined) return;
+    this.setWorldQuaternion(rotation);
+    this.position.applyQuaternion(this.worldQuaternion);
+    this.quaternion.premultiply(this.worldQuaternion);
   }
 }
 
