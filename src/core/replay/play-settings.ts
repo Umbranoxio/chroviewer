@@ -1,6 +1,5 @@
 import type { InfoColorScheme } from '../beatmap/info';
 import { DEFAULT_COLORS, type Rgb } from '../colors';
-import type { LightshowMode } from '../lighting/basic-light';
 import type { ReplayColor, ReplayMetadata } from './types';
 
 function rgb(color: ReplayColor | undefined, fallback: Rgb): Rgb {
@@ -77,20 +76,4 @@ export function replayColorScheme(metadata: ReplayMetadata | undefined, mapSchem
     environmentRightBoost: rgb(metadata.environmentColor1Boost, base.environmentRightBoost),
     environmentWhiteBoost: rgb(metadata.environmentColorWBoost, base.environmentWhiteBoost),
   } satisfies InfoColorScheme;
-}
-
-function environmentEffectsPreset(metadata: ReplayMetadata) {
-  const current = metadata.environmentEffectsFilterPreset;
-  if (current === 0 || current === 1 || current === 10) return current;
-  return metadata.difficulty === 9
-    ? metadata.environmentEffectsFilterExpertPlusPreset
-    : metadata.environmentEffectsFilterDefaultPreset;
-}
-
-export function replayLightshowMode(metadata: ReplayMetadata | undefined): LightshowMode | undefined {
-  if (metadata?.hasPlaySettings !== true) return undefined;
-  const preset = environmentEffectsPreset(metadata);
-  if (preset === 10) return 'static';
-  if (preset === 0 || preset === 1) return 'full';
-  return undefined;
 }

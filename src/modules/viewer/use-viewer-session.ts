@@ -7,7 +7,6 @@ import { difficultyRank, effectiveNoteJumpSpeed } from '../../core/beatmap/info'
 import { buildHitsoundEvents } from '../../core/clock/hitsounds';
 import { isForcedLightshowMode, type LightshowMode } from '../../core/lighting/basic-light';
 import { applyReplayHeightEvents, buildMapRenderData } from '../../core/placement/map-render-data';
-import { replayLightshowMode } from '../../core/replay/play-settings';
 import { hitScoreVisualizerForSettings } from '../../core/replay/replay-display';
 import type { ReplayHeightEvent, ReplayNoteEvent } from '../../core/replay/types';
 import {
@@ -230,13 +229,6 @@ export function useViewerSession({
     if (environmentResult.isErr()) {
       reportEnvironmentError(environmentResult.error);
       return;
-    }
-    const recordedLightshowMode = row.replayMatch
-      ? replayLightshowMode(sources.replayRef.current?.metadata)
-      : undefined;
-    if (recordedLightshowMode !== undefined && !isForcedLightshowMode(lightshowModeRef.current)) {
-      lightshowModeRef.current = recordedLightshowMode;
-      setLightshowMode(recordedLightshowMode);
     }
     viewer.view.setLightshowMode(lightshowModeRef.current);
 
