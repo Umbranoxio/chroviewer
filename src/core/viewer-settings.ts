@@ -180,7 +180,7 @@ export const DEFAULT_REPLAY_TRAIL_SETTINGS: ReplayTrailSettings = {
 export const DEFAULT_REPLAY_SABER_SETTINGS: ReplaySaberSettings = {
   showSabers: true,
   saberScale: 1,
-  saberBladeLength: 0.982,
+  saberBladeLength: 1,
   saberBladeThickness: 0.0045,
   saberCoreThickness: 0.0018,
   saberCoreInset: 0.004,
@@ -240,11 +240,12 @@ export const DEFAULT_VIEWER_SETTINGS: ViewerSettings = {
   autoHide: true,
 };
 
-const storageKey = 'chroviewer.settings.v5';
-const previousStorageKey = 'chroviewer.settings.v4';
-const olderStorageKey = 'chroviewer.settings.v3';
-const legacyStorageKey = 'chroviewer.settings.v2';
-const oldestStorageKey = 'chroviewer.settings.v1';
+const storageKey = 'chroviewer.settings.v6';
+const previousStorageKey = 'chroviewer.settings.v5';
+const olderStorageKey = 'chroviewer.settings.v4';
+const legacyStorageKey = 'chroviewer.settings.v3';
+const oldestStorageKey = 'chroviewer.settings.v2';
+const originalStorageKey = 'chroviewer.settings.v1';
 const hexPattern = /^#[0-9a-f]{6}$/i;
 const mobileUserAgent = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i;
 
@@ -381,44 +382,50 @@ export function loadViewerSettings(
   const text = storage.getItem(storageKey);
   if (text !== null) {
     const parsed = Result.try((): unknown => JSON.parse(text));
-    return parsed.isOk() ? migrateIncorrectDefaultColors(sanitizeViewerSettings(parsed.value)) : defaults;
+    return parsed.isOk() ? sanitizeViewerSettings(parsed.value) : defaults;
   }
 
   const previousText = storage.getItem(previousStorageKey);
   if (previousText !== null) {
     const parsed = Result.try((): unknown => JSON.parse(previousText));
     if (parsed.isErr()) return defaults;
-    return migrateLegacyColorOverrides(sanitizeViewerSettings(parsed.value));
+    return resetSaberSettings(migrateIncorrectDefaultColors(sanitizeViewerSettings(parsed.value)));
   }
 
   const olderText = storage.getItem(olderStorageKey);
   if (olderText !== null) {
     const parsed = Result.try((): unknown => JSON.parse(olderText));
     if (parsed.isErr()) return defaults;
-    const settings = migrateLegacyColorOverrides(migrateDefaultSaberZOffset(sanitizeViewerSettings(parsed.value)));
-    return settings;
+    return resetSaberSettings(migrateLegacyColorOverrides(sanitizeViewerSettings(parsed.value)));
   }
 
   const legacyText = storage.getItem(legacyStorageKey);
   if (legacyText !== null) {
     const parsed = Result.try((): unknown => JSON.parse(legacyText));
     if (parsed.isErr()) return defaults;
-    const settings = migrateLegacyColorOverrides(migrateDefaultSaberZOffset(sanitizeViewerSettings(parsed.value)));
+    return resetSaberSettings(migrateLegacyColorOverrides(sanitizeViewerSettings(parsed.value)));
+  }
+
+  const oldestText = storage.getItem(oldestStorageKey);
+  if (oldestText !== null) {
+    const parsed = Result.try((): unknown => JSON.parse(oldestText));
+    if (parsed.isErr()) return defaults;
+    const settings = resetSaberSettings(migrateLegacyColorOverrides(sanitizeViewerSettings(parsed.value)));
     return settings.graphicsQuality === 'medium'
       ? { ...settings, graphicsQuality: defaults.graphicsQuality }
       : settings;
   }
 
-  const oldestText = storage.getItem(oldestStorageKey);
-  if (oldestText === null) return defaults;
-  const parsed = Result.try((): unknown => JSON.parse(oldestText));
+  const originalText = storage.getItem(originalStorageKey);
+  if (originalText === null) return defaults;
+  const parsed = Result.try((): unknown => JSON.parse(originalText));
   if (parsed.isErr()) return defaults;
-  const settings = migrateLegacyColorOverrides(migrateDefaultSaberZOffset(sanitizeViewerSettings(parsed.value)));
+  const settings = resetSaberSettings(migrateLegacyColorOverrides(sanitizeViewerSettings(parsed.value)));
   return settings.graphicsQuality === 'high' ? { ...settings, graphicsQuality: defaults.graphicsQuality } : settings;
 }
 
-function migrateDefaultSaberZOffset(settings: ViewerSettings) {
-  return settings.saberZOffset === 0.15 ? { ...settings, saberZOffset: 0 } : settings;
+function resetSaberSettings(settings: ViewerSettings): ViewerSettings {
+  return { ...settings, ...DEFAULT_REPLAY_SABER_SETTINGS };
 }
 
 function migrateIncorrectDefaultColors(settings: ViewerSettings): ViewerSettings {

@@ -70,30 +70,30 @@ export function createReplaySaber(materials: SaberMaterials): ReplaySaberModel {
     return mesh;
   }
 
-  const blade = add(cone(0.0045, 0.982), materials.blade, -0.54);
-  const core = add(cone(0.0018, 0.978), materials.core, -0.54);
-  const guard = add(new TorusGeometry(0.02, 0.001, 6, 32), materials.blade, -0.048);
-  const grip = add(cylinder(0.005, 0.089, 16), materials.grip, -0.0025);
+  const blade = add(cone(0.0045, 1), materials.blade, -0.5);
+  const core = add(cone(0.0018, 0.996), materials.core, -0.5);
+  const guard = add(new TorusGeometry(0.02, 0.001, 6, 32), materials.blade, 0.001);
+  const grip = add(cylinder(0.005, 0.089, 16), materials.grip, 0.0465);
   const collars = [
-    add(new TorusGeometry(0.006, 0.001, 6, 24), materials.blade, -0.038),
-    add(new TorusGeometry(0.006, 0.001, 6, 24), materials.blade, 0.05),
+    add(new TorusGeometry(0.006, 0.001, 6, 24), materials.blade, 0.011),
+    add(new TorusGeometry(0.006, 0.001, 6, 24), materials.blade, 0.099),
   ];
   const rings: Mesh[] = [];
-  for (const z of [-0.024, -0.01, 0.004, 0.018, 0.032]) {
+  for (const z of [0.025, 0.039, 0.053, 0.067, 0.081]) {
     rings.push(add(cylinder(0.0054, 0.0025, 16), materials.metal, z));
   }
-  const pommel = add(cylinder(0.0055, 0.009), materials.metal, 0.0465);
+  const pommel = add(cylinder(0.0055, 0.009), materials.metal, 0.0955);
 
   const trailBase = new Object3D();
   const tip = new Object3D();
-  trailBase.position.z = -0.7;
-  tip.position.z = -1.031;
+  trailBase.position.z = -0.669;
+  tip.position.z = -1;
   root.add(trailBase, tip);
   return { root, trailBase, tip, geometries, blade, core, guard, grip, collars, rings, pommel };
 }
 
 export function setReplaySaberSettings(saber: ReplaySaberModel, settings: ReplaySaberSettings) {
-  const bladeBase = -0.049;
+  const bladeBase = 0;
   const bladeLength = settings.saberBladeLength;
   const bladeCenter = bladeBase - bladeLength / 2;
   const coreLength = Math.max(bladeLength - settings.saberCoreInset, 0.01);
@@ -118,6 +118,7 @@ export function setReplaySaberSettings(saber: ReplaySaberModel, settings: Replay
     settings.saberGuardSize / DEFAULT_REPLAY_SABER_SETTINGS.saberGuardSize,
     settings.saberGuardThickness / DEFAULT_REPLAY_SABER_SETTINGS.saberGuardThickness,
   );
+  saber.grip.position.z = bladeBase + settings.saberGripLength / 2 + 0.002;
   saber.grip.scale.set(
     settings.saberGripThickness / DEFAULT_REPLAY_SABER_SETTINGS.saberGripThickness,
     settings.saberGripThickness / DEFAULT_REPLAY_SABER_SETTINGS.saberGripThickness,
@@ -125,7 +126,7 @@ export function setReplaySaberSettings(saber: ReplaySaberModel, settings: Replay
   );
 
   saber.collars.forEach((collar, index) => {
-    collar.position.z = 0.006 + (index === 0 ? -0.5 : 0.5) * settings.saberCollarSpacing;
+    collar.position.z = bladeBase + 0.055 + (index === 0 ? -0.5 : 0.5) * settings.saberCollarSpacing;
     collar.scale.set(
       settings.saberCollarSize / DEFAULT_REPLAY_SABER_SETTINGS.saberCollarSize,
       settings.saberCollarSize / DEFAULT_REPLAY_SABER_SETTINGS.saberCollarSize,
@@ -135,7 +136,7 @@ export function setReplaySaberSettings(saber: ReplaySaberModel, settings: Replay
 
   saber.rings.forEach((ring, index) => {
     ring.visible = index < settings.saberRingCount;
-    ring.position.z = 0.004 + (index - (settings.saberRingCount - 1) / 2) * settings.saberRingSpacing;
+    ring.position.z = bladeBase + 0.053 + (index - (settings.saberRingCount - 1) / 2) * settings.saberRingSpacing;
     ring.scale.set(
       settings.saberRingSize / DEFAULT_REPLAY_SABER_SETTINGS.saberRingSize,
       settings.saberRingSize / DEFAULT_REPLAY_SABER_SETTINGS.saberRingSize,
