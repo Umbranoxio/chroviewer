@@ -116,10 +116,6 @@ export class MapObjectRenderer {
   private linkPreviewWindows: ActiveWindowIndex | null = null;
   private wallWindows: ActiveWindowIndex | null = null;
   private arcWindows: ActiveWindowIndex | null = null;
-  private noteBodiesMerged = false;
-  private arrowsMerged = false;
-  private dotsMerged = false;
-  private linksMerged = false;
   private objectBeat = Number.NaN;
   private ownedMaterials: Material[] = [];
 
@@ -138,16 +134,11 @@ export class MapObjectRenderer {
     this.data = data;
     this.colors = colors;
     const arcColors: Rgb[] = [colors.leftNote, colors.rightNote];
-    const hasNotes = data.notes.length > 0;
-    const hasLinks = data.chainLinks.length > 0;
-    const noteMaterials = Array.from({ length: hasNotes && hasLinks ? 2 : 1 }, (_, colorIndex) =>
-      createNoteMaterial(this.fog, colorIndex === 1 ? colors.rightNote : colors.leftNote, this.noteReflection),
-    );
-    const hasArrows = data.notes.some((note) => !note.dot);
-    const hasDots = data.notes.some((note) => note.dot);
-    const directionalMaterials = Array.from({ length: hasArrows && hasDots ? 2 : 1 }, () =>
-      createDirectionalMaterial(this.fog),
-    );
+    const noteMaterials = [
+      createNoteMaterial(this.fog, colors.leftNote, this.noteReflection),
+      createNoteMaterial(this.fog, colors.rightNote, this.noteReflection),
+    ];
+    const directionalMaterials = [createDirectionalMaterial(this.fog), createDirectionalMaterial(this.fog)];
     const bombMaterial = createBombMaterial(this.fog, this.noteReflection);
     const wallCoreLowMaterial = createObstacleMaterial(this.fog, colors.obstacle);
     const wallCoreHighMaterial = createObstacleDisplacementMaterial(
@@ -168,49 +159,19 @@ export class MapObjectRenderer {
       wallFrameMaterial,
     ];
 
-    const noteColorCapacity = Math.max(data.capacity.notes, 1);
-    const linkColorCapacity = Math.max(data.capacity.chainLinks, 1);
-    this.noteBodiesMerged = hasNotes && !hasLinks;
-    this.linksMerged = hasLinks && !hasNotes;
-    this.arrowsMerged = hasArrows && !hasDots;
-    this.dotsMerged = hasDots && !hasArrows;
-    this.noteBodies = hasNotes
-      ? noteMaterials.map(
-          (material) =>
-            new InstancedGroup(
-              noteBodyGeometry(),
-              material,
-              this.noteBodiesMerged ? noteColorCapacity * 2 : data.capacity.notes,
-            ),
-        )
-      : [];
-    this.arrows = hasArrows
-      ? directionalMaterials.map(
-          (material) =>
-            new InstancedGroup(
-              arrowGeometry(),
-              material,
-              this.arrowsMerged ? noteColorCapacity * 2 : data.capacity.notes,
-            ),
-        )
-      : [];
-    this.dots = hasDots
-      ? directionalMaterials.map(
-          (material) =>
-            new InstancedGroup(dotGeometry(), material, this.dotsMerged ? noteColorCapacity * 2 : data.capacity.notes),
-        )
-      : [];
+    this.noteBodies = noteMaterials.map(
+      (material) => new InstancedGroup(noteBodyGeometry(), material, data.capacity.notes),
+    );
+    this.arrows = directionalMaterials.map(
+      (material) => new InstancedGroup(arrowGeometry(), material, data.capacity.notes),
+    );
+    this.dots = directionalMaterials.map(
+      (material) => new InstancedGroup(dotGeometry(), material, data.capacity.notes),
+    );
     this.bombs = new InstancedGroup(bombGeometry(), bombMaterial, data.capacity.bombs);
-    this.links = hasLinks
-      ? noteMaterials.map(
-          (material) =>
-            new InstancedGroup(
-              chainLinkGeometry(),
-              material,
-              this.linksMerged ? linkColorCapacity * 2 : data.capacity.chainLinks,
-            ),
-        )
-      : [];
+    this.links = noteMaterials.map(
+      (material) => new InstancedGroup(chainLinkGeometry(), material, data.capacity.chainLinks),
+    );
     this.wallCores = new InstancedGroup(wallCoreGeometry(), wallCoreLowMaterial, data.capacity.walls);
     this.wallFrames = new InstancedGroup(wallFrameGeometry(), wallFrameMaterial, data.capacity.walls);
     this.instanceGroups = [
@@ -309,11 +270,7 @@ export class MapObjectRenderer {
     const poseFrames = replayView.poseFrames;
 
     const activeNotes = (replayLoaded ? this.noteReplayWindows : this.notePreviewWindows)?.at(now) ?? [];
-    const noteColorCapacity = Math.max(data.capacity.notes, 1);
     for (let colorIndex = 0; colorIndex < 2; colorIndex++) {
-      let bodyCount = 0;
-      let arrowCount = 0;
-      let dotCount = 0;
       for (const index of activeNotes) {
         const note = data.notes[index];
         if (note?.colorIndex !== colorIndex) continue;
@@ -342,19 +299,9 @@ export class MapObjectRenderer {
           this.composeAt(note, now, x, y, rotation, noteModelScale);
         }
         const color = note.customColor ?? (note.colorIndex === 1 ? colors.rightNote : colors.leftNote);
-        if (bodyCount < noteColorCapacity) {
-          this.noteBodies[this.noteBodiesMerged ? 0 : colorIndex]?.push(this.matrix, color);
-          bodyCount++;
-        }
-        if (note.dot) {
-          if (dotCount < noteColorCapacity) {
-            this.dots[this.dotsMerged ? 0 : colorIndex]?.push(this.matrix, white);
-            dotCount++;
-          }
-        } else if (arrowCount < noteColorCapacity) {
-          this.arrows[this.arrowsMerged ? 0 : colorIndex]?.push(this.matrix, white);
-          arrowCount++;
-        }
+        this.noteBodies[colorIndex]?.push(this.matrix, color);
+        if (note.dot) this.dots[colorIndex]?.push(this.matrix, white);
+        else this.arrows[colorIndex]?.push(this.matrix, white);
       }
     }
 
@@ -368,9 +315,7 @@ export class MapObjectRenderer {
     }
 
     const activeLinks = (replayLoaded ? this.linkReplayWindows : this.linkPreviewWindows)?.at(now) ?? [];
-    const linkColorCapacity = Math.max(data.capacity.chainLinks, 1);
     for (let colorIndex = 0; colorIndex < 2; colorIndex++) {
-      let linkCount = 0;
       for (const index of activeLinks) {
         const link = data.chainLinks[index];
         if (link?.colorIndex !== colorIndex) continue;
@@ -381,10 +326,7 @@ export class MapObjectRenderer {
         const rotation = link.rotationDeg * spawnRotationProgress(link, now);
         this.composeAt(link, now, link.x, y, rotation, noteModelScale);
         const color = link.customColor ?? (link.colorIndex === 1 ? colors.rightNote : colors.leftNote);
-        if (linkCount < linkColorCapacity) {
-          this.links[this.linksMerged ? 0 : colorIndex]?.push(this.matrix, color);
-          linkCount++;
-        }
+        this.links[colorIndex]?.push(this.matrix, color);
       }
     }
 
@@ -444,7 +386,6 @@ export class MapObjectRenderer {
     this.noteReplayWindows = this.notePreviewWindows = this.bombWindows = null;
     this.linkReplayWindows = this.linkPreviewWindows = null;
     this.wallWindows = this.arcWindows = null;
-    this.noteBodiesMerged = this.arrowsMerged = this.dotsMerged = this.linksMerged = false;
     this.ownedMaterials = [];
     this.noteLookStates.clear();
     this.data = null;
