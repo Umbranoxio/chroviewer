@@ -15,6 +15,7 @@ export interface DifficultyRow {
   difficulty?: Difficulty;
   infoDifficulty?: InfoDifficulty;
   environmentId?: string;
+  replayEnvironmentId?: string;
   colorScheme?: InfoColorScheme;
   replayMatch?: boolean;
 }
@@ -24,12 +25,19 @@ export interface MapIdentity {
   hash: string;
 }
 
+export interface ViewerSourceLink {
+  type: 'map' | 'replay';
+  url: string;
+}
+
 export interface ActiveSelection {
   data: MapRenderData;
   environmentId: string;
+  mapEnvironmentId: string;
+  replayEnvironmentId?: string;
   mapColorScheme?: InfoColorScheme;
 }
 
 export type ViewerPanel = 'share' | 'shortcuts' | 'speed' | 'lights' | 'camera' | 'volume' | 'record-video' | null;
 
-export type ViewerSource = 'beatsaver' | 'scoresaber';
+export type ViewerSource = 'beatsaver' | 'link' | 'scoresaber';

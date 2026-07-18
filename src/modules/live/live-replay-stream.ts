@@ -1,4 +1,4 @@
-import type { ReplayNoteEvent } from '../../core/replay/types';
+import type { ReplayHeightEvent, ReplayNoteEvent } from '../../core/replay/types';
 import {
   ReplayCompletion,
   type ReplayChunk,
@@ -13,6 +13,7 @@ export function applyLiveReplayChunk(
   runtime: LiveRuntime,
   chunk: ReplayChunk,
   appendReplayNoteEvents: (events: ReplayNoteEvent[]) => void,
+  appendReplayHeightEvents: (events: ReplayHeightEvent[]) => void,
 ) {
   const replay = runtime.replay;
   if (replay === null) return;
@@ -22,13 +23,15 @@ export function applyLiveReplayChunk(
   const events = chunk.events;
   if (events === undefined) return;
   const notes = events.noteEvents.map(liveNote);
+  const heights = events.heightEvents.map((event) => ({ height: event.height, time: event.timeSeconds }));
   for (const event of events.pauseEvents) {
     appendLivePause(replay, event);
     scheduleReplayPause(runtime.pendingPauseEvents, event, runtime.receivedPoseFrameCount);
   }
   replay.poses.push(...events.poseFrames.map(livePose));
   runtime.receivedPoseFrameCount += events.poseFrames.length;
-  replay.heights.push(...events.heightEvents.map((event) => ({ height: event.height, time: event.timeSeconds })));
+  replay.heights.push(...heights);
+  appendReplayHeightEvents(heights);
   replay.notes.push(...notes);
   replay.scores.push(
     ...events.scoreEvents.map((event) => ({

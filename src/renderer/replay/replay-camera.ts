@@ -7,7 +7,7 @@ const degToRad = Math.PI / 180;
 const maxPortraitFov = 120;
 const maxPortraitFovIncrease = 10;
 const maxPortraitPullback = 1.5;
-const uprightPitch = -15.5 * degToRad;
+const uprightPitch = degToRad;
 const uprightPitchInfluence = 1;
 
 function portraitAmount(aspect: number) {
@@ -134,7 +134,9 @@ export class ReplayCameraController {
     this.updatedAt = now;
     this.position
       .copy(head.position)
-      .add(this.offset.set(settings.replayCameraXOffset, settings.replayCameraYOffset, -settings.replayCameraZOffset));
+      .add(
+        this.offset.set(settings.replayCameraXOffset, settings.replayCameraYOffset, -settings.replayCameraDepthOffset),
+      );
     this.euler.set(
       -settings.replayCameraXRotation * degToRad,
       -settings.replayCameraYRotation * degToRad,

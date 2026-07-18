@@ -1,6 +1,8 @@
 import {
+  Euler,
   Matrix4,
   Mesh,
+  PlaneGeometry,
   Quaternion,
   RepeatWrapping,
   ShaderMaterial,
@@ -14,6 +16,7 @@ import {
 
 import { secondsToSongBpmTime, songBpmTimeToSeconds } from '../../core/beatmap/bpm';
 import type { ColorScheme, Rgb } from '../../core/colors';
+import type { NoodleWorldRotation } from '../../core/noodle';
 import { NOTE_Y_OFFSET, Y_OFFSET, Z_OFFSET } from '../../core/placement/grid';
 import {
   aheadDistance,
@@ -25,20 +28,27 @@ import {
   spawnRotationProgress,
   wallAheadDistance,
   wallSpawnScale,
-  type ObjectMotion,
 } from '../../core/placement/jump-path';
-import type { ArcInstance, MapRenderData, NoteInstance } from '../../core/placement/map-render-data';
+import type {
+  ArcInstance,
+  BombInstance,
+  ChainLinkInstance,
+  MapRenderData,
+  NoteInstance,
+} from '../../core/placement/map-render-data';
 import type { ReplayPose } from '../../core/replay/types';
 import type { FogUniforms } from '../bloomfog/pipeline';
 import {
   createArcMaterial,
   createBombMaterial,
   createDirectionalMaterial,
+  createHitLineMaterial,
   createNoteMaterial,
   createObstacleDisplacementMaterial,
   createObstacleMaterial,
   createObstacleOutlineMaterial,
 } from '../materials/map-object-materials';
+import { linearColor, shaderColorUniform, shaderUniformValue } from '../materials/shared';
 import { SCREEN_DISPLACEMENT_LAYER } from '../mirror/planar-mirror';
 import { NoteLookRotation } from '../note-look-rotation';
 import { createNoteReflection } from '../note-reflection';
@@ -54,6 +64,7 @@ import {
 } from '../object-geometry';
 import type { ReplayView } from '../replay/replay-view';
 import { wallTransform } from '../wall-transform';
+import { ActiveWindowIndex } from './active-window-index';
 import { InstancedGroup } from './instanced-group';
 
 interface ArcEntry {
@@ -63,10 +74,10 @@ interface ArcEntry {
 
 interface NoteLookState {
   rotation: Quaternion;
-  nextPoseIndex: number;
   nextPreviewBeat: number;
   lastSampleTime: number;
   finished: boolean;
+  usesReplayPoses: boolean;
 }
 
 const zAxis = new Vector3(0, 0, 1);
@@ -79,6 +90,7 @@ const white: Rgb = [1, 1, 1];
 const bombGray: Rgb = [64 / 255, 64 / 255, 64 / 255];
 
 export class MapObjectRenderer {
+  private readonly hitLine = new Mesh(new PlaneGeometry(2.5, 0.025), createHitLineMaterial());
   private readonly noteReflection = createNoteReflection();
   private readonly sliderMistNoise = new TextureLoader().load(
     `${import.meta.env.BASE_URL}textures/slider-mist-noise.png`,
@@ -90,6 +102,8 @@ export class MapObjectRenderer {
   private readonly position = new Vector3();
   private readonly poseHeadPosition = new Vector3();
   private readonly quaternion = new Quaternion();
+  private readonly worldEuler = new Euler(0, 0, 0, 'ZXY');
+  private readonly worldQuaternion = new Quaternion();
   private readonly noteLookRotation = new NoteLookRotation();
   private readonly scale = new Vector3();
   private readonly noteLookStates = new Map<NoteInstance, NoteLookState>();
@@ -106,10 +120,22 @@ export class MapObjectRenderer {
   private wallCoreLowMaterial: Material | null = null;
   private wallCoreHighMaterial: Material | null = null;
   private screenDisplacementEffects = true;
+  private previewHitNotes = true;
+  private previewHitLine = false;
+  private previewNotesLookAtPlayer = false;
   private instanceGroups: InstancedGroup[] = [];
   private arcEntries: ArcEntry[] = [];
+  private noteReplayWindows: ActiveWindowIndex | null = null;
+  private notePreviewWindows: ActiveWindowIndex | null = null;
+  private bombWindows: ActiveWindowIndex | null = null;
+  private linkReplayWindows: ActiveWindowIndex | null = null;
+  private linkPreviewWindows: ActiveWindowIndex | null = null;
+  private wallWindows: ActiveWindowIndex | null = null;
+  private arcWindows: ActiveWindowIndex | null = null;
   private objectBeat = Number.NaN;
   private ownedMaterials: Material[] = [];
+  private noteColorMaterials: ShaderMaterial[] = [];
+  private obstacleColorMaterials: ShaderMaterial[] = [];
 
   constructor(
     private readonly root: Group,
@@ -120,13 +146,18 @@ export class MapObjectRenderer {
     this.sliderMistNoise.wrapT = RepeatWrapping;
     this.obstacleDisplacementNoise.wrapS = RepeatWrapping;
     this.obstacleDisplacementNoise.wrapT = RepeatWrapping;
+    this.hitLine.name = 'preview-hit-line';
+    this.hitLine.geometry.rotateX(-Math.PI / 2);
+    this.hitLine.position.set(0, 0.01, -Z_OFFSET);
+    this.hitLine.visible = false;
+    this.root.add(this.hitLine);
   }
 
   setMap(data: MapRenderData, colors: ColorScheme) {
     this.data = data;
     this.colors = colors;
     const arcColors: Rgb[] = [colors.leftNote, colors.rightNote];
-    const noteBodyMaterials = [
+    const noteMaterials = [
       createNoteMaterial(this.fog, colors.leftNote, this.noteReflection),
       createNoteMaterial(this.fog, colors.rightNote, this.noteReflection),
     ];
@@ -142,8 +173,10 @@ export class MapObjectRenderer {
     this.wallCoreLowMaterial = wallCoreLowMaterial;
     this.wallCoreHighMaterial = wallCoreHighMaterial;
     const wallFrameMaterial = createObstacleOutlineMaterial(this.fog, colors.obstacle);
+    this.noteColorMaterials = noteMaterials;
+    this.obstacleColorMaterials = [wallCoreLowMaterial, wallCoreHighMaterial, wallFrameMaterial];
     this.ownedMaterials = [
-      ...noteBodyMaterials,
+      ...noteMaterials,
       ...directionalMaterials,
       bombMaterial,
       wallCoreLowMaterial,
@@ -151,7 +184,7 @@ export class MapObjectRenderer {
       wallFrameMaterial,
     ];
 
-    this.noteBodies = noteBodyMaterials.map(
+    this.noteBodies = noteMaterials.map(
       (material) => new InstancedGroup(noteBodyGeometry(), material, data.capacity.notes),
     );
     this.arrows = directionalMaterials.map(
@@ -161,7 +194,7 @@ export class MapObjectRenderer {
       (material) => new InstancedGroup(dotGeometry(), material, data.capacity.notes),
     );
     this.bombs = new InstancedGroup(bombGeometry(), bombMaterial, data.capacity.bombs);
-    this.links = noteBodyMaterials.map(
+    this.links = noteMaterials.map(
       (material) => new InstancedGroup(chainLinkGeometry(), material, data.capacity.chainLinks),
     );
     this.wallCores = new InstancedGroup(wallCoreGeometry(), wallCoreLowMaterial, data.capacity.walls);
@@ -188,6 +221,72 @@ export class MapObjectRenderer {
       this.root.add(mesh);
       return { mesh, arc };
     });
+    this.noteReplayWindows = new ActiveWindowIndex(
+      data.notes.length,
+      (index) => data.notes[index]?.enterBeat ?? Infinity,
+      (index) => data.notes[index]?.despawnBeat ?? -Infinity,
+      true,
+    );
+    this.notePreviewWindows = new ActiveWindowIndex(
+      data.notes.length,
+      (index) => data.notes[index]?.enterBeat ?? Infinity,
+      (index) => data.notes[index]?.beat ?? -Infinity,
+      false,
+    );
+    this.bombWindows = new ActiveWindowIndex(
+      data.bombs.length,
+      (index) => data.bombs[index]?.enterBeat ?? Infinity,
+      (index) => data.bombs[index]?.despawnBeat ?? -Infinity,
+      true,
+    );
+    this.linkReplayWindows = new ActiveWindowIndex(
+      data.chainLinks.length,
+      (index) => data.chainLinks[index]?.enterBeat ?? Infinity,
+      (index) => data.chainLinks[index]?.despawnBeat ?? -Infinity,
+      true,
+    );
+    this.linkPreviewWindows = new ActiveWindowIndex(
+      data.chainLinks.length,
+      (index) => data.chainLinks[index]?.enterBeat ?? Infinity,
+      (index) => data.chainLinks[index]?.beat ?? -Infinity,
+      false,
+    );
+    this.wallWindows = new ActiveWindowIndex(
+      data.walls.length,
+      (index) => data.walls[index]?.enterBeat ?? Infinity,
+      (index) => data.walls[index]?.despawnBeat ?? -Infinity,
+      true,
+    );
+    this.arcWindows = new ActiveWindowIndex(
+      data.arcs.length,
+      (index) => data.arcs[index]?.spawnBeat ?? Infinity,
+      (index) => data.arcs[index]?.despawnBeat ?? -Infinity,
+      true,
+    );
+  }
+
+  setColors(colors: ColorScheme) {
+    this.colors = colors;
+    [colors.leftNote, colors.rightNote].forEach((color, index) => {
+      const material = this.noteColorMaterials[index];
+      if (material !== undefined)
+        shaderColorUniform(material, '_Color')
+          ?.setRGB(...color)
+          .convertSRGBToLinear();
+    });
+    for (const material of this.obstacleColorMaterials) {
+      shaderColorUniform(material, '_Color')
+        ?.setRGB(...colors.obstacle)
+        .convertSRGBToLinear();
+    }
+    const arcColors = [linearColor(colors.leftNote), linearColor(colors.rightNote)];
+    for (const { arc, mesh } of this.arcEntries) {
+      if (arc.customColor !== undefined) continue;
+      const color = arcColors[arc.colorIndex] ?? arcColors[0];
+      if (color === undefined) continue;
+      shaderUniformValue(mesh.material, '_ArcColor')?.set(color.r, color.g, color.b, 1);
+    }
+    this.invalidate();
   }
 
   setScreenDisplacementEffects(enabled: boolean) {
@@ -196,6 +295,24 @@ export class MapObjectRenderer {
     const material = enabled ? this.wallCoreHighMaterial : this.wallCoreLowMaterial;
     if (material !== null) this.wallCores.mesh.material = material;
     this.wallCores.mesh.layers.set(enabled ? SCREEN_DISPLACEMENT_LAYER : 0);
+  }
+
+  setPreviewNotesLookAtPlayer(enabled: boolean) {
+    if (enabled === this.previewNotesLookAtPlayer) return;
+    this.previewNotesLookAtPlayer = enabled;
+    this.invalidate();
+  }
+
+  setPreviewHitNotes(enabled: boolean) {
+    if (enabled === this.previewHitNotes) return;
+    this.previewHitNotes = enabled;
+    this.invalidate();
+  }
+
+  setPreviewHitLine(enabled: boolean) {
+    if (enabled === this.previewHitLine) return;
+    this.previewHitLine = enabled;
+    this.invalidate();
   }
 
   invalidate() {
@@ -211,68 +328,87 @@ export class MapObjectRenderer {
     const data = this.data;
     const colors = this.colors;
     if (data === null || colors === null) return;
+    this.root.position.z = data.tracksPlayerZ && replayView.hasPoses ? replayView.headPosition.z : 0;
     if (now === this.objectBeat) return;
     this.objectBeat = now;
     const replayTime = songBpmTimeToSeconds(now, data.songBpm);
     for (const group of this.instanceGroups) group.begin();
     const replayLoaded = replayView.hasReplay;
+    const hitPreviewNotes = !replayLoaded && this.previewHitNotes;
+    this.hitLine.visible = !replayLoaded && this.previewHitLine;
     const poseFrames = replayView.poseFrames;
 
-    for (const note of data.notes) {
-      const visible = replayLoaded ? isVisible(note, now) : isVisibleBeforeHit(note, now);
-      if (!visible || (note.replayEndTime !== undefined && replayTime >= note.replayEndTime)) continue;
-      const jump = spawnProgress(note, now);
-      const x = note.startX + (note.x - note.startX) * spawnFlipProgress(note, now);
-      const y = note.startY + (note.y - note.startY) * jump + spawnFlipYOffset(note, now, note.flipYSide);
-      const rotation = note.rotationDeg * spawnRotationProgress(note, now);
-      const noteTime = songBpmTimeToSeconds(note.beat, data.songBpm);
-      if (note.lookAtPlayer) {
-        this.composeLookNoteAt(
-          note,
-          now,
-          x,
-          y,
-          noteTime,
-          replayTime,
-          data.songBpm,
-          poseFrames,
-          replayView.headPosition,
-          noteModelScale,
-        );
-      } else {
-        this.composeAt(note, now, x, y, rotation, noteModelScale);
+    const activeNotes = (hitPreviewNotes ? this.notePreviewWindows : this.noteReplayWindows)?.at(now) ?? [];
+    for (let colorIndex = 0; colorIndex < 2; colorIndex++) {
+      for (const index of activeNotes) {
+        const note = data.notes[index];
+        if (note?.colorIndex !== colorIndex) continue;
+        const visible = hitPreviewNotes ? isVisibleBeforeHit(note, now) : isVisible(note, now);
+        if (!visible || (note.replayEndTime !== undefined && replayTime >= note.replayEndTime)) continue;
+        const jump = spawnProgress(note, now);
+        const x = note.startX + (note.x - note.startX) * spawnFlipProgress(note, now);
+        const y = note.startY + (note.y - note.startY) * jump + spawnFlipYOffset(note, now, note.flipYSide);
+        const rotation = note.rotationDeg * spawnRotationProgress(note, now);
+        const noteTime = songBpmTimeToSeconds(note.beat, data.songBpm);
+        if (note.lookAtPlayer && (replayLoaded || this.previewNotesLookAtPlayer)) {
+          this.composeLookNoteAt(
+            note,
+            now,
+            x,
+            y,
+            noteTime,
+            replayTime,
+            data.songBpm,
+            poseFrames,
+            replayView.headPosition,
+            data.tracksPlayerZ,
+            noteModelScale,
+          );
+        } else {
+          this.composeAt(note, now, x, y, rotation, noteModelScale);
+        }
+        const color = note.customColor ?? (note.colorIndex === 1 ? colors.rightNote : colors.leftNote);
+        this.noteBodies[colorIndex]?.push(this.matrix, color);
+        if (note.dot) this.dots[colorIndex]?.push(this.matrix, white);
+        else this.arrows[colorIndex]?.push(this.matrix, white);
       }
-      const color = note.customColor ?? (note.colorIndex === 1 ? colors.rightNote : colors.leftNote);
-      this.noteBodies[note.colorIndex]?.push(this.matrix, color);
-      if (note.dot) this.dots[note.colorIndex]?.push(this.matrix, white);
-      else this.arrows[note.colorIndex]?.push(this.matrix, white);
     }
 
-    for (const bomb of data.bombs) {
+    for (const index of this.bombWindows?.at(now) ?? []) {
+      const bomb = data.bombs[index];
+      if (bomb === undefined) continue;
       if (!isVisible(bomb, now) || (bomb.replayEndTime !== undefined && replayTime >= bomb.replayEndTime)) continue;
       const y = bomb.startY + (bomb.y - bomb.startY) * spawnProgress(bomb, now);
       this.composeAt(bomb, now, bomb.x, y, 0, 1);
       this.bombs?.push(this.matrix, bomb.customColor ?? bombGray);
     }
 
-    for (const link of data.chainLinks) {
-      const visible = replayLoaded ? isVisible(link, now) : isVisibleBeforeHit(link, now);
-      if (!visible || (link.replayEndTime !== undefined && replayTime >= link.replayEndTime)) continue;
-      const jump = spawnProgress(link, now);
-      const y = Y_OFFSET + (link.y - Y_OFFSET) * jump;
-      const rotation = link.rotationDeg * spawnRotationProgress(link, now);
-      this.composeAt(link, now, link.x, y, rotation, noteModelScale);
-      const color = link.customColor ?? (link.colorIndex === 1 ? colors.rightNote : colors.leftNote);
-      this.links[link.colorIndex]?.push(this.matrix, color);
+    const activeLinks = (hitPreviewNotes ? this.linkPreviewWindows : this.linkReplayWindows)?.at(now) ?? [];
+    for (let colorIndex = 0; colorIndex < 2; colorIndex++) {
+      for (const index of activeLinks) {
+        const link = data.chainLinks[index];
+        if (link?.colorIndex !== colorIndex) continue;
+        const visible = hitPreviewNotes ? isVisibleBeforeHit(link, now) : isVisible(link, now);
+        if (!visible || (link.replayEndTime !== undefined && replayTime >= link.replayEndTime)) continue;
+        const jump = spawnProgress(link, now);
+        const y = Y_OFFSET + (link.y - Y_OFFSET) * jump;
+        const rotation = link.rotationDeg * spawnRotationProgress(link, now);
+        this.composeAt(link, now, link.x, y, rotation, noteModelScale);
+        const color = link.customColor ?? (link.colorIndex === 1 ? colors.rightNote : colors.leftNote);
+        this.links[colorIndex]?.push(this.matrix, color);
+      }
     }
 
-    for (const wall of data.walls) {
+    for (const index of this.wallWindows?.at(now) ?? []) {
+      const wall = data.walls[index];
+      if (wall === undefined) continue;
       if (!isVisible(wall, now)) continue;
       const reveal = wallSpawnScale(wall, now);
       if (reveal === 0) continue;
       const transform = wallTransform(wall, wallAheadDistance(wall, wall.pullBeat, now), reveal);
       this.position.fromArray(transform.position);
       this.quaternion.setFromAxisAngle(yAxis, transform.yawDeg * degToRad);
+      this.applyWorldRotation(wall.worldRotation);
       this.scale.fromArray(transform.outlineScale);
       this.matrix.compose(this.position, this.quaternion, this.scale);
       const color = wall.customColor ?? colors.obstacle;
@@ -282,13 +418,25 @@ export class MapObjectRenderer {
       this.wallCores?.push(this.matrix, color);
     }
 
-    for (const entry of this.arcEntries) {
+    for (const index of this.arcWindows?.current ?? []) {
+      const entry = this.arcEntries[index];
+      if (entry !== undefined) entry.mesh.visible = false;
+    }
+    for (const index of this.arcWindows?.at(now) ?? []) {
+      const entry = this.arcEntries[index];
+      if (entry === undefined) continue;
       const arc = entry.arc;
-      const visible = now >= arc.spawnBeat && now <= arc.despawnBeat;
-      entry.mesh.visible = visible;
-      if (!visible) continue;
+      entry.mesh.visible = true;
       const headAhead = Z_OFFSET + (arc.headBeat - now) * arc.unitsPerBeat;
-      entry.mesh.position.set(0, NOTE_Y_OFFSET, -headAhead);
+      this.position.set(0, NOTE_Y_OFFSET, -headAhead);
+      if (arc.worldRotation === undefined) {
+        entry.mesh.quaternion.identity();
+      } else {
+        this.setWorldQuaternion(arc.worldRotation);
+        this.position.applyQuaternion(this.worldQuaternion);
+        entry.mesh.quaternion.copy(this.worldQuaternion);
+      }
+      entry.mesh.position.copy(this.position);
       entry.mesh.scale.set(1, 1, 1);
       const nowBeat = entry.mesh.material.uniforms._PlaybackBeat;
       const timeSeconds = entry.mesh.material.uniforms._ClockSeconds;
@@ -308,16 +456,19 @@ export class MapObjectRenderer {
       entry.mesh.geometry.dispose();
     }
     for (const material of this.ownedMaterials) material.dispose();
-    this.noteBodies = [];
-    this.arrows = [];
-    this.dots = [];
-    this.links = [];
+    this.noteBodies = this.arrows = this.dots = this.links = [];
     this.bombs = this.wallCores = this.wallFrames = null;
     this.wallCoreLowMaterial = this.wallCoreHighMaterial = null;
     this.instanceGroups = [];
     this.arcEntries = [];
+    this.noteReplayWindows = this.notePreviewWindows = this.bombWindows = null;
+    this.linkReplayWindows = this.linkPreviewWindows = null;
+    this.wallWindows = this.arcWindows = null;
     this.ownedMaterials = [];
+    this.noteColorMaterials = [];
+    this.obstacleColorMaterials = [];
     this.noteLookStates.clear();
+    this.hitLine.visible = false;
     this.data = null;
     this.colors = null;
     this.objectBeat = Number.NaN;
@@ -325,14 +476,25 @@ export class MapObjectRenderer {
 
   dispose() {
     this.clear();
+    this.root.remove(this.hitLine);
+    this.hitLine.geometry.dispose();
+    this.hitLine.material.dispose();
     this.noteReflection.dispose();
     this.sliderMistNoise.dispose();
     this.obstacleDisplacementNoise.dispose();
   }
 
-  private composeAt(motion: ObjectMotion, now: number, x: number, y: number, rotationDeg: number, scale: number) {
+  private composeAt(
+    motion: NoteInstance | BombInstance | ChainLinkInstance,
+    now: number,
+    x: number,
+    y: number,
+    rotationDeg: number,
+    scale: number,
+  ) {
     this.position.set(x, y, -aheadDistance(motion, now));
     this.quaternion.setFromAxisAngle(zAxis, rotationDeg * degToRad);
+    this.applyWorldRotation(motion.worldRotation);
     this.scale.setScalar(scale);
     this.matrix.compose(this.position, this.quaternion, this.scale);
   }
@@ -347,11 +509,12 @@ export class MapObjectRenderer {
     songBpm: number,
     poseFrames: readonly ReplayPose[],
     currentHeadPosition: Vector3,
+    tracksPlayerZ: boolean,
     scale: number,
   ) {
-    const state = this.noteLookState(note, songBpm, poseFrames);
+    const state = this.noteLookState(note, poseFrames);
     if (poseFrames.length > 0) {
-      this.advanceReplayNoteLook(state, note, noteTime, replayTime, songBpm, poseFrames);
+      this.advanceReplayNoteLook(state, note, noteTime, replayTime, songBpm, poseFrames, tracksPlayerZ);
     } else {
       this.advancePreviewNoteLook(state, note, noteTime, now, songBpm);
     }
@@ -369,23 +532,34 @@ export class MapObjectRenderer {
         note.x,
         this.position,
         note.y,
-        poseFrames.length > 0 ? currentHeadPosition : mapPlayerCenter,
+        poseFrames.length > 0
+          ? this.poseHeadPosition.set(
+              currentHeadPosition.x,
+              currentHeadPosition.y,
+              tracksPlayerZ ? 0 : currentHeadPosition.z,
+            )
+          : mapPlayerCenter,
         (now - note.spawnBeat) / (note.hjdBeats * 2),
       );
     }
+    this.applyWorldRotation(note.worldRotation);
     this.scale.setScalar(scale);
     this.matrix.compose(this.position, this.quaternion, this.scale);
   }
 
-  private noteLookState(note: NoteInstance, songBpm: number, poseFrames: readonly ReplayPose[]) {
+  private noteLookState(note: NoteInstance, poseFrames: readonly ReplayPose[]) {
     let state = this.noteLookStates.get(note);
-    if (state !== undefined) return state;
+    const usesReplayPoses = poseFrames.length > 0;
+    if (state !== undefined) {
+      if (state.usesReplayPoses !== usesReplayPoses) this.resetNoteLookState(state, note, usesReplayPoses);
+      return state;
+    }
     state = {
       rotation: new Quaternion(),
-      nextPoseIndex: firstPoseAtOrAfter(poseFrames, songBpmTimeToSeconds(note.spawnBeat, songBpm)),
       nextPreviewBeat: note.spawnBeat,
       lastSampleTime: Number.NEGATIVE_INFINITY,
       finished: false,
+      usesReplayPoses,
     };
     this.noteLookStates.set(note, state);
     return state;
@@ -398,9 +572,15 @@ export class MapObjectRenderer {
     replayTime: number,
     songBpm: number,
     poseFrames: readonly ReplayPose[],
+    tracksPlayerZ: boolean,
   ) {
+    if (replayTime < state.lastSampleTime) this.resetNoteLookState(state, note, true);
+    let poseIndex =
+      state.lastSampleTime === Number.NEGATIVE_INFINITY
+        ? firstPoseAtOrAfter(poseFrames, songBpmTimeToSeconds(note.spawnBeat, songBpm))
+        : firstPoseAfter(poseFrames, state.lastSampleTime);
     while (!state.finished) {
-      const frame = poseFrames[state.nextPoseIndex];
+      const frame = poseFrames[poseIndex];
       if (frame === undefined || frame.time > replayTime) return;
       if (frame.time >= noteTime) {
         state.finished = true;
@@ -408,7 +588,11 @@ export class MapObjectRenderer {
       }
       const beat = secondsToSongBpmTime(frame.time, songBpm);
       this.setNotePosition(note, beat);
-      this.poseHeadPosition.set(frame.head.position.x, frame.head.position.y, -frame.head.position.z);
+      this.poseHeadPosition.set(
+        frame.head.position.x,
+        frame.head.position.y,
+        tracksPlayerZ ? 0 : -frame.head.position.z,
+      );
       this.noteLookRotation.apply(
         state.rotation,
         state.rotation,
@@ -421,8 +605,16 @@ export class MapObjectRenderer {
         (beat - note.spawnBeat) / (note.hjdBeats * 2),
       );
       state.lastSampleTime = frame.time;
-      state.nextPoseIndex += 1;
+      poseIndex += 1;
     }
+  }
+
+  private resetNoteLookState(state: NoteLookState, note: NoteInstance, usesReplayPoses: boolean) {
+    state.rotation.identity();
+    state.nextPreviewBeat = note.spawnBeat;
+    state.lastSampleTime = Number.NEGATIVE_INFINITY;
+    state.finished = false;
+    state.usesReplayPoses = usesReplayPoses;
   }
 
   private advancePreviewNoteLook(
@@ -461,6 +653,18 @@ export class MapObjectRenderer {
     const y = note.startY + (note.y - note.startY) * jump + spawnFlipYOffset(note, now, note.flipYSide);
     this.position.set(x, y, -aheadDistance(note, now));
   }
+
+  private setWorldQuaternion(rotation: NoodleWorldRotation) {
+    this.worldEuler.set(-rotation[0] * degToRad, -rotation[1] * degToRad, rotation[2] * degToRad);
+    this.worldQuaternion.setFromEuler(this.worldEuler);
+  }
+
+  private applyWorldRotation(rotation: NoodleWorldRotation | undefined) {
+    if (rotation === undefined) return;
+    this.setWorldQuaternion(rotation);
+    this.position.applyQuaternion(this.worldQuaternion);
+    this.quaternion.premultiply(this.worldQuaternion);
+  }
 }
 
 function firstPoseAtOrAfter(frames: readonly ReplayPose[], time: number) {
@@ -470,6 +674,18 @@ function firstPoseAtOrAfter(frames: readonly ReplayPose[], time: number) {
     const middle = Math.floor((low + high) / 2);
     const frame = frames[middle];
     if (frame !== undefined && frame.time < time) low = middle + 1;
+    else high = middle;
+  }
+  return low;
+}
+
+function firstPoseAfter(frames: readonly ReplayPose[], time: number) {
+  let low = 0;
+  let high = frames.length;
+  while (low < high) {
+    const middle = Math.floor((low + high) / 2);
+    const frame = frames[middle];
+    if (frame !== undefined && frame.time <= time) low = middle + 1;
     else high = middle;
   }
   return low;

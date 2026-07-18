@@ -70,6 +70,7 @@ const degToRad = Math.PI / 180;
 export class EnvironmentTransformRuntime {
   private readonly rotationQuaternion = new Quaternion();
   private readonly rotationAxis = new Vector3();
+  private readonly changedMatrices = new Set<Object3D>();
   private glsRotationRuntime: GlsRotationRuntime[] = [];
   private glsTranslationRuntime: GlsTranslationRuntime[] = [];
   private glsFxRuntime: GlsFxRuntime[] = [];
@@ -195,12 +196,15 @@ export class EnvironmentTransformRuntime {
   }
 
   update(beat: number, full: boolean) {
+    const changed = this.changedMatrices;
+    changed.clear();
     for (const runtime of this.rotationRuntime) {
       const rotation = runtime.rotation;
       const angle = (full ? runtime.full : runtime.resting)(beat);
       this.rotationAxis.fromArray(rotation.axis).normalize();
       this.rotationQuaternion.setFromAxisAngle(this.rotationAxis, angle * degToRad);
       rotation.target.quaternion.fromArray(rotation.startRotation).multiply(this.rotationQuaternion);
+      changed.add(rotation.target);
     }
     for (const runtime of this.ringRuntime) {
       const group = runtime.group;
@@ -209,6 +213,7 @@ export class EnvironmentTransformRuntime {
         const rotations = rotationSampler(beat);
         group.rings.forEach((ring, index) => {
           ring.target.quaternion.setFromAxisAngle(zAxis, (rotations[index] ?? 0) * degToRad);
+          changed.add(ring.target);
         });
       }
       const positionSampler = full ? runtime.fullPosition : runtime.restingPosition;
@@ -220,13 +225,17 @@ export class EnvironmentTransformRuntime {
             ring.positionOffset[1],
             -(positions[index] ?? ring.positionOffset[2]),
           );
+          changed.add(ring.target);
         });
       }
     }
     for (const runtime of this.glsRotationRuntime) {
       const firstEventTime = runtime.tween[0]?.time;
       if (!full || firstEventTime === undefined || beat < firstEventTime) {
-        for (const { target, value } of runtime.initial) target.quaternion.copy(value);
+        for (const { target, value } of runtime.initial) {
+          target.quaternion.copy(value);
+          changed.add(target);
+        }
         continue;
       }
       let angle = sampleGlsRotationTween(runtime.tween, beat);
@@ -234,12 +243,18 @@ export class EnvironmentTransformRuntime {
       const axis = runtime.entry.axis;
       this.rotationAxis.set(axis === 0 ? -1 : 0, axis === 1 ? -1 : 0, axis === 2 ? 1 : 0);
       this.rotationQuaternion.setFromAxisAngle(this.rotationAxis, angle * degToRad);
-      for (const target of runtime.entry.targets) target.quaternion.copy(this.rotationQuaternion);
+      for (const target of runtime.entry.targets) {
+        target.quaternion.copy(this.rotationQuaternion);
+        changed.add(target);
+      }
     }
     for (const runtime of this.glsTranslationRuntime) {
       const firstEventTime = runtime.tween[0]?.time;
       if (!full || firstEventTime === undefined || beat < firstEventTime) {
-        for (const { target, value } of runtime.initial) target.position.copy(value);
+        for (const { target, value } of runtime.initial) {
+          target.position.copy(value);
+          changed.add(target);
+        }
         continue;
       }
       const value = sampleGlsFloat(runtime.tween, beat);
@@ -247,6 +262,7 @@ export class EnvironmentTransformRuntime {
         if (runtime.entry.axis === 0) target.position.x = value;
         else if (runtime.entry.axis === 1) target.position.y = value;
         else target.position.z = -value;
+        changed.add(target);
       }
     }
     for (const runtime of this.glsFxRuntime) {
@@ -259,5 +275,6 @@ export class EnvironmentTransformRuntime {
       const value = sampleGlsFloat(runtime.tween, beat);
       for (const target of runtime.targets) target.apply(value);
     }
+    for (const target of changed) target.updateMatrix();
   }
 }

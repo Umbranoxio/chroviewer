@@ -3,15 +3,35 @@ import * as z from 'zod/mini';
 
 import type { InfoColorScheme } from './beatmap/info';
 import type { Rgb } from './colors';
+import { MAX_HSV_PROFILE_BYTES } from './replay/hit-score-visualizer-profile';
+import { replayColorScheme } from './replay/play-settings';
+import type { ReplayMetadata } from './replay/types';
 
 export interface ViewerSettings {
   graphicsQuality: 'none' | 'low' | 'medium' | 'high';
   screenDisplacementEffects: boolean;
+  previewHitNotes: boolean;
+  previewHitLine: boolean;
+  previewNotesLookAtPlayer: boolean;
   renderScale: number;
   staticLights: boolean;
+  preferReplayColors: boolean;
+  preferReplayEnvironment: boolean;
+  overrideEnvironment: boolean;
+  environmentOverrideId: string;
   customColors: boolean;
   leftColor: string;
   rightColor: string;
+  obstacleColor: string;
+  environmentLeftColor: string;
+  environmentRightColor: string;
+  environmentWhiteColor: string;
+  environmentLeftBoostColor: string;
+  environmentRightBoostColor: string;
+  environmentWhiteBoostColor: string;
+  overrideHsvProfile: boolean;
+  preferReplayHsvProfile: boolean;
+  hsvProfile: string;
   showSabers: boolean;
   saberScale: number;
   saberBladeLength: number;
@@ -51,7 +71,9 @@ export interface ViewerSettings {
   masterVolume: number;
   songVolume: number;
   hitsoundVolume: number;
+  audioOffsetMs: number;
   showBookmarks: boolean;
+  reverseTimelineScroll: boolean;
   replayCamera: 'static' | 'follow' | 'first-person';
   replayCameraSmoothing: boolean;
   replayCameraSmoothingSpeed: number;
@@ -60,13 +82,16 @@ export interface ViewerSettings {
   fixedCameraDistance: number;
   replayCameraXOffset: number;
   replayCameraYOffset: number;
-  replayCameraZOffset: number;
+  replayCameraDepthOffset: number;
   replayCameraXRotation: number;
   replayCameraYRotation: number;
   replayCameraZRotation: number;
   replayCameraForceUpright: boolean;
   autoHide: boolean;
 }
+
+export const MIN_AUDIO_OFFSET_MS = -1000;
+export const MAX_AUDIO_OFFSET_MS = 1000;
 
 export type ReplayCameraSettings = Pick<
   ViewerSettings,
@@ -78,7 +103,7 @@ export type ReplayCameraSettings = Pick<
   | 'fixedCameraDistance'
   | 'replayCameraXOffset'
   | 'replayCameraYOffset'
-  | 'replayCameraZOffset'
+  | 'replayCameraDepthOffset'
   | 'replayCameraXRotation'
   | 'replayCameraYRotation'
   | 'replayCameraZRotation'
@@ -143,7 +168,7 @@ export const DEFAULT_REPLAY_CAMERA_SETTINGS: ReplayCameraSettings = {
   fixedCameraDistance: 4,
   replayCameraXOffset: 0,
   replayCameraYOffset: 0,
-  replayCameraZOffset: -0.45,
+  replayCameraDepthOffset: -0.55,
   replayCameraXRotation: 0,
   replayCameraYRotation: 0,
   replayCameraZRotation: 0,
@@ -164,27 +189,27 @@ export const DEFAULT_REPLAY_TRAIL_SETTINGS: ReplayTrailSettings = {
 export const DEFAULT_REPLAY_SABER_SETTINGS: ReplaySaberSettings = {
   showSabers: true,
   saberScale: 1,
-  saberBladeLength: 0.982,
-  saberBladeThickness: 0.0045,
-  saberCoreThickness: 0.0018,
+  saberBladeLength: 1,
+  saberBladeThickness: 0.0075,
+  saberCoreThickness: 0.003,
   saberCoreInset: 0.004,
   ...DEFAULT_REPLAY_TRAIL_SETTINGS,
-  saberGripLength: 0.089,
-  saberGripThickness: 0.005,
-  saberGuardSize: 0.02,
-  saberGuardThickness: 0.001,
-  saberCollarSize: 0.006,
-  saberCollarThickness: 0.001,
-  saberCollarSpacing: 0.088,
+  saberGripLength: 0.1424,
+  saberGripThickness: 0.009,
+  saberGuardSize: 0.033,
+  saberGuardThickness: 0.002,
+  saberCollarSize: 0.0106,
+  saberCollarThickness: 0.002,
+  saberCollarSpacing: 0.1408,
   saberRingCount: 5,
-  saberRingSize: 0.0054,
-  saberRingThickness: 0.0025,
-  saberRingSpacing: 0.014,
-  saberPommelLength: 0.009,
-  saberPommelThickness: 0.0055,
+  saberRingSize: 0.0096,
+  saberRingThickness: 0.005,
+  saberRingSpacing: 0.0224,
+  saberPommelLength: 0.0144,
+  saberPommelThickness: 0.0098,
   saberXOffset: 0,
   saberYOffset: 0,
-  saberZOffset: 0.15,
+  saberZOffset: 0,
   saberXRotation: 0,
   saberYRotation: 0,
   saberZRotation: 0,
@@ -193,11 +218,28 @@ export const DEFAULT_REPLAY_SABER_SETTINGS: ReplaySaberSettings = {
 export const DEFAULT_VIEWER_SETTINGS: ViewerSettings = {
   graphicsQuality: 'high',
   screenDisplacementEffects: true,
+  previewHitNotes: true,
+  previewHitLine: false,
+  previewNotesLookAtPlayer: false,
   renderScale: 1,
   staticLights: false,
+  preferReplayColors: true,
+  preferReplayEnvironment: true,
+  overrideEnvironment: false,
+  environmentOverrideId: 'BigMirrorEnvironment',
   customColors: false,
-  leftColor: '#bb0000',
-  rightColor: '#005ebc',
+  leftColor: '#c81414',
+  rightColor: '#288ed2',
+  obstacleColor: '#ff3030',
+  environmentLeftColor: '#d91616',
+  environmentRightColor: '#30acff',
+  environmentWhiteColor: '#b9b9b9',
+  environmentLeftBoostColor: '#d91616',
+  environmentRightBoostColor: '#30acff',
+  environmentWhiteBoostColor: '#b9b9b9',
+  overrideHsvProfile: false,
+  preferReplayHsvProfile: true,
+  hsvProfile: '',
   ...DEFAULT_REPLAY_SABER_SETTINGS,
   hitsounds: true,
   masterMuted: false,
@@ -205,14 +247,20 @@ export const DEFAULT_VIEWER_SETTINGS: ViewerSettings = {
   masterVolume: 1,
   songVolume: 1,
   hitsoundVolume: 1,
+  audioOffsetMs: 0,
   showBookmarks: false,
+  reverseTimelineScroll: false,
   ...DEFAULT_REPLAY_CAMERA_SETTINGS,
   autoHide: true,
 };
 
-const storageKey = 'chroviewer.settings.v3';
-const previousStorageKey = 'chroviewer.settings.v2';
-const legacyStorageKey = 'chroviewer.settings.v1';
+const storageKey = 'chroviewer.settings.v7';
+const previousStorageKey = 'chroviewer.settings.v6';
+const incorrectColorStorageKey = 'chroviewer.settings.v5';
+const olderStorageKey = 'chroviewer.settings.v4';
+const legacyStorageKey = 'chroviewer.settings.v3';
+const oldestStorageKey = 'chroviewer.settings.v2';
+const originalStorageKey = 'chroviewer.settings.v1';
 const hexPattern = /^#[0-9a-f]{6}$/i;
 const mobileUserAgent = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i;
 
@@ -248,11 +296,28 @@ function hexColorSchema(fallback: string) {
 const viewerSettingsObjectSchema = z.object({
   graphicsQuality: z.catch(z.enum(['none', 'low', 'medium', 'high']), DEFAULT_VIEWER_SETTINGS.graphicsQuality),
   screenDisplacementEffects: z.catch(z.boolean(), DEFAULT_VIEWER_SETTINGS.screenDisplacementEffects),
+  previewHitNotes: z.catch(z.boolean(), DEFAULT_VIEWER_SETTINGS.previewHitNotes),
+  previewHitLine: z.catch(z.boolean(), DEFAULT_VIEWER_SETTINGS.previewHitLine),
+  previewNotesLookAtPlayer: z.catch(z.boolean(), DEFAULT_VIEWER_SETTINGS.previewNotesLookAtPlayer),
   renderScale: numberSetting(DEFAULT_VIEWER_SETTINGS.renderScale, 0.5, 1.5),
   staticLights: z.catch(z.boolean(), DEFAULT_VIEWER_SETTINGS.staticLights),
+  preferReplayColors: z.catch(z.boolean(), DEFAULT_VIEWER_SETTINGS.preferReplayColors),
+  preferReplayEnvironment: z.catch(z.boolean(), DEFAULT_VIEWER_SETTINGS.preferReplayEnvironment),
+  overrideEnvironment: z.catch(z.boolean(), DEFAULT_VIEWER_SETTINGS.overrideEnvironment),
+  environmentOverrideId: z.catch(z.string(), DEFAULT_VIEWER_SETTINGS.environmentOverrideId),
   customColors: z.catch(z.boolean(), DEFAULT_VIEWER_SETTINGS.customColors),
   leftColor: hexColorSchema(DEFAULT_VIEWER_SETTINGS.leftColor),
   rightColor: hexColorSchema(DEFAULT_VIEWER_SETTINGS.rightColor),
+  obstacleColor: hexColorSchema(DEFAULT_VIEWER_SETTINGS.obstacleColor),
+  environmentLeftColor: hexColorSchema(DEFAULT_VIEWER_SETTINGS.environmentLeftColor),
+  environmentRightColor: hexColorSchema(DEFAULT_VIEWER_SETTINGS.environmentRightColor),
+  environmentWhiteColor: hexColorSchema(DEFAULT_VIEWER_SETTINGS.environmentWhiteColor),
+  environmentLeftBoostColor: hexColorSchema(DEFAULT_VIEWER_SETTINGS.environmentLeftBoostColor),
+  environmentRightBoostColor: hexColorSchema(DEFAULT_VIEWER_SETTINGS.environmentRightBoostColor),
+  environmentWhiteBoostColor: hexColorSchema(DEFAULT_VIEWER_SETTINGS.environmentWhiteBoostColor),
+  overrideHsvProfile: z.catch(z.boolean(), DEFAULT_VIEWER_SETTINGS.overrideHsvProfile),
+  preferReplayHsvProfile: z.catch(z.boolean(), DEFAULT_VIEWER_SETTINGS.preferReplayHsvProfile),
+  hsvProfile: z.catch(z.string().check(z.maxLength(MAX_HSV_PROFILE_BYTES)), DEFAULT_VIEWER_SETTINGS.hsvProfile),
   showSabers: z.catch(z.boolean(), DEFAULT_VIEWER_SETTINGS.showSabers),
   saberScale: numberSetting(DEFAULT_VIEWER_SETTINGS.saberScale, 0.25, 3),
   saberBladeLength: numberSetting(DEFAULT_VIEWER_SETTINGS.saberBladeLength, 0.1, 2),
@@ -292,7 +357,9 @@ const viewerSettingsObjectSchema = z.object({
   masterVolume: numberSetting(DEFAULT_VIEWER_SETTINGS.masterVolume, 0, 1),
   songVolume: numberSetting(DEFAULT_VIEWER_SETTINGS.songVolume, 0, 1),
   hitsoundVolume: numberSetting(DEFAULT_VIEWER_SETTINGS.hitsoundVolume, 0, 1),
+  audioOffsetMs: integerSetting(DEFAULT_VIEWER_SETTINGS.audioOffsetMs, MIN_AUDIO_OFFSET_MS, MAX_AUDIO_OFFSET_MS),
   showBookmarks: z.catch(z.boolean(), DEFAULT_VIEWER_SETTINGS.showBookmarks),
+  reverseTimelineScroll: z.catch(z.boolean(), DEFAULT_VIEWER_SETTINGS.reverseTimelineScroll),
   replayCamera: z.catch(z.enum(['static', 'follow', 'first-person']), DEFAULT_VIEWER_SETTINGS.replayCamera),
   replayCameraSmoothing: z.catch(z.boolean(), DEFAULT_VIEWER_SETTINGS.replayCameraSmoothing),
   replayCameraSmoothingSpeed: numberSetting(DEFAULT_VIEWER_SETTINGS.replayCameraSmoothingSpeed, 1, 20),
@@ -301,7 +368,7 @@ const viewerSettingsObjectSchema = z.object({
   fixedCameraDistance: numberSetting(DEFAULT_VIEWER_SETTINGS.fixedCameraDistance, 2, 10),
   replayCameraXOffset: numberSetting(DEFAULT_VIEWER_SETTINGS.replayCameraXOffset, -10, 10),
   replayCameraYOffset: numberSetting(DEFAULT_VIEWER_SETTINGS.replayCameraYOffset, -10, 10),
-  replayCameraZOffset: numberSetting(DEFAULT_VIEWER_SETTINGS.replayCameraZOffset, -10, 10),
+  replayCameraDepthOffset: numberSetting(DEFAULT_VIEWER_SETTINGS.replayCameraDepthOffset, -10, 10),
   replayCameraXRotation: numberSetting(DEFAULT_VIEWER_SETTINGS.replayCameraXRotation, -180, 180),
   replayCameraYRotation: numberSetting(DEFAULT_VIEWER_SETTINGS.replayCameraYRotation, -180, 180),
   replayCameraZRotation: numberSetting(DEFAULT_VIEWER_SETTINGS.replayCameraZRotation, -180, 180),
@@ -342,18 +409,108 @@ export function loadViewerSettings(
   if (previousText !== null) {
     const parsed = Result.try((): unknown => JSON.parse(previousText));
     if (parsed.isErr()) return defaults;
-    const settings = sanitizeViewerSettings(parsed.value);
+    return resetSaberModel(sanitizeViewerSettings(parsed.value));
+  }
+
+  const incorrectColorText = storage.getItem(incorrectColorStorageKey);
+  if (incorrectColorText !== null) {
+    const parsed = Result.try((): unknown => JSON.parse(incorrectColorText));
+    if (parsed.isErr()) return defaults;
+    return resetSaberSettings(migrateIncorrectDefaultColors(sanitizeViewerSettings(parsed.value)));
+  }
+
+  const olderText = storage.getItem(olderStorageKey);
+  if (olderText !== null) {
+    const parsed = Result.try((): unknown => JSON.parse(olderText));
+    if (parsed.isErr()) return defaults;
+    return resetSaberSettings(migrateLegacyColorOverrides(sanitizeViewerSettings(parsed.value)));
+  }
+
+  const legacyText = storage.getItem(legacyStorageKey);
+  if (legacyText !== null) {
+    const parsed = Result.try((): unknown => JSON.parse(legacyText));
+    if (parsed.isErr()) return defaults;
+    return resetSaberSettings(migrateLegacyColorOverrides(sanitizeViewerSettings(parsed.value)));
+  }
+
+  const oldestText = storage.getItem(oldestStorageKey);
+  if (oldestText !== null) {
+    const parsed = Result.try((): unknown => JSON.parse(oldestText));
+    if (parsed.isErr()) return defaults;
+    const settings = resetSaberSettings(migrateLegacyColorOverrides(sanitizeViewerSettings(parsed.value)));
     return settings.graphicsQuality === 'medium'
       ? { ...settings, graphicsQuality: defaults.graphicsQuality }
       : settings;
   }
 
-  const legacyText = storage.getItem(legacyStorageKey);
-  if (legacyText === null) return defaults;
-  const parsed = Result.try((): unknown => JSON.parse(legacyText));
+  const originalText = storage.getItem(originalStorageKey);
+  if (originalText === null) return defaults;
+  const parsed = Result.try((): unknown => JSON.parse(originalText));
   if (parsed.isErr()) return defaults;
-  const settings = sanitizeViewerSettings(parsed.value);
+  const settings = resetSaberSettings(migrateLegacyColorOverrides(sanitizeViewerSettings(parsed.value)));
   return settings.graphicsQuality === 'high' ? { ...settings, graphicsQuality: defaults.graphicsQuality } : settings;
+}
+
+function resetSaberSettings(settings: ViewerSettings): ViewerSettings {
+  return { ...settings, ...DEFAULT_REPLAY_SABER_SETTINGS };
+}
+
+function resetSaberModel(settings: ViewerSettings): ViewerSettings {
+  return {
+    ...settings,
+    saberBladeThickness: DEFAULT_REPLAY_SABER_SETTINGS.saberBladeThickness,
+    saberCoreThickness: DEFAULT_REPLAY_SABER_SETTINGS.saberCoreThickness,
+    saberGripLength: DEFAULT_REPLAY_SABER_SETTINGS.saberGripLength,
+    saberGripThickness: DEFAULT_REPLAY_SABER_SETTINGS.saberGripThickness,
+    saberGuardSize: DEFAULT_REPLAY_SABER_SETTINGS.saberGuardSize,
+    saberGuardThickness: DEFAULT_REPLAY_SABER_SETTINGS.saberGuardThickness,
+    saberCollarSize: DEFAULT_REPLAY_SABER_SETTINGS.saberCollarSize,
+    saberCollarThickness: DEFAULT_REPLAY_SABER_SETTINGS.saberCollarThickness,
+    saberCollarSpacing: DEFAULT_REPLAY_SABER_SETTINGS.saberCollarSpacing,
+    saberRingSize: DEFAULT_REPLAY_SABER_SETTINGS.saberRingSize,
+    saberRingThickness: DEFAULT_REPLAY_SABER_SETTINGS.saberRingThickness,
+    saberRingSpacing: DEFAULT_REPLAY_SABER_SETTINGS.saberRingSpacing,
+    saberPommelLength: DEFAULT_REPLAY_SABER_SETTINGS.saberPommelLength,
+    saberPommelThickness: DEFAULT_REPLAY_SABER_SETTINGS.saberPommelThickness,
+  };
+}
+
+function migrateIncorrectDefaultColors(settings: ViewerSettings): ViewerSettings {
+  if (
+    settings.leftColor !== '#bb0000' ||
+    settings.rightColor !== '#005ebc' ||
+    settings.obstacleColor !== '#ff0000' ||
+    settings.environmentLeftColor !== '#ff0000' ||
+    settings.environmentRightColor !== '#0048ff' ||
+    settings.environmentWhiteColor !== '#b9b9b9' ||
+    settings.environmentLeftBoostColor !== '#ff0000' ||
+    settings.environmentRightBoostColor !== '#0048ff' ||
+    settings.environmentWhiteBoostColor !== '#b9b9b9'
+  )
+    return settings;
+  return {
+    ...settings,
+    leftColor: DEFAULT_VIEWER_SETTINGS.leftColor,
+    rightColor: DEFAULT_VIEWER_SETTINGS.rightColor,
+    obstacleColor: DEFAULT_VIEWER_SETTINGS.obstacleColor,
+    environmentLeftColor: DEFAULT_VIEWER_SETTINGS.environmentLeftColor,
+    environmentRightColor: DEFAULT_VIEWER_SETTINGS.environmentRightColor,
+    environmentWhiteColor: DEFAULT_VIEWER_SETTINGS.environmentWhiteColor,
+    environmentLeftBoostColor: DEFAULT_VIEWER_SETTINGS.environmentLeftBoostColor,
+    environmentRightBoostColor: DEFAULT_VIEWER_SETTINGS.environmentRightBoostColor,
+    environmentWhiteBoostColor: DEFAULT_VIEWER_SETTINGS.environmentWhiteBoostColor,
+  };
+}
+
+function migrateLegacyColorOverrides(settings: ViewerSettings): ViewerSettings {
+  return {
+    ...settings,
+    obstacleColor: settings.leftColor,
+    environmentLeftColor: settings.leftColor,
+    environmentRightColor: settings.rightColor,
+    environmentLeftBoostColor: settings.leftColor,
+    environmentRightBoostColor: settings.rightColor,
+  };
 }
 
 export function saveViewerSettings(settings: ViewerSettings, storage: Pick<Storage, 'setItem'> = localStorage) {
@@ -368,7 +525,25 @@ export function hexToRgb(hex: string): Rgb {
   ];
 }
 
-export function colorOverride(settings: ViewerSettings, mapScheme?: InfoColorScheme): InfoColorScheme | undefined {
+export function environmentForSettings(
+  settings: Pick<ViewerSettings, 'preferReplayEnvironment' | 'overrideEnvironment' | 'environmentOverrideId'>,
+  mapEnvironmentId: string,
+  replayEnvironmentId?: string,
+) {
+  if (settings.preferReplayEnvironment && replayEnvironmentId !== undefined) return replayEnvironmentId;
+  return settings.overrideEnvironment ? settings.environmentOverrideId : mapEnvironmentId;
+}
+
+export function colorOverride(
+  settings: ViewerSettings,
+  mapScheme?: InfoColorScheme,
+  replayMetadata?: ReplayMetadata,
+): InfoColorScheme | undefined {
+  const base = manualColorOverride(settings, mapScheme);
+  return settings.preferReplayColors ? replayColorScheme(replayMetadata, base) : base;
+}
+
+function manualColorOverride(settings: ViewerSettings, mapScheme?: InfoColorScheme): InfoColorScheme | undefined {
   if (!settings.customColors) return mapScheme;
   const left = hexToRgb(settings.leftColor);
   const right = hexToRgb(settings.rightColor);
@@ -377,12 +552,14 @@ export function colorOverride(settings: ViewerSettings, mapScheme?: InfoColorSch
     overrideNotes: true,
     leftNote: left,
     rightNote: right,
-    obstacle: left,
+    obstacle: hexToRgb(settings.obstacleColor),
     overrideLights: true,
     supportsEnvironmentColorBoost: true,
-    environmentLeft: left,
-    environmentRight: right,
-    environmentLeftBoost: left,
-    environmentRightBoost: right,
+    environmentLeft: hexToRgb(settings.environmentLeftColor),
+    environmentRight: hexToRgb(settings.environmentRightColor),
+    environmentWhite: hexToRgb(settings.environmentWhiteColor),
+    environmentLeftBoost: hexToRgb(settings.environmentLeftBoostColor),
+    environmentRightBoost: hexToRgb(settings.environmentRightBoostColor),
+    environmentWhiteBoost: hexToRgb(settings.environmentWhiteBoostColor),
   };
 }

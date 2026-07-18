@@ -3,6 +3,7 @@
   "license": "GPL-2.0-only",
   "dependencies": {
     "@bufbuild/protobuf": "^2.12.1",
+    "@resvg/resvg-js": "2.6.2",
     "@t3-oss/env-core": "0.13.11",
     "@tanstack/react-query": "5.100.5",
     "@tanstack/react-router": "^1.170.8",
@@ -17,7 +18,9 @@
     "mediabunny": "^1.50.8",
     "radix-ui": "^1.6.2",
     "react": "^19.2.7",
+    "react-colorful": "^5.8.0",
     "react-dom": "^19.2.7",
+    "satori": "^0.28.0",
     "tailwind-merge": "^3.6.0",
     "three": "^0.185.1",
     "troika-three-text": "^0.52.4",

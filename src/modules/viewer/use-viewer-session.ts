@@ -6,9 +6,16 @@ import { songBpmTimeToSeconds } from '../../core/beatmap/bpm';
 import { difficultyRank, effectiveNoteJumpSpeed } from '../../core/beatmap/info';
 import { buildHitsoundEvents } from '../../core/clock/hitsounds';
 import { isForcedLightshowMode, type LightshowMode } from '../../core/lighting/basic-light';
-import { buildMapRenderData } from '../../core/placement/map-render-data';
-import type { ReplayNoteEvent } from '../../core/replay/types';
-import { colorOverride, saveViewerSettings, type ViewerSettings } from '../../core/viewer-settings';
+import { applyReplayHeightEvents, buildMapRenderData } from '../../core/placement/map-render-data';
+import { hitScoreVisualizerForSettings } from '../../core/replay/replay-display';
+import type { ReplayHeightEvent, ReplayNoteEvent } from '../../core/replay/types';
+import {
+  colorOverride,
+  environmentForSettings,
+  saveViewerSettings,
+  type ViewerSettings,
+} from '../../core/viewer-settings';
+import { resolveEnvironmentId } from '../../renderer/environment/environment-catalog';
 import { EnvironmentLoadAborted, type EnvironmentLoadFailure } from '../../renderer/environment/environment-error';
 import type { useSongTransport } from './use-song-transport';
 import { useViewerRenderer } from './use-viewer-renderer';
@@ -48,7 +55,6 @@ export function useViewerSession({
 }: ViewerSessionOptions) {
   const t = useTranslations('viewer');
   const activeSelectionRef = useRef<ActiveSelection | null>(null);
-  const [environmentId, setEnvironmentId] = useState('BigMirrorEnvironment');
   const [selectedKey, setSelectedKey] = useState('');
   const { canvasRef, environmentLoading, viewerReady, viewerRef } = useViewerRenderer({
     activeSelectionRef,
@@ -70,6 +76,18 @@ export function useViewerSession({
   }, [settings.screenDisplacementEffects]);
 
   useEffect(() => {
+    viewerRef.current?.view.setPreviewNotesLookAtPlayer(settings.previewNotesLookAtPlayer);
+  }, [settings.previewNotesLookAtPlayer]);
+
+  useEffect(() => {
+    viewerRef.current?.view.setPreviewHitNotes(settings.previewHitNotes);
+  }, [settings.previewHitNotes]);
+
+  useEffect(() => {
+    viewerRef.current?.view.setPreviewHitLine(settings.previewHitLine);
+  }, [settings.previewHitLine]);
+
+  useEffect(() => {
     const mode: LightshowMode = settings.staticLights ? 'static' : 'full';
     if (isForcedLightshowMode(lightshowModeRef.current) && mode === 'full') return;
     lightshowModeRef.current = mode;
@@ -88,7 +106,7 @@ export function useViewerSession({
     settings.fixedCameraDistance,
     settings.replayCameraXOffset,
     settings.replayCameraYOffset,
-    settings.replayCameraZOffset,
+    settings.replayCameraDepthOffset,
     settings.replayCameraXRotation,
     settings.replayCameraYRotation,
     settings.replayCameraZRotation,
@@ -134,19 +152,47 @@ export function useViewerSession({
   ]);
 
   useEffect(() => {
+    viewerRef.current?.view.setHitScoreVisualizer(hitScoreVisualizerForSettings(settings, sources.replayRef.current));
+  }, [settings.overrideHsvProfile, settings.preferReplayHsvProfile, settings.hsvProfile]);
+
+  useEffect(() => {
     const active = activeSelectionRef.current;
     const view = viewerRef.current?.view;
     if (active === null || view === undefined) return;
-    view.setMap(active.data, colorOverride(settings, active.mapColorScheme));
-    view.setReplay(sources.replayRef.current);
-  }, [settings.customColors, settings.leftColor, settings.rightColor]);
+    view.refreshMapColors(colorOverride(settings, active.mapColorScheme, sources.replayRef.current?.metadata));
+  }, [
+    settings.preferReplayColors,
+    settings.customColors,
+    settings.leftColor,
+    settings.rightColor,
+    settings.obstacleColor,
+    settings.environmentLeftColor,
+    settings.environmentRightColor,
+    settings.environmentWhiteColor,
+    settings.environmentLeftBoostColor,
+    settings.environmentRightBoostColor,
+    settings.environmentWhiteBoostColor,
+  ]);
+
+  useEffect(() => {
+    const active = activeSelectionRef.current;
+    const nextEnvironmentId = resolveEnvironmentId(
+      active === null
+        ? settings.overrideEnvironment
+          ? settings.environmentOverrideId
+          : 'BigMirrorEnvironment'
+        : environmentForSettings(settings, active.mapEnvironmentId, active.replayEnvironmentId),
+    );
+    if (active?.environmentId === nextEnvironmentId) return;
+    void selectEnvironment(nextEnvironmentId);
+  }, [settings.preferReplayEnvironment, settings.overrideEnvironment, settings.environmentOverrideId]);
 
   function reportEnvironmentError(error: EnvironmentLoadFailure) {
     if (EnvironmentLoadAborted.is(error)) return;
     setError(`${t('errors.failedEnvironment')}: ${error.message}`);
   }
 
-  async function selectDifficulty(row: DifficultyRow) {
+  async function selectDifficulty(row: DifficultyRow, initialBeat = 0) {
     const viewer = viewerRef.current;
     if (
       viewer === null ||
@@ -155,7 +201,10 @@ export function useViewerSession({
       row.environmentId === undefined
     )
       return;
-    const environmentId = row.environmentId;
+    const mapEnvironmentId = row.environmentId;
+    const environmentId = resolveEnvironmentId(
+      environmentForSettings(settings, mapEnvironmentId, row.replayEnvironmentId),
+    );
     setError('');
     if (sources.replayRef.current !== null && row.replayMatch !== true) {
       setError(t('errors.selectReplayDifficulty'));
@@ -172,6 +221,8 @@ export function useViewerSession({
           : undefined,
       leftHanded: sources.replayRef.current?.metadata.leftHanded,
       replayNotes: sources.replayRef.current?.notes,
+      initialPlayerHeight: sources.replayRef.current?.metadata.initialHeight,
+      replayHeights: sources.replayRef.current?.heights,
       environmentRemoval: row.infoDifficulty.environmentRemoval,
     });
     const environmentResult = await viewer.view.setEnvironment(environmentId);
@@ -179,16 +230,28 @@ export function useViewerSession({
       reportEnvironmentError(environmentResult.error);
       return;
     }
-    setEnvironmentId(environmentId);
     viewer.view.setLightshowMode(lightshowModeRef.current);
 
     activeSelectionRef.current = {
       data,
       environmentId,
+      mapEnvironmentId,
+      replayEnvironmentId: row.replayEnvironmentId,
       mapColorScheme: row.colorScheme,
     };
 
     const hitsoundEvents = buildHitsoundEvents([...data.notes, ...data.chainLinks], sources.songBpm);
+    const currentReplayHeights = sources.replayRef.current?.heights ?? [];
+    applyReplayHeightEvents(data, currentReplayHeights.slice(data.replayHeights.length));
+    viewer.view.setBeatSource(() => initialBeat);
+    viewer.view.setMap(data, colorOverride(settings, row.colorScheme, sources.replayRef.current?.metadata));
+    viewer.view.setReplay(
+      sources.replayRef.current,
+      hitScoreVisualizerForSettings(settings, sources.replayRef.current),
+    );
+    viewer.view.setReplayCameraSettings(settings);
+    setActivePanel(null);
+
     let clock = transport.clockRef.current;
     if (clock === null) {
       const replayEnd = sources.replayRef.current?.poses.at(-1)?.time ?? 0;
@@ -207,12 +270,8 @@ export function useViewerSession({
       transport.setHitsoundEvents(hitsoundEvents);
     }
 
-    viewer.view.setMap(data, colorOverride(settings, row.colorScheme));
     viewer.view.setSongDuration(clock.duration);
-    viewer.view.setReplay(sources.replayRef.current);
-    viewer.view.setReplayCameraSettings(settings);
     viewer.view.setBeatSource(() => clock.currentBeat());
-    setActivePanel(null);
     setSelectedKey(row.key);
   }
 
@@ -228,13 +287,14 @@ export function useViewerSession({
     const active = activeSelectionRef.current;
     if (active !== null) {
       active.environmentId = nextEnvironmentId;
-      viewer.view.refreshMapColors(colorOverride(settingsRef.current, active.mapColorScheme));
+      viewer.view.refreshMapColors(
+        colorOverride(settingsRef.current, active.mapColorScheme, sources.replayRef.current?.metadata),
+      );
     }
-    setEnvironmentId(nextEnvironmentId);
   }
 
   async function applyPendingView(row: DifficultyRow, beat: number | undefined) {
-    await selectDifficulty(row);
+    await selectDifficulty(row, beat);
     const clock = transport.clockRef.current;
     if (clock === null) return;
     transport.seek(songBpmTimeToSeconds(beat ?? 0, sources.songBpm));
@@ -295,6 +355,10 @@ export function useViewerSession({
     viewerRef.current?.view.appendReplayNoteEvents(events);
   }
 
+  function appendLiveReplayHeightEvents(events: ReplayHeightEvent[]) {
+    viewerRef.current?.view.appendReplayHeightEvents(events);
+  }
+
   const difficultyOptions = sources.rows.map((row) => ({
     key: row.key,
     label: row.label,
@@ -325,6 +389,7 @@ export function useViewerSession({
 
   return {
     canvasRef,
+    appendLiveReplayHeightEvents,
     appendLiveReplayNoteEvents,
     changeLightshowMode,
     clearMapSelection,
@@ -333,11 +398,9 @@ export function useViewerSession({
     cycleLights,
     difficultyOptions,
     environmentLoading,
-    environmentId,
     scoreSaberUrl,
     selectDifficulty,
     selectedDifficultyIndex,
     selectedKey,
-    selectEnvironment,
   };
 }

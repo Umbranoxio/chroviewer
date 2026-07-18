@@ -5,7 +5,7 @@ import { SourceError, sourceError } from './source-error';
 import type { DownloadProgressHandler, FetchRequest, SourceResult } from './source-types';
 
 interface SourceRequestOptions {
-  source: 'beatsaver' | 'scoresaber';
+  source: 'beatsaver' | 'local' | 'scoresaber';
   label: string;
   operation: string;
   onProgress?: DownloadProgressHandler;

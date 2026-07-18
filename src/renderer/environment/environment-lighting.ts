@@ -22,6 +22,7 @@ export interface EnvironmentParametricTarget {
   node: Object3D;
   segments: EnvironmentLightSegment[];
   materialLights: EnvironmentMaterialLight[];
+  matrixTargets: Object3D[];
   startAlpha: number;
   endAlpha: number;
   setLength: (length: number, collisionLength?: number, startAlpha?: number) => void;
@@ -139,6 +140,7 @@ function addParametricLights(
         node,
         segments: [segment],
         materialLights: [],
+        matrixTargets: [],
         startAlpha: controller.StartAlpha,
         endAlpha: controller.EndAlpha,
         setLength,
@@ -174,6 +176,7 @@ function addParametricLights(
         let currentLength = controller.Length;
         let currentCollisionLength = Number.POSITIVE_INFINITY;
         let currentStartAlpha = controller.StartAlpha;
+        if (box !== undefined) bindingTarget.matrixTargets.push(lightNode);
         function applyAlpha(alpha: number) {
           currentAlpha = alpha;
           const renderedAlpha = Math.max(Math.abs(alpha * intensityMultiplier), controller.MinAlpha);
@@ -202,6 +205,7 @@ function addParametricLights(
             const height = Math.min(fullHeight, currentCollisionLength);
             lightNode.scale.set(width * 0.5, height * 0.5, width * 0.5);
             lightNode.position.set(0, (0.5 - controller.Center) * height, 0);
+            lightNode.updateMatrix();
             const alphaStart = controller.OverrideChildrenAlpha === 0 ? box.AlphaStart : currentStartAlpha;
             const alphaEnd = controller.OverrideChildrenAlpha === 0 ? box.AlphaEnd : controller.EndAlpha;
             const clippedAlphaEnd =

@@ -6,6 +6,12 @@ import type { MapSourceFile, SourceResult } from './source-types';
 
 const decoder = new TextDecoder();
 
+function exactArrayBuffer(bytes: Uint8Array) {
+  return bytes.byteOffset === 0 && bytes.byteLength === bytes.buffer.byteLength && bytes.buffer instanceof ArrayBuffer
+    ? bytes.buffer
+    : bytes.slice().buffer;
+}
+
 function mapArchiveFiles(entries: Record<string, Uint8Array>) {
   const files = Object.entries(entries).flatMap(([path, bytes]) => {
     const name = path.replaceAll('\\', '/').split('/').at(-1) ?? path;
@@ -14,7 +20,7 @@ function mapArchiveFiles(entries: Record<string, Uint8Array>) {
       {
         name,
         text: () => Promise.resolve(decoder.decode(bytes)),
-        arrayBuffer: () => Promise.resolve(new Uint8Array(bytes).buffer),
+        arrayBuffer: () => Promise.resolve(exactArrayBuffer(bytes)),
       },
     ];
   });

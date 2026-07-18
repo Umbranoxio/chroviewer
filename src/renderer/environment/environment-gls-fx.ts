@@ -86,11 +86,13 @@ export function buildEnvironmentGlsFxGroups(
               target.scale
                 .copy(initialScale)
                 .multiplyScalar(MathUtils.clamp(value, fx.ValueBounds[0], fx.ValueBounds[1]));
+              target.updateMatrix();
             });
           },
           reset: () => {
             targets.forEach(({ target, initialScale }) => {
               target.scale.copy(initialScale);
+              target.updateMatrix();
             });
           },
         },
@@ -108,9 +110,11 @@ export function buildEnvironmentGlsFxGroups(
         {
           apply: (value) => {
             target.position.copy(initial).addScaledVector(direction, value * fx.MoveScale);
+            target.updateMatrix();
           },
           reset: () => {
             target.position.copy(initial);
+            target.updateMatrix();
           },
         },
       ];

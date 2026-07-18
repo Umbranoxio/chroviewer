@@ -15,6 +15,7 @@ import {
   resolveBasicLightAlpha,
   resolveBasicLightColor,
   sampleBasicLightTimeline,
+  type BasicLightSample,
   type BasicLightTimeline,
   type LightshowMode,
 } from '../../core/lighting/basic-light';
@@ -32,9 +33,13 @@ import { shaderColorUniform, shaderNumberUniform, shaderUniformValue } from '../
 import { lightBindingKey, rebuildEnvironmentLightEventCache } from './environment-light-timeline-routing';
 import { EnvironmentTransformRuntime } from './environment-transform-runtime';
 
+interface GlsColorSource {
+  tween: ReturnType<typeof glsColorTween>;
+}
+
 interface GlsColorRuntime {
   target: EnvironmentGlsColorTarget;
-  tween: ReturnType<typeof glsColorTween>;
+  source: GlsColorSource;
   initialVisible?: boolean;
   initialMaterials: {
     material: ShaderMaterial;
@@ -80,6 +85,7 @@ export class EnvironmentLightRuntime {
   private readonly transforms = new EnvironmentTransformRuntime();
   private readonly glsSegments = new Map<EnvironmentLightSegment, ControlledLight>();
   private readonly glsMaterialLights = new Map<LoadedEnvironment['materialLights'][number], ControlledLight>();
+  private readonly glsColorSamples = new Map<GlsColorSource, ReturnType<typeof sampleGlsColorTween>>();
   private readonly glsDirectMaterials = new Map<
     ShaderMaterial,
     {
@@ -92,6 +98,15 @@ export class EnvironmentLightRuntime {
   private readonly lightEventsByBindingKey = new Map<string, MapRenderData['lightEvents']>();
   private readonly lightTimelinesByBinding = new Map<EnvironmentLightBinding, BasicLightTimeline>();
   private readonly lightTimelinesByEvents = new Map<MapRenderData['lightEvents'], BasicLightTimeline>();
+  private readonly basicLightSamples = new Map<
+    BasicLightTimeline,
+    Map<number, [BasicLightSample | undefined, BasicLightSample | undefined]>
+  >();
+  private readonly resolvedBasicLightSamples = new Map<
+    BasicLightSample,
+    [ControlledLight | undefined, ControlledLight | undefined]
+  >();
+  private readonly latestTimelineBeats = new Map<BasicLightTimeline, number>();
 
   private environment: LoadedEnvironment | null = null;
   private data: MapRenderData | null = null;
@@ -99,6 +114,11 @@ export class EnvironmentLightRuntime {
   private lightshowMode: LightshowMode = 'full';
   private glsColorRuntime: GlsColorRuntime[] = [];
   private jsonTimeToSongBpmTime: (jsonTime: number) => number = (jsonTime) => jsonTime;
+  private basicLightSampleBeat = Number.NaN;
+  private basicLightSampleBoosted = false;
+  private basicLightSampleSongBpm = Number.NaN;
+  private basicLightSampleMode?: LightshowMode;
+  private basicLightSampleColors?: ColorScheme;
 
   setEnvironment(environment: LoadedEnvironment) {
     this.environment = environment;
@@ -128,6 +148,7 @@ export class EnvironmentLightRuntime {
 
   setColors(colors: ColorScheme) {
     this.colors = colors;
+    this.basicLightSampleColors = undefined;
   }
 
   clearMap() {
@@ -137,6 +158,7 @@ export class EnvironmentLightRuntime {
 
   setLightshowMode(mode: LightshowMode) {
     this.lightshowMode = mode;
+    this.basicLightSampleMode = undefined;
   }
 
   update(beat: number) {
@@ -147,6 +169,7 @@ export class EnvironmentLightRuntime {
     this.songTime.value = songBpmTimeToSeconds(beat, songBpm);
     const full = isFullLightshowMode(this.lightshowMode);
     const boosted = full ? boostAt(this.lightEventsByType.get(5) ?? [], beat) : false;
+    this.prepareBasicLightSamples(beat, boosted, songBpm);
     for (const target of environment.boostSwitches) target.apply(boosted);
     for (const target of environment.eventSwitches) {
       const value = full ? basicEventValueAt(this.lightEventsByType.get(target.eventType) ?? [], beat) : undefined;
@@ -178,6 +201,11 @@ export class EnvironmentLightRuntime {
   private rebuildTimelineCaches() {
     this.lightTimelinesByBinding.clear();
     this.lightTimelinesByEvents.clear();
+    this.basicLightSampleMode = undefined;
+    this.basicLightSamples.clear();
+    this.resolvedBasicLightSamples.clear();
+    this.latestTimelineBeats.clear();
+    this.glsColorSamples.clear();
     rebuildEnvironmentLightEventCache(this.data, this.environment, {
       byType: this.lightEventsByType,
       byBinding: this.lightEventsByBinding,
@@ -205,16 +233,25 @@ export class EnvironmentLightRuntime {
       for (const input of light.inputs) this.timelineForBinding(input.binding);
     }
 
+    const glsColorSources = new Map<string, GlsColorSource>();
     for (const environmentGroup of environment.glsColorGroups) {
       const groups = data.lightColorEventBoxGroups.filter((group) => group.id === environmentGroup.groupId);
       const expanded = expandGlsEvents<LightColorEvent, EventBox<LightColorEvent>>(groups, environmentGroup.count);
       for (const target of environmentGroup.targets) {
+        const sourceKey = `${String(environmentGroup.groupId)}:${String(environmentGroup.count)}:${String(target.id)}`;
+        let source = glsColorSources.get(sourceKey);
+        if (source === undefined) {
+          source = {
+            tween: glsColorTween(
+              expanded.filter((event) => event.element === target.id),
+              this.jsonTimeToSongBpmTime,
+            ),
+          };
+          glsColorSources.set(sourceKey, source);
+        }
         this.glsColorRuntime.push({
           target,
-          tween: glsColorTween(
-            expanded.filter((event) => event.element === target.id),
-            this.jsonTimeToSongBpmTime,
-          ),
+          source,
           initialVisible: target.node?.visible,
           initialMaterials: target.materials.map((material) => {
             const color = shaderColorUniform(material, target.colorProperty);
@@ -243,9 +280,15 @@ export class EnvironmentLightRuntime {
     this.glsSegments.clear();
     this.glsMaterialLights.clear();
     this.glsDirectMaterials.clear();
+    this.glsColorSamples.clear();
     if (full) {
+      const samples = this.glsColorSamples;
       for (const runtime of this.glsColorRuntime) {
-        const sample = sampleGlsColorTween(runtime.tween, beat, this.colors, boosted);
+        let sample = samples.get(runtime.source);
+        if (sample === undefined) {
+          sample = sampleGlsColorTween(runtime.source.tween, beat, this.colors, boosted);
+          samples.set(runtime.source, sample);
+        }
         const controlled = runtime.target.transform(sample.color, sample.alpha);
         if (runtime.target.node !== undefined) runtime.target.node.visible = controlled.visible;
         for (const segment of runtime.target.segments) this.glsSegments.set(segment, controlled);
@@ -364,11 +407,16 @@ export class EnvironmentLightRuntime {
   }
 
   private sampleEnvironmentLight(bindings: EnvironmentLightBinding[], beat: number, boosted: boolean, songBpm: number) {
+    this.prepareBasicLightSamples(beat, boosted, songBpm);
     let binding: EnvironmentLightBinding | undefined;
     let latest = Number.NEGATIVE_INFINITY;
     for (const candidate of bindings) {
       const timeline = this.timelineForBinding(candidate);
-      const eventBeat = latestBasicLightTimelineBeat(timeline, beat);
+      let eventBeat = this.latestTimelineBeats.get(timeline);
+      if (eventBeat === undefined) {
+        eventBeat = latestBasicLightTimelineBeat(timeline, beat);
+        this.latestTimelineBeats.set(timeline, eventBeat);
+      }
       if (binding === undefined || eventBeat >= latest) {
         binding = candidate;
         latest = eventBeat;
@@ -379,25 +427,68 @@ export class EnvironmentLightRuntime {
   }
 
   private sampleEnvironmentBinding(binding: EnvironmentLightBinding, beat: number, boosted: boolean, songBpm: number) {
-    const sample = sampleBasicLightTimeline(
-      lightTimelineForMode(this.lightshowMode, this.timelineForBinding(binding)),
-      beat,
-      {
+    this.prepareBasicLightSamples(beat, boosted, songBpm);
+    const timeline = lightTimelineForMode(this.lightshowMode, this.timelineForBinding(binding));
+    let samplesByOffIntensity = this.basicLightSamples.get(timeline);
+    if (samplesByOffIntensity === undefined) {
+      samplesByOffIntensity = new Map();
+      this.basicLightSamples.set(timeline, samplesByOffIntensity);
+    }
+    let samplesByLightOnStart = samplesByOffIntensity.get(binding.offIntensity);
+    if (samplesByLightOnStart === undefined) {
+      samplesByLightOnStart = [undefined, undefined];
+      samplesByOffIntensity.set(binding.offIntensity, samplesByLightOnStart);
+    }
+    const lightOnStartIndex = binding.lightOnStart ? 1 : 0;
+    let sample = samplesByLightOnStart[lightOnStartIndex];
+    if (sample === undefined) {
+      sample = sampleBasicLightTimeline(timeline, beat, {
         songBpm,
         offIntensity: binding.offIntensity,
         lightOnStart: binding.lightOnStart,
         normalAlpha: boosted ? GAME_LIGHT_BOOST_NORMAL_ALPHA : GAME_LIGHT_NORMAL_ALPHA,
         highlightAlpha: GAME_LIGHT_HIGHLIGHT_ALPHA,
-      },
-    );
+      });
+      samplesByLightOnStart[lightOnStartIndex] = sample;
+    }
+    let resolvedByInversion = this.resolvedBasicLightSamples.get(sample);
+    if (resolvedByInversion === undefined) {
+      resolvedByInversion = [undefined, undefined];
+      this.resolvedBasicLightSamples.set(sample, resolvedByInversion);
+    }
+    const inversionIndex = binding.invertColorScheme ? 1 : 0;
+    const cached = resolvedByInversion[inversionIndex];
+    if (cached !== undefined) return cached;
     const alpha = resolveBasicLightAlpha(sample);
-    return {
+    const resolved = {
       color: resolveBasicLightColor(sample, this.colors, binding.invertColorScheme, boosted),
       alpha: sample.fading === true ? Math.max(alpha, 0) : alpha,
       rawAlpha: alpha,
       fading: sample.fading === true,
       customColor: sample.customColor !== undefined || sample.transition?.customColor !== undefined,
     };
+    resolvedByInversion[inversionIndex] = resolved;
+    return resolved;
+  }
+
+  private prepareBasicLightSamples(beat: number, boosted: boolean, songBpm: number) {
+    if (
+      this.basicLightSampleBeat === beat &&
+      this.basicLightSampleBoosted === boosted &&
+      this.basicLightSampleSongBpm === songBpm &&
+      this.basicLightSampleMode === this.lightshowMode &&
+      this.basicLightSampleColors === this.colors
+    ) {
+      return;
+    }
+    this.basicLightSampleBeat = beat;
+    this.basicLightSampleBoosted = boosted;
+    this.basicLightSampleSongBpm = songBpm;
+    this.basicLightSampleMode = this.lightshowMode;
+    this.basicLightSampleColors = this.colors;
+    this.basicLightSamples.clear();
+    this.resolvedBasicLightSamples.clear();
+    this.latestTimelineBeats.clear();
   }
 
   private eventsForBinding(binding: EnvironmentLightBinding) {
@@ -427,6 +518,7 @@ export class EnvironmentLightRuntime {
       ? boostAt(this.lightEventsByType.get(5) ?? [], beat)
       : false;
     const songBpm = this.data?.songBpm ?? 120;
+    this.prepareBasicLightSamples(beat, boosted, songBpm);
     for (let index = 0; index < Math.min(environment.directionalLights.length, 5); index++) {
       const light = environment.directionalLights[index];
       if (light === undefined) continue;

@@ -1,10 +1,10 @@
 import type { Obstacle } from '../beatmap/types';
 
-const LANE_SIZE = 0.6;
+export const LANE_SIZE = 0.6;
 export const Y_OFFSET = 0.25;
 const PLAYER_Y_OFFSET = 0.6;
 const OBSTACLE_Y_OFFSET = -0.15;
-export const Z_OFFSET = 1;
+export const Z_OFFSET = 0.65;
 
 export const NOTE_Y_OFFSET = Y_OFFSET + PLAYER_Y_OFFSET;
 export const WALL_Y_OFFSET = Y_OFFSET + OBSTACLE_Y_OFFSET;
@@ -12,6 +12,13 @@ export const WALL_Y_OFFSET = Y_OFFSET + OBSTACLE_Y_OFFSET;
 export interface GridPosition {
   x: number;
   y: number;
+}
+
+export function objectPosition(posX: number, posY: number, coordinates?: readonly [number, number]): GridPosition {
+  if (coordinates !== undefined) {
+    return { x: (coordinates[0] + 0.5) * LANE_SIZE, y: coordinates[1] * LANE_SIZE };
+  }
+  return gridPosition(posX, posY);
 }
 
 export function gridPosition(posX: number, posY: number): GridPosition {
@@ -66,7 +73,11 @@ export interface ObstacleBounds {
 const meUnitsToFullHeightWall = 1000 / 3.5;
 const meStartHeightMultiplier = 1.35;
 
-export function obstacleBounds(obstacle: Obstacle, majorVersion: number): ObstacleBounds {
+export function obstacleBounds(
+  obstacle: Obstacle,
+  majorVersion: number,
+  coordinates?: readonly [number, number],
+): ObstacleBounds {
   let position = obstacle.posX - 2;
   const vanillaYLimit = majorVersion === 4 ? 4 : 2;
   const clampedY = Math.min(Math.max(obstacle.posY, 0), vanillaYLimit);
@@ -88,6 +99,11 @@ export function obstacleBounds(obstacle: Obstacle, majorVersion: number): Obstac
     const modifiedType = obstacle.type - 4001;
     startHeight = ((modifiedType % 1000) / meUnitsToFullHeightWall) * meStartHeightMultiplier;
     height = modifiedType / 1000 / meUnitsToFullHeightWall;
+  }
+
+  if (coordinates !== undefined) {
+    position = coordinates[0];
+    startHeight = coordinates[1];
   }
 
   return { width, height, position, startHeight };

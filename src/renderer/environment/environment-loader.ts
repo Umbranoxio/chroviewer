@@ -19,6 +19,11 @@ export function buildEnvironment(
   const motion = buildEnvironmentMotion(data, scene.nodes);
   const glsColorGroups = buildEnvironmentGlsColors(data, scene, lighting);
   const glsFxGroups = buildEnvironmentGlsFxGroups(data, scene.objectShaderMaterials, scene.nodes);
+  scene.root.traverse((node) => {
+    node.updateMatrix();
+    node.matrixAutoUpdate = false;
+  });
+  scene.root.updateMatrixWorld(true);
 
   return {
     root: scene.root,

@@ -8,6 +8,7 @@ export interface HitsoundEvent {
 
 interface HitsoundNote {
   beat: number;
+  interactable?: boolean;
   replayEndTime?: number;
   replayEventType?: ReplayNoteEventType;
 }
@@ -15,6 +16,7 @@ interface HitsoundNote {
 export function buildHitsoundEvents(notes: HitsoundNote[], songBpm: number) {
   const events = notes
     .flatMap((note): HitsoundEvent[] => {
+      if (note.interactable === false) return [];
       if (note.replayEventType === 0 || note.replayEventType === 3 || note.replayEventType === 4) return [];
       if (note.replayEventType === 2) {
         return [{ time: note.replayEndTime ?? songBpmTimeToSeconds(note.beat, songBpm), good: false }];
@@ -47,6 +49,7 @@ export function firstHitsoundAfter(events: HitsoundEvent[], time: number) {
 
 export class HitsoundPlayer {
   private context: AudioContext | null = null;
+  private sounds = new Map<OscillatorNode, GainNode>();
   private volume = 1;
 
   setVolume(volume: number) {
@@ -68,12 +71,30 @@ export class HitsoundPlayer {
     oscillator.frequency.setValueAtTime(good ? 880 : 180, start);
     gain.gain.setValueAtTime((good ? 1 : 0.67) * this.volume, start);
     gain.gain.exponentialRampToValueAtTime(0.0001, start + (good ? 0.035 : 0.07));
-    oscillator.connect(gain).connect(context.destination);
+    this.sounds.set(oscillator, gain);
+    oscillator.onended = () => {
+      oscillator.disconnect();
+      gain.disconnect();
+      this.sounds.delete(oscillator);
+    };
+    oscillator.connect(gain);
+    gain.connect(context.destination);
     oscillator.start(start);
     oscillator.stop(start + (good ? 0.04 : 0.075));
   }
 
+  stop() {
+    for (const [oscillator, gain] of this.sounds) {
+      oscillator.onended = null;
+      oscillator.stop();
+      oscillator.disconnect();
+      gain.disconnect();
+    }
+    this.sounds.clear();
+  }
+
   dispose() {
+    this.stop();
     if (this.context !== null) void this.context.close();
     this.context = null;
   }

@@ -42,6 +42,7 @@ export function useSongTransport({
   const [playing, setPlaying] = useState(false);
   const [playbackRate, setPlaybackRateState] = useState(1);
   const hitsounds = useHitsoundPlayback({
+    audioOffset: settings.audioOffsetMs / 1000,
     clockRef,
     lightshowModeRef,
     settingsRef,
@@ -53,6 +54,10 @@ export function useSongTransport({
       settings.masterMuted || settings.songMuted ? 0 : settings.masterVolume * settings.songVolume,
     );
   }, [settings.masterMuted, settings.masterVolume, settings.songMuted, settings.songVolume]);
+
+  useEffect(() => {
+    clockRef.current?.setAudioOffset(settings.audioOffsetMs / 1000);
+  }, [settings.audioOffsetMs]);
 
   useEffect(() => {
     let interval: number | null = null;
@@ -145,6 +150,7 @@ export function useSongTransport({
         clock = result.value;
       }
     }
+    clock.setAudioOffset(settingsRef.current.audioOffsetMs / 1000);
     clock.setRate(playbackRate);
     clockRef.current = clock;
     autoplayRef.current = false;

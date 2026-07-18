@@ -36,6 +36,7 @@ export const linearColor = (color: Rgb) => new Color().setRGB(...color).convertS
 
 interface ShaderUniformValues {
   _AlphaWidth: Vector4;
+  _ArcColor: Vector4;
   _Color: Color;
   _ColorMultiplier: number;
   _CoreColor: Color;

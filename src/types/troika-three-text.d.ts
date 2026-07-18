@@ -15,7 +15,10 @@ declare module 'troika-three-text' {
     textAlign: string;
     maxWidth: number;
     depthOffset: number;
-    readonly textRenderInfo: { blockBounds: [number, number, number, number] } | null;
+    readonly textRenderInfo: {
+      blockBounds: [number, number, number, number];
+      visibleBounds: [number, number, number, number];
+    } | null;
     sync(callback?: () => void): void;
     dispose(): void;
   }

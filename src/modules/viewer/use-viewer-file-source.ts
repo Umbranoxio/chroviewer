@@ -16,7 +16,7 @@ import type {
 } from '../../sources/source-types';
 import { parseMapPackage } from './parse-map-package';
 import { sourceErrorMessage } from './source-error-message';
-import type { DifficultyRow, MapIdentity, MapMeta } from './viewer-types';
+import type { DifficultyRow, MapIdentity, MapMeta, ViewerSourceLink } from './viewer-types';
 
 export interface PendingSharedView {
   autoplay?: boolean;
@@ -27,6 +27,7 @@ export interface PendingSharedView {
 export interface LoadedSourceContext {
   identity?: MapIdentity;
   scoreId?: string;
+  sourceLink?: ViewerSourceLink;
   player?: ScoreSaberReplayPlayer;
 }
 
@@ -74,6 +75,7 @@ export function useViewerFileSource({
   const [rows, setRows] = useState<DifficultyRow[]>([]);
   const [mapIdentity, setMapIdentity] = useState<MapIdentity | null>(null);
   const [shareScoreId, setShareScoreId] = useState<string | null>(null);
+  const [sourceLink, setSourceLink] = useState<ViewerSourceLink | null>(null);
   const [replayPlayer, setReplayPlayer] = useState<ScoreSaberReplayPlayer | null>(null);
 
   function revokeCover() {
@@ -82,14 +84,15 @@ export function useViewerFileSource({
     coverUrlRef.current = null;
   }
 
-  useEffect(
-    () => () => {
-      parserRef.current?.dispose();
+  useEffect(() => {
+    const parser = new BeatmapParser();
+    parserRef.current = parser;
+    return () => {
+      parser.dispose();
       parserRef.current = null;
       revokeCover();
-    },
-    [],
-  );
+    };
+  }, []);
 
   async function parseReplay(data: ArrayBuffer, source: SourceError['source'] = 'local') {
     parserRef.current ??= new BeatmapParser();
@@ -113,6 +116,7 @@ export function useViewerFileSource({
     setError('');
     replayRef.current = replay;
     setShareScoreId(context.scoreId ?? null);
+    setSourceLink(context.sourceLink ?? null);
     setReplayPlayer(context.player ?? null);
     setMapIdentity(null);
     onClearViewer();
@@ -170,6 +174,7 @@ export function useViewerFileSource({
       pendingSharedViewRef.current = null;
       setMapIdentity(null);
       setShareScoreId(null);
+      setSourceLink(null);
       const sourceFiles: MapSourceFile[] = [];
       let replay: Replay | null = null;
       let identity: MapIdentity | undefined;
@@ -263,5 +268,6 @@ export function useViewerFileSource({
     rows,
     shareScoreId,
     songBpm,
+    sourceLink,
   };
 }

@@ -3,7 +3,7 @@ import { useFormatter, useTranslations } from 'use-intl';
 import { DEFAULT_REPLAY_CAMERA_SETTINGS, type ViewerSettings } from '../../../core/viewer-settings';
 import { SettingSection } from '../components/setting-section';
 import { SliderSetting } from '../components/slider-setting';
-import { CameraResetButton, type CameraSettingsUpdate } from './camera-setting-controls';
+import type { CameraSettingsUpdate } from './camera-setting-controls';
 
 import { Separator } from '@/components/ui/separator';
 
@@ -22,16 +22,7 @@ export function PreviewCameraSettings({ hasReplay, settings, update }: PreviewCa
 
   return (
     <>
-      <SettingSection
-        title={t('view')}
-        action={
-          <CameraResetButton
-            onClick={() => {
-              update('replayCameraFov', DEFAULT_REPLAY_CAMERA_SETTINGS.replayCameraFov);
-            }}
-          />
-        }
-      >
+      <SettingSection title={t('view')}>
         <SliderSetting
           defaultValue={DEFAULT_REPLAY_CAMERA_SETTINGS.replayCameraFov}
           id="replay-camera-fov"
@@ -57,16 +48,7 @@ export function PreviewCameraSettings({ hasReplay, settings, update }: PreviewCa
       {showFixedCamera && (
         <>
           <Separator />
-          <SettingSection
-            title={t('fixedCamera')}
-            action={
-              <CameraResetButton
-                onClick={() => {
-                  update(distanceKey, defaultDistance);
-                }}
-              />
-            }
-          >
+          <SettingSection title={t('fixedCamera')}>
             <SliderSetting
               defaultValue={defaultDistance}
               id="fixed-camera-distance"

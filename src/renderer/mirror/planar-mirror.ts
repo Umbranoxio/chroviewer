@@ -18,7 +18,7 @@ import {
   WebGLRenderTarget,
 } from 'three';
 
-import { multisampleDepthStencilResolveOptions } from '../platform';
+import { MULTISAMPLE_DEPTH_STENCIL_RESOLVE_OPTIONS } from '../platform';
 import { mirrorTextureSize, type QualitySettings } from '../quality';
 import {
   cameraSpacePlane,
@@ -70,7 +70,7 @@ export class PlanarMirror {
             depthBuffer: true,
             stencilBuffer: true,
             samples: quality.mirrorQuality === 'high' ? 2 : 0,
-            ...multisampleDepthStencilResolveOptions(),
+            ...MULTISAMPLE_DEPTH_STENCIL_RESOLVE_OPTIONS,
           });
     this.reflectionTexture = { value: this.target?.texture ?? this.black };
     this.mesh = new Mesh(new PlaneGeometry(width, length));

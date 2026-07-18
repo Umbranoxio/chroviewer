@@ -5,8 +5,9 @@ import { songBpmTimeToSeconds } from '../core/beatmap/bpm';
 import type { InfoColorScheme } from '../core/beatmap/info';
 import { DEFAULT_COLORS, resolveColorScheme } from '../core/colors';
 import { isForcedLightshowMode, type LightshowMode } from '../core/lighting/basic-light';
-import { applyReplayNoteEvents, type MapRenderData } from '../core/placement/map-render-data';
-import type { Replay, ReplayNoteEvent } from '../core/replay/types';
+import { applyReplayHeightEvents, applyReplayNoteEvents, type MapRenderData } from '../core/placement/map-render-data';
+import type { HitScoreVisualizerConfig } from '../core/replay/hit-score-visualizer';
+import type { Replay, ReplayHeightEvent, ReplayNoteEvent } from '../core/replay/types';
 import {
   DEFAULT_REPLAY_CAMERA_SETTINGS,
   type ReplayCameraSettings,
@@ -24,6 +25,7 @@ import type { LoadedEnvironment } from './environment/environment-runtime';
 import { EnvironmentLightRuntime } from './map/environment-light-runtime';
 import { MapObjectRenderer } from './map/map-object-renderer';
 import { createMirrorMaterial, createSkyboxMaterial } from './materials/scene-materials';
+import { collectMirrorConsumers, hasVisibleMirrorConsumer } from './mirror/mirror-consumers';
 import { MAIN_ONLY_LAYER, PlanarMirror, SCREEN_DISPLACEMENT_LAYER } from './mirror/planar-mirror';
 import { PostBloomPipeline } from './post-bloom/pipeline';
 import { DEFAULT_QUALITY } from './quality';
@@ -50,7 +52,7 @@ export class MapView implements RenderView {
   private readonly mapObjects: MapObjectRenderer;
   private readonly environmentLights = new EnvironmentLightRuntime();
   private environment: LoadedEnvironment | null = null;
-  private environmentUsesMirror = false;
+  private environmentMirrorConsumers: Mesh[] = [];
   private environmentRequest: {
     id: string;
     controller: AbortController;
@@ -70,6 +72,7 @@ export class MapView implements RenderView {
     this.postBloom = new PostBloomPipeline();
     this.mirror = new PlanarMirror(quality, 6, 400);
     this.camera.position.set(...fixedCameraPosition(DEFAULT_REPLAY_CAMERA_SETTINGS.previewCameraDistance));
+    this.scene.matrixAutoUpdate = false;
     this.scene.matrixWorldAutoUpdate = false;
     this.camera.layers.enable(MAIN_ONLY_LAYER);
     this.camera.layers.enable(SCREEN_DISPLACEMENT_LAYER);
@@ -174,9 +177,7 @@ export class MapView implements RenderView {
     }
     this.environment = environment;
     this.environmentRequest = null;
-    this.environmentUsesMirror = environment.data.objects.some((object) =>
-      object.materials?.some((name) => name !== null && environment.data.materials[name]?.family === 'mirror'),
-    );
+    this.environmentMirrorConsumers = collectMirrorConsumers(environment.root);
     this.scene.add(environment.root);
     this.environmentLights.setEnvironment(environment);
     this.mirror.updateMaterials(this.scene);
@@ -204,9 +205,13 @@ export class MapView implements RenderView {
     this.setReplay(null);
   }
 
-  setReplay(replay: Replay | null) {
-    this.replayView.setReplay(replay);
+  setReplay(replay: Replay | null, hitScoreVisualizer?: HitScoreVisualizerConfig | null) {
+    this.replayView.setReplay(replay, hitScoreVisualizer);
     this.mapObjects.invalidate();
+  }
+
+  setHitScoreVisualizer(hitScoreVisualizer: HitScoreVisualizerConfig | null) {
+    this.replayView.setHitScoreVisualizer(hitScoreVisualizer);
   }
 
   setSongDuration(duration: number | null) {
@@ -219,6 +224,12 @@ export class MapView implements RenderView {
       this.mapObjects.invalidate();
     }
     this.replayView.refreshTimeline();
+  }
+
+  appendReplayHeightEvents(events: ReplayHeightEvent[]) {
+    if (this.data === null || events.length === 0) return;
+    applyReplayHeightEvents(this.data, events);
+    this.mapObjects.invalidate();
   }
 
   setReplayCameraMode(mode: ReplayCameraMode) {
@@ -238,6 +249,18 @@ export class MapView implements RenderView {
     this.mapObjects.setScreenDisplacementEffects(enabled);
   }
 
+  setPreviewNotesLookAtPlayer(enabled: boolean) {
+    this.mapObjects.setPreviewNotesLookAtPlayer(enabled);
+  }
+
+  setPreviewHitNotes(enabled: boolean) {
+    this.mapObjects.setPreviewHitNotes(enabled);
+  }
+
+  setPreviewHitLine(enabled: boolean) {
+    this.mapObjects.setPreviewHitLine(enabled);
+  }
+
   setMap(data: MapRenderData, override?: InfoColorScheme) {
     this.clearMap();
     this.data = data;
@@ -251,14 +274,11 @@ export class MapView implements RenderView {
   }
 
   refreshMapColors(override?: InfoColorScheme) {
-    const data = this.data;
-    if (data === null) return;
+    if (this.data === null) return;
     const colors = this.resolveMapColors(override);
     this.environmentLights.setColors(colors);
     this.replayView.setColors(colors);
-    this.mapObjects.clear();
-    this.mapObjects.setMap(data, colors);
-    this.mirror.updateMaterials(this.scene);
+    this.mapObjects.setColors(colors);
   }
 
   private resolveMapColors(override?: InfoColorScheme) {
@@ -273,25 +293,31 @@ export class MapView implements RenderView {
     this.mirror.updateMaterials(this.scene);
   }
 
-  private update() {
+  private update(now: number) {
     const data = this.data;
-    if (this.environment !== null) this.environmentLights.update(this.beatSource());
+    if (this.environment !== null) this.environmentLights.update(now);
     if (data === null) return;
     if (isForcedLightshowMode(this.lightshowMode)) return;
-    const now = this.beatSource();
     const replayTime = songBpmTimeToSeconds(now, data.songBpm);
     this.replayView.update(replayTime);
     this.mapObjects.update(now, this.replayView);
   }
 
   render(renderer: WebGLRenderer) {
-    this.update();
+    const now = this.environment === null && this.data === null ? 0 : this.beatSource();
+    this.update(now);
     this.scene.updateMatrixWorld();
     if (this.environment?.applyConstraints() === true) this.scene.updateMatrixWorld();
-    if (this.environment !== null) this.environmentLights.updateWorldLights(this.beatSource());
+    if (this.environment !== null) this.environmentLights.updateWorldLights(now);
     this.pipeline.render(renderer, this.camera, this.environmentLights.lightSegments);
-    if (this.environmentUsesMirror) this.mirror.render(renderer, this.scene, this.camera);
+    if (hasVisibleMirrorConsumer(this.environmentMirrorConsumers, this.camera)) {
+      this.mirror.render(renderer, this.scene, this.camera);
+    }
     this.postBloom.render(renderer, this.scene, this.camera, this.mapRoot.visible && this.mapObjects.wallsVisible);
+  }
+
+  contextRestored() {
+    this.pipeline.invalidate();
   }
 
   setSize(width: number, height: number) {

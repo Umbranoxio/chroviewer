@@ -1,6 +1,6 @@
 import { sanitizeViewerSettings, type ViewerSettings } from './viewer-settings';
 
-export type ShareSettingsCategory = 'general' | 'graphics' | 'sabers' | 'camera';
+export type ShareSettingsCategory = 'general' | 'graphics' | 'cosmetics' | 'camera';
 export type SharedViewerSettings = Partial<ViewerSettings>;
 
 export function settingsForShareCategories(
@@ -11,13 +11,9 @@ export function settingsForShareCategories(
   if (categories.includes('general')) {
     Object.assign(shared, {
       hitsounds: settings.hitsounds,
-      masterMuted: settings.masterMuted,
-      songMuted: settings.songMuted,
-      masterVolume: settings.masterVolume,
-      songVolume: settings.songVolume,
-      hitsoundVolume: settings.hitsoundVolume,
-      showBookmarks: settings.showBookmarks,
-      autoHide: settings.autoHide,
+      previewHitNotes: settings.previewHitNotes,
+      previewHitLine: settings.previewHitLine,
+      previewNotesLookAtPlayer: settings.previewNotesLookAtPlayer,
     });
   }
   if (categories.includes('graphics')) {
@@ -26,13 +22,24 @@ export function settingsForShareCategories(
       screenDisplacementEffects: settings.screenDisplacementEffects,
       renderScale: settings.renderScale,
       staticLights: settings.staticLights,
+    });
+  }
+  if (categories.includes('cosmetics')) {
+    Object.assign(shared, {
+      preferReplayColors: settings.preferReplayColors,
+      preferReplayEnvironment: settings.preferReplayEnvironment,
+      overrideEnvironment: settings.overrideEnvironment,
+      environmentOverrideId: settings.environmentOverrideId,
       customColors: settings.customColors,
       leftColor: settings.leftColor,
       rightColor: settings.rightColor,
-    });
-  }
-  if (categories.includes('sabers')) {
-    Object.assign(shared, {
+      obstacleColor: settings.obstacleColor,
+      environmentLeftColor: settings.environmentLeftColor,
+      environmentRightColor: settings.environmentRightColor,
+      environmentWhiteColor: settings.environmentWhiteColor,
+      environmentLeftBoostColor: settings.environmentLeftBoostColor,
+      environmentRightBoostColor: settings.environmentRightBoostColor,
+      environmentWhiteBoostColor: settings.environmentWhiteBoostColor,
       showSabers: settings.showSabers,
       saberScale: settings.saberScale,
       saberBladeLength: settings.saberBladeLength,
@@ -78,7 +85,7 @@ export function settingsForShareCategories(
       fixedCameraDistance: settings.fixedCameraDistance,
       replayCameraXOffset: settings.replayCameraXOffset,
       replayCameraYOffset: settings.replayCameraYOffset,
-      replayCameraZOffset: settings.replayCameraZOffset,
+      replayCameraDepthOffset: settings.replayCameraDepthOffset,
       replayCameraXRotation: settings.replayCameraXRotation,
       replayCameraYRotation: settings.replayCameraYRotation,
       replayCameraZRotation: settings.replayCameraZRotation,

@@ -20,7 +20,7 @@ import {
 } from 'three';
 
 import { SCREEN_DISPLACEMENT_LAYER } from '../mirror/planar-mirror';
-import { multisampleDepthStencilResolveOptions } from '../platform';
+import { MULTISAMPLE_DEPTH_STENCIL_RESOLVE_OPTIONS } from '../platform';
 import { blueNoiseData } from './blue-noise';
 import {
   POST_BLOOM_ALPHA_WEIGHTS,
@@ -56,7 +56,7 @@ function renderTarget(width: number, height: number, depthBuffer = false) {
     wrapT: ClampToEdgeWrapping,
     depthBuffer,
     stencilBuffer: depthBuffer,
-    ...multisampleDepthStencilResolveOptions(),
+    ...MULTISAMPLE_DEPTH_STENCIL_RESOLVE_OPTIONS,
   });
 }
 

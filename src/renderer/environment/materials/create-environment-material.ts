@@ -47,6 +47,12 @@ export interface EnvironmentMaterialInstance {
   shader?: ShaderMaterial;
 }
 
+const environmentMaterialFamilies = new WeakMap<Material, EnvironmentMaterialData['family']>();
+
+export function environmentMaterialFamily(material: Material) {
+  return environmentMaterialFamilies.get(material);
+}
+
 function unityStencilFunc(value: number) {
   switch (value) {
     case 1:
@@ -254,5 +260,6 @@ export function createEnvironmentMaterial(
     material.stencilFunc = unityStencilFunc(stencilComp);
     material.stencilZPass = unityStencilOp(stencilPass);
   }
+  environmentMaterialFamilies.set(material, data.family);
   return { material, shader };
 }

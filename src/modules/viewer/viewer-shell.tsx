@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type CSSProperties, type MouseEvent as ReactMouseEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type MouseEvent as ReactMouseEvent } from 'react';
 
 import { useRouter, useSearch } from '@tanstack/react-router';
 import { AlertCircle, Download, LoaderCircle, Menu, Pause, Play, RotateCcw, Volume2, X } from 'lucide-react';
@@ -107,6 +107,7 @@ export function ViewerShell() {
         };
   const liveActive = liveTarget !== null;
   const live = useLiveExperience({
+    appendReplayHeightEvents: session.appendLiveReplayHeightEvents,
     appendReplayNoteEvents: session.appendLiveReplayNoteEvents,
     hasLiveMap: (hash) => sources.hasLiveMap(hash),
     loadLiveReplay: (hash, replay) => sources.loadLiveReplay(hash, replay),
@@ -211,20 +212,35 @@ export function ViewerShell() {
 
   const beatStep = transport.beatStepNumerator / transport.beatStepDenominator;
   const displayBeat = quantizedBeatAt(transport.time, sources.songBpm, beatStep);
-  const selectedDifficulty = sources.rows.find((row) => row.key === session.selectedKey)?.difficulty ?? null;
-  const timelineMarkers = buildTimelineMarkers(
-    sources.replayRef.current,
-    selectedDifficulty,
-    sources.songBpm,
-    settings.showBookmarks,
+  const selectedDifficulty = useMemo(
+    () => sources.rows.find((row) => row.key === session.selectedKey)?.difficulty ?? null,
+    [session.selectedKey, sources.rows],
+  );
+  const replay = sources.replayRef.current;
+  const replayNoteCount = replay?.notes.length ?? 0;
+  const replayPauseCount = replay?.pauses.length ?? 0;
+  const latestPauseDuration = replay?.pauses.at(-1)?.duration;
+  const timelineMarkers = useMemo(
+    () => buildTimelineMarkers(replay, selectedDifficulty, sources.songBpm, settings.showBookmarks),
+    [
+      latestPauseDuration,
+      replay,
+      replayNoteCount,
+      replayPauseCount,
+      selectedDifficulty,
+      settings.showBookmarks,
+      sources.songBpm,
+    ],
   );
   const share = useViewerShare({
     beat: displayBeat,
+    lightshowMode,
     liveTarget: liveTarget ?? undefined,
     mapIdentity: sources.mapIdentity,
     scoreId: sources.shareScoreId,
     selectedDifficultyIndex: session.selectedDifficultyIndex,
     settings,
+    sourceLink: sources.sourceLink,
     setError,
   });
   const liveInterruption =
@@ -245,7 +261,10 @@ export function ViewerShell() {
       ? {
           icon: Download,
           iconClassName: '',
-          label: sources.sourceDownload?.kind === 'scoresaber' ? t('downloadingReplay') : t('liveDownloadingMap'),
+          label:
+            sources.sourceDownload?.kind === 'scoresaber' || sources.sourceDownload?.kind === 'replay'
+              ? t('downloadingReplay')
+              : t('liveDownloadingMap'),
           progress: sources.sourceDownload?.progress ?? null,
         }
       : session.environmentLoading
@@ -302,6 +321,9 @@ export function ViewerShell() {
         <canvas
           ref={session.canvasRef}
           className="absolute inset-0 size-full"
+          onPointerDown={() => {
+            setSettingsOpen(false);
+          }}
           onWheel={(event) => {
             if (liveActive || session.selectedKey === '' || event.deltaY === 0 || event.ctrlKey || event.metaKey)
               return;
@@ -370,7 +392,7 @@ export function ViewerShell() {
       <SourcePicker
         choices={sources.sourceChoices}
         input={sources.sourceInput}
-        visible={sources.mapMeta === null && !liveActive && !sources.sourceLoading}
+        visible={sources.mapMeta === null && !liveActive && !sources.sourceLoading && !session.environmentLoading}
         onChoose={(choice) => {
           sources.loadLookup(choice);
         }}
@@ -497,6 +519,7 @@ export function ViewerShell() {
           songVolume={settings.songVolume}
           hitsounds={settings.hitsounds}
           hitsoundVolume={settings.hitsoundVolume}
+          reverseTimelineScroll={settings.reverseTimelineScroll}
           markers={timelineMarkers}
           onSetRange={transport.setRange}
           onTogglePlay={transport.play}
@@ -560,15 +583,12 @@ export function ViewerShell() {
       <SettingsDrawer
         open={settingsOpen}
         settings={settings}
-        environmentId={session.environmentId}
         environments={environmentCatalog}
         hasReplay={sources.replayRef.current !== null}
+        isMapPreview={session.selectedKey !== '' && sources.replayRef.current === null}
         onChange={setSettings}
         onClose={() => {
           setSettingsOpen(false);
-        }}
-        onEnvironmentChange={(id) => {
-          void session.selectEnvironment(id);
         }}
       />
     </main>

@@ -54,7 +54,7 @@ export function formatScore(score: number) {
 }
 
 export function formatAccuracy(accuracy: number) {
-  return getFormatter(getBrowserLocale()).number(accuracy, 'percent');
+  return getFormatter(getBrowserLocale()).number(accuracy, 'precisePercent');
 }
 
 export function rankFor(accuracy: number) {

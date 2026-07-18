@@ -143,6 +143,7 @@ function setReflectedSegment(
   length: number,
   collisionLength: number,
   startAlpha: number,
+  changedNodes: Set<Object3D>,
 ) {
   const clippedLength = Math.min(collisionLength, length);
   const lengthFactor = segment.multiplyLengthByAlpha
@@ -157,6 +158,15 @@ function setReflectedSegment(
     (startAlpha + (light.target.endAlpha - startAlpha) * (length <= 0 ? 1 : Math.min(clippedLength / length, 1))) *
     lengthFactor;
   light.target.setLength(length, collisionLength, startAlpha);
+  for (const target of light.target.matrixTargets) changedNodes.add(target);
+}
+
+function updateChangedSubtrees(changedNodes: Set<Object3D>) {
+  for (const node of changedNodes) {
+    let ancestor = node.parent;
+    while (ancestor !== null && !changedNodes.has(ancestor)) ancestor = ancestor.parent;
+    if (ancestor === null) node.updateMatrixWorld(true);
+  }
 }
 
 function buildReflectionLight(
@@ -209,10 +219,12 @@ function setHitPoint(
   maximumDistance: number,
   segment: EnvironmentLightSegment,
   color: Color,
+  changedNodes: Set<Object3D>,
 ) {
   light.hitPointNode.visible = light.showHitPoint && hit !== undefined;
   if (!light.hitPointNode.visible || hit === undefined) return;
   setWorldTransform(light.hitPointTransform, hit.point, LOCAL_FORWARD, hit.normal);
+  changedNodes.add(light.hitPointTransform);
   const distance = maximumDistance <= 0 ? 1 : Math.min(Math.max(hit.distance / maximumDistance, 0), 1);
   const intensity = Math.max(evaluateAnimationCurve(light.hitPointCurve, distance), 0) * segment.alpha;
   color.setRGB(...segment.color).convertSRGBToLinear();
@@ -228,10 +240,12 @@ export function buildEnvironmentReflections(
   scene: EnvironmentSceneBuild,
   lighting: EnvironmentLighting,
 ) {
+  const sources = buildReflectionSources(data, scene, lighting);
+  if (sources.length === 0) return { apply: () => undefined, dispose: () => undefined };
+
   const collisionMaterial = new MeshBasicMaterial({ side: DoubleSide });
   const ownedGeometries: BoxGeometry[] = [];
   const colliders = buildReflectionColliders(data, scene, collisionMaterial, ownedGeometries);
-  const sources = buildReflectionSources(data, scene, lighting);
 
   const raycaster = new Raycaster();
   raycaster.near = RAY_EPSILON;
@@ -242,6 +256,7 @@ export function buildEnvironmentReflections(
   const direction = new Vector3();
   const reflectedDirection = new Vector3();
   const hitColor = new Color();
+  const changedNodes = new Set<Object3D>();
 
   function trace(rayOrigin: Vector3, rayDirection: Vector3, maximumDistance: number): ReflectionHit | undefined {
     raycaster.far = maximumDistance;
@@ -272,6 +287,7 @@ export function buildEnvironmentReflections(
   }
 
   function apply(segments: EnvironmentLightSegment[]) {
+    changedNodes.clear();
     activeMeshes.length = 0;
     for (const collider of colliders) {
       if (!worldVisible(collider.node)) continue;
@@ -291,8 +307,15 @@ export function buildEnvironmentReflections(
       direction.copy(LOCAL_UP).transformDirection(source.main.target.node.matrixWorld);
       let hit = trace(origin, direction, maximumLength);
       const mainLength = hit?.distance ?? maximumLength;
-      setReflectedSegment(source.main, mainOutput, maximumLength, mainLength, source.main.target.startAlpha);
-      setHitPoint(source.main, hit, maximumLength, mainOutput, hitColor);
+      setReflectedSegment(
+        source.main,
+        mainOutput,
+        maximumLength,
+        mainLength,
+        source.main.target.startAlpha,
+        changedNodes,
+      );
+      setHitPoint(source.main, hit, maximumLength, mainOutput, hitColor, changedNodes);
 
       let canReflect = hit?.reflective === true;
       let remainingLength = Math.max(maximumLength - mainLength, 0);
@@ -309,6 +332,7 @@ export function buildEnvironmentReflections(
 
         bounce.target.node.visible = true;
         setWorldTransform(bounce.target.node, bounceOrigin, LOCAL_UP, reflectedDirection);
+        changedNodes.add(bounce.target.node);
         bounceOutput.color = [mainOutput.color[0], mainOutput.color[1], mainOutput.color[2]];
         bounceOutput.alpha = mainOutput.alpha;
         const bounceMaximum = remainingLength;
@@ -318,8 +342,8 @@ export function buildEnvironmentReflections(
           (hit?.distance ?? bounceMaximum) + (hit === undefined ? 0 : RAY_EPSILON),
           bounceMaximum,
         );
-        setReflectedSegment(bounce, bounceOutput, bounceMaximum, bounceLength, startAlpha);
-        setHitPoint(bounce, hit, bounceMaximum, bounceOutput, hitColor);
+        setReflectedSegment(bounce, bounceOutput, bounceMaximum, bounceLength, startAlpha, changedNodes);
+        setHitPoint(bounce, hit, bounceMaximum, bounceOutput, hitColor, changedNodes);
 
         canReflect = hit?.reflective === true;
         remainingLength = Math.max(bounceMaximum - bounceLength, 0);
@@ -328,7 +352,7 @@ export function buildEnvironmentReflections(
         if (hit !== undefined) reflectedDirection.reflect(hit.normal).normalize();
       }
     }
-    scene.root.updateMatrixWorld(true);
+    updateChangedSubtrees(changedNodes);
   }
 
   return {

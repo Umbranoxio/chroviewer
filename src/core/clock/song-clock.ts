@@ -25,13 +25,14 @@ export interface SongClock {
   seek(songTime: number): void;
   setRate(rate: number): void;
   setVolume(volume: number): void;
+  setAudioOffset(offset: number): void;
   unlockAudio(): Promise<boolean>;
   dispose(): void;
 }
 
 export interface ClockDriver {
   now(): number;
-  start?(songTime: number, rate: number): void;
+  start?(songTime: number, rate: number, audioOffset: number): void;
   stop?(): void;
   setRate?(rate: number): void;
   setVolume?(volume: number): void;
@@ -42,6 +43,7 @@ export interface ClockDriver {
 
 export function createClock(duration: number, songBpm: number, driver: ClockDriver): SongClock {
   let state = createTransport();
+  let audioOffset = 0;
 
   state.end = duration;
 
@@ -75,7 +77,7 @@ export function createClock(duration: number, songBpm: number, driver: ClockDriv
       syncEnd();
       if (state.playing) return;
       state = transportPlay(state, driver.now());
-      driver.start?.(state.anchorSongTime, state.rate);
+      driver.start?.(state.anchorSongTime, state.rate, audioOffset);
     },
     getEnd: () => state.end,
     getStart: () => state.start,
@@ -96,15 +98,29 @@ export function createClock(duration: number, songBpm: number, driver: ClockDriv
       state = transportSeek(state, driver.now(), target);
       if (state.playing) {
         driver.stop?.();
-        driver.start?.(target, state.rate);
+        driver.start?.(target, state.rate, audioOffset);
       }
     },
     setRate: (rate: number) => {
       state = transportSetRate(state, driver.now(), rate);
-      if (state.playing) driver.setRate?.(rate);
+      if (!state.playing) return;
+      if (audioOffset === 0) {
+        driver.setRate?.(rate);
+      } else {
+        driver.stop?.();
+        driver.start?.(state.anchorSongTime, rate, audioOffset);
+      }
     },
     setVolume: (volume: number) => {
       driver.setVolume?.(Math.min(Math.max(volume, 0), 1));
+    },
+    setAudioOffset: (offset: number) => {
+      if (offset === audioOffset) return;
+      audioOffset = offset;
+      if (!state.playing) return;
+      const songTime = clamp(songTimeAt(state, driver.now()));
+      driver.stop?.();
+      driver.start?.(songTime, state.rate, audioOffset);
     },
     unlockAudio: async () => {
       const wasBlocked = driver.audioBlocked?.() ?? false;
@@ -112,7 +128,7 @@ export function createClock(duration: number, songBpm: number, driver: ClockDriv
       if (wasBlocked && unlocked && state.playing) {
         const songTime = clampSong(songTimeAt(state, driver.now()));
         driver.stop?.();
-        driver.start?.(songTime, state.rate);
+        driver.start?.(songTime, state.rate, audioOffset);
       }
       return unlocked;
     },
@@ -199,7 +215,7 @@ export async function createAudioClock({
   const driver: ClockDriver = {
     now: () => performance.now() / 1000,
     audioBlocked: () => ctx.state !== 'running',
-    start: (songTime, rate) => {
+    start: (songTime, rate, audioOffset) => {
       void ctx.resume();
       source = ctx.createBufferSource();
       source.buffer = buffer;
@@ -209,7 +225,8 @@ export async function createAudioClock({
       source.onended = () => {
         source = undefined;
       };
-      source.start(0, Math.min(songTime, buffer.duration));
+      const audioTime = songTime - audioOffset * rate;
+      source.start(Math.max(-audioTime / rate, 0), Math.min(Math.max(audioTime, 0), buffer.duration));
     },
     stop,
     setRate: (rate) => {

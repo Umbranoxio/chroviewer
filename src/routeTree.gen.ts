@@ -11,6 +11,8 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as HealthRouteImport } from './routes/health'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ApiSourceRouteImport } from './routes/api/source'
+import { Route as ApiPreviewReplayRouteImport } from './routes/api/preview.replay'
 
 const HealthRoute = HealthRouteImport.update({
   id: '/health',
@@ -22,31 +24,49 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any).lazy(() => import('./routes/index.lazy').then((d) => d.Route))
+const ApiSourceRoute = ApiSourceRouteImport.update({
+  id: '/api/source',
+  path: '/api/source',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPreviewReplayRoute = ApiPreviewReplayRouteImport.update({
+  id: '/api/preview/replay',
+  path: '/api/preview/replay',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/health': typeof HealthRoute
+  '/api/source': typeof ApiSourceRoute
+  '/api/preview/replay': typeof ApiPreviewReplayRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/health': typeof HealthRoute
+  '/api/source': typeof ApiSourceRoute
+  '/api/preview/replay': typeof ApiPreviewReplayRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/health': typeof HealthRoute
+  '/api/source': typeof ApiSourceRoute
+  '/api/preview/replay': typeof ApiPreviewReplayRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/health'
+  fullPaths: '/' | '/health' | '/api/source' | '/api/preview/replay'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/health'
-  id: '__root__' | '/' | '/health'
+  to: '/' | '/health' | '/api/source' | '/api/preview/replay'
+  id: '__root__' | '/' | '/health' | '/api/source' | '/api/preview/replay'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   HealthRoute: typeof HealthRoute
+  ApiSourceRoute: typeof ApiSourceRoute
+  ApiPreviewReplayRoute: typeof ApiPreviewReplayRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -65,12 +85,28 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/source': {
+      id: '/api/source'
+      path: '/api/source'
+      fullPath: '/api/source'
+      preLoaderRoute: typeof ApiSourceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/preview/replay': {
+      id: '/api/preview/replay'
+      path: '/api/preview/replay'
+      fullPath: '/api/preview/replay'
+      preLoaderRoute: typeof ApiPreviewReplayRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   HealthRoute: HealthRoute,
+  ApiSourceRoute: ApiSourceRoute,
+  ApiPreviewReplayRoute: ApiPreviewReplayRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

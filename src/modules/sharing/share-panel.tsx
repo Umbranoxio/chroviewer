@@ -19,7 +19,7 @@ interface SharePanelProps {
   onIncludeTimecodeChange: (include: boolean) => void;
 }
 
-const shareCategories: ShareSettingsCategory[] = ['general', 'graphics', 'sabers', 'camera'];
+const shareCategories: ShareSettingsCategory[] = ['general', 'graphics', 'cosmetics', 'camera'];
 
 export function SharePanel({
   url,
@@ -46,7 +46,7 @@ export function SharePanel({
       switch (value) {
         case 'general':
         case 'graphics':
-        case 'sabers':
+        case 'cosmetics':
         case 'camera':
           selected.push(value);
       }

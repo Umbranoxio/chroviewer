@@ -76,7 +76,7 @@ export function GraphicsSettings({ settings, onChange }: GraphicsSettingsProps) 
           />
         </SettingSection>
         <Separator />
-        <SettingSection title={t('lightingAndColors')}>
+        <SettingSection title={t('lighting')}>
           <SettingRow label={t('staticLights')} detail={t('staticLightsDescription')}>
             <Switch
               checked={settings.staticLights}
@@ -85,43 +85,6 @@ export function GraphicsSettings({ settings, onChange }: GraphicsSettingsProps) 
               }}
             />
           </SettingRow>
-          <SettingRow label={t('customNoteColors')}>
-            <Switch
-              checked={settings.customColors}
-              onCheckedChange={(customColors) => {
-                update('customColors', customColors);
-              }}
-            />
-          </SettingRow>
-          <div
-            className="grid grid-cols-2 gap-2 py-2 opacity-100 data-[disabled=true]:opacity-45"
-            data-disabled={!settings.customColors}
-          >
-            <label className="text-muted-foreground grid gap-1 text-xs">
-              {t('left')}
-              <input
-                className="border-input bg-background h-9 w-full rounded-md border p-1"
-                type="color"
-                disabled={!settings.customColors}
-                value={settings.leftColor}
-                onChange={(event) => {
-                  update('leftColor', event.currentTarget.value);
-                }}
-              />
-            </label>
-            <label className="text-muted-foreground grid gap-1 text-xs">
-              {t('right')}
-              <input
-                className="border-input bg-background h-9 w-full rounded-md border p-1"
-                type="color"
-                disabled={!settings.customColors}
-                value={settings.rightColor}
-                onChange={(event) => {
-                  update('rightColor', event.currentTarget.value);
-                }}
-              />
-            </label>
-          </div>
         </SettingSection>
       </div>
     </TabsContent>

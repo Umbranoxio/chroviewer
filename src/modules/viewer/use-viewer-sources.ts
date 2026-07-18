@@ -78,6 +78,7 @@ export function useViewerSources({ setError, setSettings, onClearViewer, onMapLo
     scoreSaberLeaderboards: remote.scoreSaberLeaderboards,
     shareScoreId: files.shareScoreId,
     songBpm: files.songBpm,
+    sourceLink: files.sourceLink,
     sourceChoices,
     sourceInput: remote.sourceInput,
     sourceDownload: remote.sourceDownload,

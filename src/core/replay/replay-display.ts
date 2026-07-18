@@ -4,6 +4,7 @@ import {
   type HitScoreTextRun,
   type HitScoreVisualizerConfig,
 } from './hit-score-visualizer';
+import { parseHitScoreVisualizerProfile } from './hit-score-visualizer-profile';
 import { buildReplayScoreTimeline, replayEventIndexAfter, type ReplayScoreTimeline } from './scoring';
 import type { Replay } from './types';
 
@@ -23,10 +24,29 @@ export interface FlyingScore {
   showCenterIndicator: boolean;
 }
 
-export function buildReplayTimeline(replay: Replay): ReplayTimeline {
+interface HitScoreVisualizerSettings {
+  overrideHsvProfile: boolean;
+  preferReplayHsvProfile: boolean;
+  hsvProfile: string;
+}
+
+export function hitScoreVisualizerForSettings(settings: HitScoreVisualizerSettings, replay: Replay | null) {
+  const replayConfig = decodeHitScoreVisualizer(replay?.hsvConfig);
+  if (settings.preferReplayHsvProfile && replayConfig !== null) return replayConfig;
+  if (settings.overrideHsvProfile) {
+    const profile = parseHitScoreVisualizerProfile(settings.hsvProfile);
+    if (profile.isOk()) return profile.value;
+  }
+  return replayConfig;
+}
+
+export function buildReplayTimeline(
+  replay: Replay,
+  hitScoreVisualizer = decodeHitScoreVisualizer(replay.hsvConfig),
+): ReplayTimeline {
   return {
     ...buildReplayScoreTimeline(replay),
-    hitScoreVisualizer: decodeHitScoreVisualizer(replay.hsvConfig),
+    hitScoreVisualizer,
   };
 }
 
@@ -53,7 +73,12 @@ export function flyingScoresAt(timeline: ReplayTimeline, time: number, duration 
         event.cutScore.total <= event.cutScore.maximum * 0.9
           ? 0.3
           : 1,
-      showCenterIndicator: timeline.hitScoreVisualizer === null && event.cutScore?.accuracy === 15,
+      showCenterIndicator:
+        timeline.hitScoreVisualizer === null &&
+        event.cutScore !== undefined &&
+        (timeline.replay.metadata.version === 'ScoreSaberLegacy'
+          ? event.cutScore.total === event.cutScore.maximum
+          : event.cutScore.accuracy === 15),
     });
   }
   return scores;

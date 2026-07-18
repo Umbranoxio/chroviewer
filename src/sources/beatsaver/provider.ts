@@ -4,11 +4,13 @@ import { z } from 'zod';
 import { env } from '../../env';
 import { extractMapArchive } from '../archive';
 import { requestArrayBuffer, requestJson } from '../http';
+import { browserMapArchiveCache, type MapArchiveCache } from '../map-archive-cache';
 import { SourceError } from '../source-error';
 import type { BeatSaverMapSource, DownloadProgressHandler, FetchRequest, SourceResult } from '../source-types';
 import type { GetMapByIdData } from './generated/api-contracts';
 
 interface ResolveOptions {
+  cache?: MapArchiveCache | null;
   onProgress?: DownloadProgressHandler;
   request?: FetchRequest;
   signal?: AbortSignal;
@@ -55,24 +57,38 @@ export function fetchBeatSaverMap(input: string, options: ResolveOptions = {}) {
     : fetchBeatSaver(`/maps/id/${key}`, `BeatSaver map ${key}`, options);
 }
 
-export function fetchBeatSaverHash(hash: string, options: ResolveOptions = {}) {
-  return /^[0-9a-f]{40}$/i.test(hash)
-    ? fetchBeatSaver(`/maps/hash/${hash}`, `BeatSaver hash ${hash}`, options)
-    : Promise.resolve(
-        Result.err(
-          new SourceError({
-            message: 'invalid Beat Saber map hash',
-            source: 'beatsaver',
-            operation: 'parse-map-hash',
-          }),
-        ),
-      );
+export async function fetchBeatSaverHash(hash: string, options: ResolveOptions = {}) {
+  if (!/^[0-9a-f]{40}$/i.test(hash)) {
+    return Result.err(
+      new SourceError({
+        message: 'invalid Beat Saber map hash',
+        source: 'beatsaver',
+        operation: 'parse-map-hash',
+      }),
+    );
+  }
+  const cached = await cachedBeatSaverSource(hash, options);
+  return cached === null
+    ? fetchBeatSaver(`/maps/hash/${hash}`, `BeatSaver hash ${hash}`, options, true)
+    : Result.ok(cached);
+}
+
+async function cachedBeatSaverSource(hash: string, options: ResolveOptions) {
+  const cache = options.cache === undefined ? browserMapArchiveCache : options.cache;
+  if (cache === null) return null;
+  const cached = await cache.get(hash);
+  if (cached.isErr() || cached.value === null) return null;
+  const source = await mapSourceFromArchive(cached.value.key, cached.value.hash, cached.value.archive);
+  if (source.isErr()) return null;
+  options.onProgress?.(1);
+  return source.value;
 }
 
 async function fetchBeatSaver(
   path: string,
   label: string,
   options: ResolveOptions,
+  cacheChecked = false,
 ): Promise<SourceResult<BeatSaverMapSource>> {
   return Result.gen(async function* () {
     const response = yield* Result.await(
@@ -84,6 +100,10 @@ async function fetchBeatSaver(
       }),
     );
     const version = response.versions[0];
+    if (!cacheChecked) {
+      const cached = await cachedBeatSaverSource(version.hash, options);
+      if (cached !== null) return Result.ok(cached);
+    }
     const archive = yield* Result.await(
       requestArrayBuffer(version.downloadURL, {
         ...options,
@@ -92,20 +112,24 @@ async function fetchBeatSaver(
         operation: 'download-map-archive',
       }),
     );
-    const files = yield* Result.await(extractMapArchive(new Uint8Array(archive)));
-    if (!files.some((file) => file.name.toLowerCase() === 'info.dat')) {
-      return Result.err(
-        new SourceError({
-          message: `BeatSaver map ${response.id} archive has no Info.dat`,
-          source: 'beatsaver',
-          operation: 'validate-map-archive',
-        }),
-      );
-    }
-    return Result.ok({
-      key: response.id,
-      hash: version.hash,
-      files,
-    });
+    const source = yield* Result.await(mapSourceFromArchive(response.id, version.hash, archive));
+    const cache = options.cache === undefined ? browserMapArchiveCache : options.cache;
+    if (cache !== null) await cache.set({ key: source.key, hash: source.hash, archive });
+    return Result.ok(source);
   });
+}
+
+async function mapSourceFromArchive(key: string, hash: string, archive: ArrayBuffer) {
+  const files = await extractMapArchive(new Uint8Array(archive));
+  if (files.isErr()) return Result.err(files.error);
+  if (!files.value.some((file) => file.name.toLowerCase() === 'info.dat')) {
+    return Result.err(
+      new SourceError({
+        message: `BeatSaver map ${key} archive has no Info.dat`,
+        source: 'beatsaver',
+        operation: 'validate-map-archive',
+      }),
+    );
+  }
+  return Result.ok({ key, hash, files: files.value });
 }

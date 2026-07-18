@@ -6,6 +6,7 @@ import { effectivePixelRatio } from './render-scale';
 export interface RenderView {
   render(renderer: WebGLRenderer): void;
   setSize(width: number, height: number): void;
+  contextRestored?(): void;
 }
 
 export class RendererLifecycle {
@@ -38,6 +39,7 @@ export class RendererLifecycle {
       canvas,
       alpha: false,
       antialias: false,
+      depth: false,
       premultipliedAlpha: false,
       powerPreference: 'high-performance',
     });
@@ -80,6 +82,7 @@ export class RendererLifecycle {
 
   private readonly handleContextRestored = () => {
     this.contextLost = false;
+    this.view?.contextRestored?.();
     this.startLoop();
     this.onContextRestored?.();
   };

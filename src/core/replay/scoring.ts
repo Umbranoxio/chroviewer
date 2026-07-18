@@ -44,9 +44,18 @@ export interface ReplayScoreTimeline {
   replay: Replay;
   events: ReplayTimelineEvent[];
   final: ReplayScoreState;
+  stateIndex: ReplayStateIndex;
 }
 
 type OrderedReplayTimelineEvent = ReplayTimelineEvent & { index: number };
+
+interface ReplayStateIndex {
+  badCuts: Uint32Array;
+  bombCuts: Uint32Array;
+  maxCombos: Float64Array;
+  misses: Uint32Array;
+  scoringNotes: Uint32Array;
+}
 
 const definitions: Record<number, ScoreDefinition> = {
   3: { center: 15, beforeMin: 0, beforeMax: 70, afterMin: 0, afterMax: 30, fixed: 0 },
@@ -121,7 +130,29 @@ function oldMaximumScore(noteCount: number) {
   return (score + noteCount * multiplier) * 115;
 }
 
-function replayStateAt(replay: Replay, time: number): ReplayScoreState {
+function buildReplayStateIndex(replay: Replay): ReplayStateIndex {
+  const scoringNotes = new Uint32Array(replay.notes.length + 1);
+  const misses = new Uint32Array(replay.notes.length + 1);
+  const badCuts = new Uint32Array(replay.notes.length + 1);
+  const bombCuts = new Uint32Array(replay.notes.length + 1);
+  for (let index = 0; index < replay.notes.length; index++) {
+    const eventType = replay.notes[index]?.eventType;
+    const next = index + 1;
+    scoringNotes[next] =
+      (scoringNotes[index] ?? 0) + (eventType !== undefined && eventType >= 1 && eventType <= 3 ? 1 : 0);
+    misses[next] = (misses[index] ?? 0) + (eventType === 3 ? 1 : 0);
+    badCuts[next] = (badCuts[index] ?? 0) + (eventType === 2 ? 1 : 0);
+    bombCuts[next] = (bombCuts[index] ?? 0) + (eventType === 4 ? 1 : 0);
+  }
+
+  const maxCombos = new Float64Array(replay.combos.length + 1);
+  for (let index = 0; index < replay.combos.length; index++) {
+    maxCombos[index + 1] = Math.max(maxCombos[index] ?? 0, replay.combos[index]?.combo ?? 0);
+  }
+  return { badCuts, bombCuts, maxCombos, misses, scoringNotes };
+}
+
+function replayStateAt(replay: Replay, stateIndex: ReplayStateIndex, time: number): ReplayScoreState {
   const scoreCount = upperBound(replay.scores, time, (event) => event.time);
   const comboCount = upperBound(replay.combos, time, (event) => event.time);
   const multiplierCount = upperBound(replay.multipliers, time, (event) => event.time);
@@ -130,8 +161,8 @@ function replayStateAt(replay: Replay, time: number): ReplayScoreState {
   const wallCount = upperBound(replay.walls, time, (event) => event.time);
   const scoreEvent = replay.scores[scoreCount - 1];
   const score = scoreEvent?.score ?? 0;
-  const scoringNotes = replay.notes.slice(0, noteCount).filter((event) => event.eventType >= 1 && event.eventType <= 3);
-  const maximumScore = scoreEvent?.immediateMaxPossibleScore ?? oldMaximumScore(scoringNotes.length);
+  const scoringNoteCount = stateIndex.scoringNotes[noteCount] ?? 0;
+  const maximumScore = scoreEvent?.immediateMaxPossibleScore ?? oldMaximumScore(scoringNoteCount);
   const combo = replay.combos[comboCount - 1]?.combo ?? 0;
   const multiplierEvent = replay.multipliers[multiplierCount - 1];
   return {
@@ -139,13 +170,13 @@ function replayStateAt(replay: Replay, time: number): ReplayScoreState {
     maximumScore,
     accuracy: maximumScore === 0 ? 1 : score / maximumScore,
     combo,
-    maxCombo: replay.combos.slice(0, comboCount).reduce((maximum, event) => Math.max(maximum, event.combo), 0),
+    maxCombo: stateIndex.maxCombos[comboCount] ?? 0,
     multiplier: multiplierEvent?.multiplier ?? 1,
     multiplierProgress: multiplierEvent?.nextMultiplierProgress ?? 0,
     energy: clamp(replay.energies[energyCount - 1]?.energy ?? 0.5, 0, 1),
-    misses: scoringNotes.filter((event) => event.eventType === 3).length,
-    badCuts: scoringNotes.filter((event) => event.eventType === 2).length,
-    bombCuts: replay.notes.slice(0, noteCount).filter((event) => event.eventType === 4).length,
+    misses: stateIndex.misses[noteCount] ?? 0,
+    badCuts: stateIndex.badCuts[noteCount] ?? 0,
+    bombCuts: stateIndex.bombCuts[noteCount] ?? 0,
     wallsHit: wallCount,
   };
 }
@@ -178,15 +209,17 @@ export function buildReplayScoreTimeline(replay: Replay): ReplayScoreTimeline {
     replay.scores.at(-1)?.time ?? 0,
     replay.notes.at(-1)?.time ?? 0,
   );
+  const stateIndex = buildReplayStateIndex(replay);
   return {
     replay,
     events,
-    final: replayStateAt(replay, lastTime),
+    final: replayStateAt(replay, stateIndex, lastTime),
+    stateIndex,
   };
 }
 
 export function replayScoreAt(timeline: ReplayScoreTimeline, time: number) {
-  return replayStateAt(timeline.replay, time);
+  return replayStateAt(timeline.replay, timeline.stateIndex, time);
 }
 
 export function replayEventIndexAfter(timeline: ReplayScoreTimeline, time: number) {

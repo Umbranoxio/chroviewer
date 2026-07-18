@@ -3,6 +3,7 @@ import {
   Color,
   CustomBlending,
   DoubleSide,
+  MeshBasicMaterial,
   OneMinusSrcAlphaFactor,
   OneFactor,
   ShaderMaterial,
@@ -81,6 +82,22 @@ export function createDirectionalMaterial(fog: FogUniforms) {
       _ColorMultiplier: { value: 1.71875 },
     },
   });
+}
+
+export function createHitLineMaterial() {
+  const material = new MeshBasicMaterial({
+    color: 0xffffff,
+    transparent: true,
+    opacity: 0.8,
+    depthWrite: false,
+  });
+  material.blending = CustomBlending;
+  material.blendEquation = AddEquation;
+  material.blendSrc = SrcAlphaFactor;
+  material.blendDst = OneMinusSrcAlphaFactor;
+  material.blendSrcAlpha = ZeroFactor;
+  material.blendDstAlpha = OneFactor;
+  return material;
 }
 
 export function createBombMaterial(fog: FogUniforms, reflection: Texture) {

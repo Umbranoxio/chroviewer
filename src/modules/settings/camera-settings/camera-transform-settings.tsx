@@ -24,7 +24,7 @@ export function CameraTransformSettings({ onChange, settings, update }: CameraTr
       ...settings,
       replayCameraXOffset: DEFAULT_REPLAY_CAMERA_SETTINGS.replayCameraXOffset,
       replayCameraYOffset: DEFAULT_REPLAY_CAMERA_SETTINGS.replayCameraYOffset,
-      replayCameraZOffset: DEFAULT_REPLAY_CAMERA_SETTINGS.replayCameraZOffset,
+      replayCameraDepthOffset: DEFAULT_REPLAY_CAMERA_SETTINGS.replayCameraDepthOffset,
     });
   }
 
@@ -88,16 +88,16 @@ export function CameraTransformSettings({ onChange, settings, update }: CameraTr
           }}
         />
         <SliderSetting
-          defaultValue={DEFAULT_REPLAY_CAMERA_SETTINGS.replayCameraZOffset}
+          defaultValue={DEFAULT_REPLAY_CAMERA_SETTINGS.replayCameraDepthOffset}
           id="replay-camera-z-offset"
           label={t('forwardBack')}
-          value={settings.replayCameraZOffset}
+          value={settings.replayCameraDepthOffset}
           minimum={-10}
           maximum={10}
           step={0.01}
           display={formatMeters}
-          onChange={(replayCameraZOffset) => {
-            update('replayCameraZOffset', replayCameraZOffset);
+          onChange={(replayCameraDepthOffset) => {
+            update('replayCameraDepthOffset', replayCameraDepthOffset);
           }}
         />
       </SettingSection>

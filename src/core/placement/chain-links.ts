@@ -1,5 +1,6 @@
 import type { Chain } from '../beatmap/types';
-import { cutDirectionEuler, gridPosition } from './grid';
+import { noodleCoordinates, noodleTailCoordinates } from '../noodle';
+import { cutDirectionEuler, objectPosition } from './grid';
 
 export interface ChainLink {
   x: number;
@@ -14,8 +15,8 @@ const radToDeg = 180 / Math.PI;
 const signedAngleFromDown = (x: number, y: number) => Math.atan2(x, -y) * radToDeg;
 
 export function chainLinks(chain: Chain): ChainLink[] {
-  const head = gridPosition(chain.posX, chain.posY);
-  const tail = gridPosition(chain.tailPosX, chain.tailPosY);
+  const head = objectPosition(chain.posX, chain.posY, noodleCoordinates(chain.customData));
+  const tail = objectPosition(chain.tailPosX, chain.tailPosY, noodleTailCoordinates(chain.customData));
   const tailRel = { x: tail.x - head.x, y: tail.y - head.y };
 
   const headEuler = cutDirectionEuler(chain.cutDirection);

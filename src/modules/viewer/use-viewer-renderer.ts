@@ -4,8 +4,10 @@ import { useTranslations } from 'use-intl';
 
 import type { SongClock } from '../../core/clock/song-clock';
 import type { LightshowMode } from '../../core/lighting/basic-light';
+import { hitScoreVisualizerForSettings } from '../../core/replay/replay-display';
 import type { Replay } from '../../core/replay/types';
 import { colorOverride, type ViewerSettings } from '../../core/viewer-settings';
+import { resolveEnvironmentId } from '../../renderer/environment/environment-catalog';
 import { EnvironmentLoadAborted } from '../../renderer/environment/environment-error';
 import type { MapView } from '../../renderer/map-view';
 import type { RendererLifecycle } from '../../renderer/renderer-lifecycle';
@@ -72,6 +74,9 @@ export function useViewerRenderer({
       view.setReplayCameraSettings(settings);
       view.setReplaySaberSettings(settingsRef.current);
       view.setScreenDisplacementEffects(settingsRef.current.screenDisplacementEffects);
+      view.setPreviewHitNotes(settingsRef.current.previewHitNotes);
+      view.setPreviewHitLine(settingsRef.current.previewHitLine);
+      view.setPreviewNotesLookAtPlayer(settingsRef.current.previewNotesLookAtPlayer);
       viewerRef.current = { view, lifecycle };
       setViewerReady(true);
       cleanup = () => {
@@ -83,7 +88,14 @@ export function useViewerRenderer({
 
       const initialLoad = !initialEnvironmentLoadedRef.current;
       if (initialLoad) setEnvironmentLoading(true);
-      const environmentResult = await view.setEnvironment(active?.environmentId ?? 'BigMirrorEnvironment');
+      const environmentResult = await view.setEnvironment(
+        active?.environmentId ??
+          resolveEnvironmentId(
+            settingsRef.current.overrideEnvironment
+              ? settingsRef.current.environmentOverrideId
+              : 'BigMirrorEnvironment',
+          ),
+      );
       if (!isCurrentViewer(viewerRef, view)) return;
       if (environmentResult.isErr() && !EnvironmentLoadAborted.is(environmentResult.error)) {
         finishInitialEnvironmentLoad();
@@ -92,8 +104,11 @@ export function useViewerRenderer({
       }
 
       function restoreActiveView(selection: ActiveSelection, clock: SongClock) {
-        view.setMap(selection.data, colorOverride(settings, selection.mapColorScheme));
-        view.setReplay(replayRef.current);
+        view.setMap(
+          selection.data,
+          colorOverride(settingsRef.current, selection.mapColorScheme, replayRef.current?.metadata),
+        );
+        view.setReplay(replayRef.current, hitScoreVisualizerForSettings(settingsRef.current, replayRef.current));
         view.setBeatSource(() => clock.currentBeat());
       }
 
