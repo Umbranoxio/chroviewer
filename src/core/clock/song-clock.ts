@@ -118,7 +118,7 @@ export function createClock(duration: number, songBpm: number, driver: ClockDriv
       if (offset === audioOffset) return;
       audioOffset = offset;
       if (!state.playing) return;
-      const songTime = clamp(songTimeAt(state, driver.now()));
+      const songTime = clampState(songTimeAt(state, driver.now()));
       driver.stop?.();
       driver.start?.(songTime, state.rate, audioOffset);
     },
