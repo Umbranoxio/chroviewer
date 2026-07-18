@@ -59,6 +59,7 @@ export function useViewerRenderer({
       ]);
       const canvas = canvasRef.current;
       if (effect.signal.aborted || canvas === null) return;
+
       const active = activeSelectionRef.current;
       const lifecycle = new RendererLifecycle();
       lifecycle.attach(canvas);

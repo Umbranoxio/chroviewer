@@ -56,6 +56,7 @@ export function useViewerSession({
   const t = useTranslations('viewer');
   const activeSelectionRef = useRef<ActiveSelection | null>(null);
   const [selectedKey, setSelectedKey] = useState('');
+
   const { canvasRef, environmentLoading, viewerReady, viewerRef } = useViewerRenderer({
     activeSelectionRef,
     clockRef: transport.clockRef,
@@ -340,6 +341,18 @@ export function useViewerSession({
     applyLightshowMode(next);
   }
 
+  function replaceCanvas(canvas: HTMLCanvasElement | OffscreenCanvas) {
+    viewerRef.current?.lifecycle.attach(canvas);
+  }
+
+  function renderOnce() {
+    return viewerRef.current?.lifecycle.renderOnce();
+  }
+
+  function resumeRenderLoop() {
+    viewerRef.current?.lifecycle.startLoop();
+  }
+
   function applyLightshowMode(mode: LightshowMode) {
     lightshowModeRef.current = mode;
     setLightshowMode(mode);
@@ -412,5 +425,8 @@ export function useViewerSession({
     selectDifficulty,
     selectedDifficultyIndex,
     selectedKey,
+    renderOnce,
+    resumeRenderLoop,
+    replaceCanvas,
   };
 }

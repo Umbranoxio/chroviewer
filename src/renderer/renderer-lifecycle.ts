@@ -11,7 +11,7 @@ export interface RenderView {
 
 export class RendererLifecycle {
   private renderer: WebGLRenderer | null = null;
-  private canvas: HTMLCanvasElement | null = null;
+  private canvas: HTMLCanvasElement | OffscreenCanvas | null = null;
   private view: RenderView | null = null;
   private readonly fallbackScene = new Scene();
   private readonly fallbackCamera = new PerspectiveCamera(60, 1, 0.1, 1000);
@@ -26,7 +26,7 @@ export class RendererLifecycle {
   onContextLost?: () => void;
   onContextRestored?: () => void;
 
-  attach(canvas: HTMLCanvasElement) {
+  attach(canvas: HTMLCanvasElement | OffscreenCanvas) {
     this.canvas = canvas;
     this.fallbackScene.background = new Color(0x000000);
 
@@ -48,6 +48,10 @@ export class RendererLifecycle {
     this.resizeObserver = new ResizeObserver(() => {
       this.resize();
     });
+    if (!('parentElement' in canvas)) {
+      this.view?.setSize(1920, 1080);
+      return;
+    }
     this.resizeObserver.observe(canvas.parentElement ?? canvas);
     this.resize();
     this.startLoop();
@@ -98,7 +102,7 @@ export class RendererLifecycle {
   };
 
   private resize() {
-    if (!this.renderer || !this.canvas) return;
+    if (!this.renderer || !this.canvas || !('parentElement' in this.canvas)) return;
     const parent = this.canvas.parentElement;
     const width = parent?.clientWidth ?? innerWidth;
     const height = parent?.clientHeight ?? innerHeight;
@@ -123,7 +127,16 @@ export class RendererLifecycle {
     else this.renderer.render(this.fallbackScene, this.fallbackCamera);
   };
 
-  private startLoop() {
+  public renderOnce() {
+    if (!this.renderer) return;
+    if (this.view) {
+      this.view.render(this.renderer);
+      return;
+    } else this.renderer.render(this.fallbackScene, this.fallbackCamera);
+    return;
+  }
+
+  public startLoop() {
     this.nextFrameAt = 0;
     this.scheduleFrame();
   }

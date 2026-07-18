@@ -2,6 +2,14 @@ import { useEffect, useMemo, useRef, useState, type CSSProperties, type MouseEve
 
 import { useRouter, useSearch } from '@tanstack/react-router';
 import { AlertCircle, Download, LoaderCircle, Menu, Pause, Play, RotateCcw, Volume2, X } from 'lucide-react';
+import {
+  Output,
+  BufferTarget,
+  Mp4OutputFormat,
+  CanvasSource,
+  getFirstEncodableVideoCodec,
+  QUALITY_MEDIUM,
+} from 'mediabunny';
 import { useTranslations } from 'use-intl';
 
 import type { LightshowMode } from '../../core/lighting/basic-light';
@@ -58,6 +66,7 @@ export function ViewerShell() {
     audioContextRef,
     audioDestinationRef,
   });
+
   const [activePanel, setActivePanel] = useState<ViewerPanel>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [chromeVisible, setChromeVisible] = useState(true);
@@ -82,6 +91,7 @@ export function ViewerShell() {
       session.clearMapSelection();
     },
   });
+
   const session = useViewerSession({
     lightshowMode,
     lightshowModeRef,
@@ -94,6 +104,7 @@ export function ViewerShell() {
     sources,
     transport,
   });
+
   const liveTarget: LiveTarget | null =
     search.playerId === undefined
       ? null
@@ -238,6 +249,81 @@ export function ViewerShell() {
       sources.songBpm,
     ],
   );
+
+  async function render() {
+    const exportCanvas = new OffscreenCanvas(1920, 1080);
+
+    const output = new Output({
+      target: new BufferTarget(), // Stored in memory
+      format: new Mp4OutputFormat(),
+    });
+
+    const videoCodec = await getFirstEncodableVideoCodec(output.format.getSupportedVideoCodecs(), {
+      width: session.canvasRef.current?.width,
+      height: session.canvasRef.current?.height,
+    });
+
+    let currentTime = 0;
+    const durationSec = 15;
+    const durationFrames = durationSec * 60;
+
+    transport.clockRef.current?.useExportDriver(() => currentTime);
+    transport.clockRef.current?.seek(0);
+    transport.togglePlay();
+
+    const originalNow: () => number = performance.now; // eslint-disable-line
+
+    performance.now = new Proxy(originalNow, {
+      apply() {
+        return currentTime * 1000;
+      },
+    });
+
+    if (!videoCodec) {
+      throw new Error("Your browser doesn't support video encoding.");
+    }
+
+    session.replaceCanvas(exportCanvas);
+
+    const canvasSource = new CanvasSource(exportCanvas, {
+      codec: videoCodec,
+      bitrate: QUALITY_MEDIUM,
+    });
+
+    output.addVideoTrack(canvasSource, { frameRate: 60 });
+
+    await output.start();
+
+    let currentFrame = 0;
+
+    console.log('Step 1');
+    for (currentFrame; currentFrame < durationFrames; currentFrame++) {
+      currentTime = currentFrame / 60;
+
+      session.renderOnce();
+
+      await canvasSource.add(currentTime, 1 / 60);
+    }
+
+    console.log('Step 2');
+
+    canvasSource.close();
+
+    await output.finalize();
+    if (session.canvasRef.current) session.replaceCanvas(session.canvasRef.current);
+
+    // 3. Revert to the original method
+    performance.now = originalNow;
+
+    session.resumeRenderLoop();
+    transport.clockRef.current?.disableExportDriver();
+
+    if (!output.target.buffer) return;
+
+    const videoBlob = new Blob([output.target.buffer], { type: output.format.mimeType });
+    console.log(URL.createObjectURL(videoBlob));
+  }
+
   const share = useViewerShare({
     beat: displayBeat,
     trimStartBeat: trimStartBeat,
@@ -491,7 +577,9 @@ export function ViewerShell() {
           setActivePanel(open ? 'shortcuts' : null);
         }}
         onStartRecord={() => {
-          console.log('WIP');
+          void render().then(() => {
+            console.log('Finished rendering!');
+          });
         }}
         onStopRecord={() => {
           console.log('WIP');

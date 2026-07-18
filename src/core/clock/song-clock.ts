@@ -19,6 +19,8 @@ export interface SongClock {
   currentBeat(): number;
   play(): void;
   setTrim(start: number, end: number): void;
+  useExportDriver(driver: () => number): void;
+  disableExportDriver(): void;
   getTimeStart(): number;
   getTimeEnd(): number;
   pause(): void;
@@ -45,13 +47,20 @@ export function createClock(duration: number, songBpm: number, driver: ClockDriv
   let state = createTransport();
   let audioOffset = 0;
 
+  let exportDriver = () => 0;
+  let useExportDriver = false;
+
+  const getNow = () => {
+    return useExportDriver ? exportDriver() : driver.now();
+  };
+
   state.end = duration;
 
   const clampState = (songTime: number) => Math.min(Math.max(songTime, state.start), state.end);
   const clampSong = (songTime: number) => Math.min(Math.max(songTime, 0), duration);
 
   function syncEnd() {
-    const now = driver.now();
+    const now = getNow();
     if (state.playing && songTimeAt(state, now) >= state.end) {
       state = transportSeek(transportPause(state, now), now, state.end);
       driver.stop?.();
@@ -60,7 +69,7 @@ export function createClock(duration: number, songBpm: number, driver: ClockDriv
 
   function currentTime() {
     syncEnd();
-    return clampState(songTimeAt(state, driver.now()));
+    return clampState(songTimeAt(state, getNow()));
   }
 
   return {
@@ -76,8 +85,15 @@ export function createClock(duration: number, songBpm: number, driver: ClockDriv
     play: () => {
       syncEnd();
       if (state.playing) return;
-      state = transportPlay(state, driver.now());
+      state = transportPlay(state, getNow());
       driver.start?.(state.anchorSongTime, state.rate, audioOffset);
+    },
+    useExportDriver: (driver) => {
+      exportDriver = driver;
+      useExportDriver = true;
+    },
+    disableExportDriver: () => {
+      useExportDriver = false;
     },
     getTimeEnd: () => state.end,
     getTimeStart: () => state.start,
@@ -90,19 +106,19 @@ export function createClock(duration: number, songBpm: number, driver: ClockDriv
     },
     pause: () => {
       if (!state.playing) return;
-      state = transportPause(state, driver.now());
+      state = transportPause(state, getNow());
       driver.stop?.();
     },
     seek: (songTime: number) => {
       const target = clampState(songTime);
-      state = transportSeek(state, driver.now(), target);
+      state = transportSeek(state, getNow(), target);
       if (state.playing) {
         driver.stop?.();
         driver.start?.(target, state.rate, audioOffset);
       }
     },
     setRate: (rate: number) => {
-      state = transportSetRate(state, driver.now(), rate);
+      state = transportSetRate(state, getNow(), rate);
       if (!state.playing) return;
       if (audioOffset === 0) {
         driver.setRate?.(rate);
@@ -118,7 +134,7 @@ export function createClock(duration: number, songBpm: number, driver: ClockDriv
       if (offset === audioOffset) return;
       audioOffset = offset;
       if (!state.playing) return;
-      const songTime = clampState(songTimeAt(state, driver.now()));
+      const songTime = clampState(songTimeAt(state, getNow()));
       driver.stop?.();
       driver.start?.(songTime, state.rate, audioOffset);
     },
@@ -126,7 +142,7 @@ export function createClock(duration: number, songBpm: number, driver: ClockDriv
       const wasBlocked = driver.audioBlocked?.() ?? false;
       const unlocked = (await driver.unlockAudio?.()) ?? true;
       if (wasBlocked && unlocked && state.playing) {
-        const songTime = clampSong(songTimeAt(state, driver.now()));
+        const songTime = clampSong(songTimeAt(state, getNow()));
         driver.stop?.();
         driver.start?.(songTime, state.rate, audioOffset);
       }
@@ -144,6 +160,10 @@ export function createSilentClock(
   songBpm: number,
   now: () => number = () => performance.now() / 1000,
 ): SongClock {
+  return createClock(duration, songBpm, { now });
+}
+
+export function createRenderClock(duration: number, songBpm: number, now: () => number): SongClock {
   return createClock(duration, songBpm, { now });
 }
 
