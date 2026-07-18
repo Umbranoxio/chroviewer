@@ -163,8 +163,8 @@ export function useSongTransport({
     return clock;
   }
 
-  function setRange(start: number, end: number) {
-    clockRef.current?.setRange(start, end);
+  function trim(start: number, end: number) {
+    clockRef.current?.setTrim(start, end);
   }
 
   function play({ autoplay = false }: { autoplay?: boolean } = {}) {
@@ -172,10 +172,10 @@ export function useSongTransport({
     if (clock === null) return undefined;
     autoplayRef.current = autoplay;
     if (clock.isPlaying()) return true;
-    if (clock.currentTime() >= clock.getEnd()) {
-      clock.seek(clock.getStart());
-      hitsounds.seek(clock.getStart());
-      setTime(clock.getStart());
+    if (clock.currentTime() >= clock.getTimeEnd()) {
+      clock.seek(clock.getTimeStart());
+      hitsounds.seek(clock.getTimeStart());
+      setTime(clock.getTimeStart());
     }
     if (settings.hitsounds) hitsounds.resume();
     clock.play();
@@ -209,7 +209,7 @@ export function useSongTransport({
   function seek(target: number) {
     const clock = clockRef.current;
     if (clock === null) return;
-    const next = Math.min(Math.max(target, clock.getStart()), clock.getEnd());
+    const next = Math.min(Math.max(target, clock.getTimeStart()), clock.getTimeEnd());
     clock.seek(next);
     hitsounds.seek(next);
     setTime(next);
@@ -232,6 +232,8 @@ export function useSongTransport({
   }
 
   return {
+    timeStart: clockRef.current?.getTimeStart(),
+    timeEnd: clockRef.current?.getTimeEnd(),
     audioBlocked,
     beatStepDenominator,
     beatStepNumerator,
@@ -252,7 +254,7 @@ export function useSongTransport({
     started,
     time,
     togglePlay,
-    setRange,
+    trim,
     unlockAudio,
   };
 }

@@ -18,9 +18,9 @@ export interface SongClock {
   currentTime(): number;
   currentBeat(): number;
   play(): void;
-  setRange(start: number, end: number): void;
-  getStart(): number;
-  getEnd(): number;
+  setTrim(start: number, end: number): void;
+  getTimeStart(): number;
+  getTimeEnd(): number;
   pause(): void;
   seek(songTime: number): void;
   setRate(rate: number): void;
@@ -79,9 +79,9 @@ export function createClock(duration: number, songBpm: number, driver: ClockDriv
       state = transportPlay(state, driver.now());
       driver.start?.(state.anchorSongTime, state.rate, audioOffset);
     },
-    getEnd: () => state.end,
-    getStart: () => state.start,
-    setRange: (start, end) => {
+    getTimeEnd: () => state.end,
+    getTimeStart: () => state.start,
+    setTrim: (start, end) => {
       syncEnd();
       if (state.playing) return;
       state.end = clampSong(end);

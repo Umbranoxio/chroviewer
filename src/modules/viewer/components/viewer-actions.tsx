@@ -19,6 +19,7 @@ interface ViewerActionsProps {
   settingsOpen: boolean;
   shareCategories: ShareSettingsCategory[];
   shareIncludeTimecode: boolean;
+  shareIncludeTrimSelection: boolean;
   shareOpen: boolean;
   shareUrl: string | null;
   videoUrl: string | null;
@@ -31,6 +32,7 @@ interface ViewerActionsProps {
   onSettingsClick: MouseEventHandler<HTMLButtonElement>;
   onShareCategoriesChange: (categories: ShareSettingsCategory[]) => void;
   onShareIncludeTimecodeChange: (include: boolean) => void;
+  onShareIncludeTrimSelectionChange: (range: boolean) => void;
   onShareOpenChange: (open: boolean) => void;
   onShortcutsOpenChange: (open: boolean) => void;
   onRecordVideoOpenChange: (open: boolean) => void;
@@ -42,6 +44,7 @@ export function ViewerActions({
   settingsOpen,
   shareCategories,
   shareIncludeTimecode,
+  shareIncludeTrimSelection,
   shareOpen,
   shareUrl,
   videoUrl,
@@ -57,6 +60,7 @@ export function ViewerActions({
   onShareOpenChange,
   onShortcutsOpenChange,
   onRecordVideoOpenChange,
+  onShareIncludeTrimSelectionChange,
 }: ViewerActionsProps) {
   const t = useTranslations('viewer');
   const tc = useTranslations('common');
@@ -105,9 +109,11 @@ export function ViewerActions({
               url={shareUrl}
               categories={shareCategories}
               includeTimecode={shareIncludeTimecode}
+              includeTrimSelection={shareIncludeTrimSelection}
               onCategoriesChange={onShareCategoriesChange}
               onCopy={onCopyShare}
               onIncludeTimecodeChange={onShareIncludeTimecodeChange}
+              onIncludeTrimSelectionChange={onShareIncludeTrimSelectionChange}
             />
           </PopoverContent>
         </Popover>

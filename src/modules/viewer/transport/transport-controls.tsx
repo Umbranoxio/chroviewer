@@ -1,5 +1,3 @@
-import { useState } from 'react';
-
 import { Pause, Play, RotateCcw } from 'lucide-react';
 import { useTranslations } from 'use-intl';
 
@@ -29,6 +27,8 @@ interface TransportControlsProps {
   playing: boolean;
   ended: boolean;
   time: number;
+  trimSelectionStart: number;
+  trimSelectionEnd: number;
   duration: number;
   songBpm: number;
   beatStepNumerator: number;
@@ -49,7 +49,7 @@ interface TransportControlsProps {
   reverseTimelineScroll: boolean;
   markers: TimelineMarker[];
   onTogglePlay: () => void;
-  onSetRange: (start: number, end: number) => void;
+  onTrimSelection: (start: number, end: number) => void;
   onSeek: (time: number) => void;
   onSeekBeats: (beats: number) => void;
   onNumeratorChange: (value: number) => void;
@@ -73,6 +73,8 @@ export function TransportControls({
   playing,
   ended,
   time,
+  trimSelectionStart,
+  trimSelectionEnd,
   duration,
   songBpm,
   beatStepNumerator,
@@ -93,7 +95,7 @@ export function TransportControls({
   reverseTimelineScroll,
   markers,
   onTogglePlay,
-  onSetRange,
+  onTrimSelection,
   onSeek,
   onSeekBeats,
   onNumeratorChange,
@@ -114,8 +116,6 @@ export function TransportControls({
   const live = mode === 'live';
   const beatStep = beatStepNumerator / beatStepDenominator;
   const displayBeat = quantizedBeatAt(time, songBpm, beatStep);
-  const [startRange, setStartRange] = useState(0);
-  const [endRange, setEndRange] = useState(duration);
 
   return (
     <Card
@@ -149,8 +149,8 @@ export function TransportControls({
       <TimelineSlider
         className="max-sm:order-1 max-sm:col-span-3"
         time={time}
-        startRange={startRange}
-        endRange={endRange}
+        trimSelectionStart={trimSelectionStart}
+        trimSelectionEnd={trimSelectionEnd}
         isPlaying={playing}
         duration={duration}
         songBpm={songBpm}
@@ -160,9 +160,7 @@ export function TransportControls({
         markers={markers}
         onSeek={onSeek}
         onSeekBeats={onSeekBeats}
-        onStartRange={setStartRange}
-        onEndRange={setEndRange}
-        onRange={onSetRange}
+        onTrimSelection={onTrimSelection}
       />
       <Separator orientation="vertical" className="h-8 max-sm:hidden" />
       <TimelineReadout

@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type Dispatch, type RefObject, type SetSta
 
 import { useTranslations } from 'use-intl';
 
-import { songBpmTimeToSeconds } from '../../core/beatmap/bpm';
+import { secondsToSongBpmTime, songBpmTimeToSeconds } from '../../core/beatmap/bpm';
 import { difficultyRank, effectiveNoteJumpSpeed } from '../../core/beatmap/info';
 import { buildHitsoundEvents } from '../../core/clock/hitsounds';
 import { isForcedLightshowMode, type LightshowMode } from '../../core/lighting/basic-light';
@@ -38,7 +38,7 @@ interface ViewerSessionOptions {
     ViewerSources,
     'audioDataRef' | 'pendingSharedViewRef' | 'replayRef' | 'rows' | 'scoreSaberLeaderboards' | 'songBpm'
   >;
-  transport: Pick<SongTransport, 'clockRef' | 'load' | 'play' | 'seek' | 'setHitsoundEvents'>;
+  transport: Pick<SongTransport, 'clockRef' | 'load' | 'play' | 'seek' | 'setHitsoundEvents' | 'trim'>;
 }
 
 export function useViewerSession({
@@ -293,15 +293,25 @@ export function useViewerSession({
     }
   }
 
-  async function applyPendingView(row: DifficultyRow, beat: number | undefined) {
+  async function applyPendingView(
+    row: DifficultyRow,
+    beat: number | undefined,
+    trimStartBeat: number | undefined,
+    trimEndBeat: number | undefined,
+  ) {
     await selectDifficulty(row, beat);
     const clock = transport.clockRef.current;
     if (clock === null) return;
+    const startBeat = trimStartBeat ?? 0;
+    const endBeat = trimEndBeat ?? secondsToSongBpmTime(clock.duration, sources.songBpm);
+
+    transport.trim(songBpmTimeToSeconds(startBeat, sources.songBpm), songBpmTimeToSeconds(endBeat, sources.songBpm));
     transport.seek(songBpmTimeToSeconds(beat ?? 0, sources.songBpm));
   }
 
   useEffect(() => {
     const pending = sources.pendingSharedViewRef.current;
+    console.log(pending);
     if (!viewerReady || pending === null || sources.rows.length === 0 || sources.songBpm <= 0) return;
     const indexedRow = pending.difficultyIndex === undefined ? undefined : sources.rows[pending.difficultyIndex];
     const row =
@@ -310,7 +320,7 @@ export function useViewerSession({
       sources.rows.find((candidate) => candidate.difficulty !== undefined);
     if (row === undefined) return;
     sources.pendingSharedViewRef.current = null;
-    void applyPendingView(row, pending.beat).then(() => {
+    void applyPendingView(row, pending.beat, pending.trimStartBeat, pending.trimEndBeat).then(() => {
       if (pending.autoplay === true) transport.play({ autoplay: true });
     });
   }, [sources.rows, sources.songBpm, viewerReady]);

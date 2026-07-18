@@ -14,9 +14,11 @@ interface SharePanelProps {
   url: string | null;
   categories: ShareSettingsCategory[];
   includeTimecode: boolean;
+  includeTrimSelection: boolean;
   onCategoriesChange: (categories: ShareSettingsCategory[]) => void;
   onCopy: (url: string) => Promise<boolean>;
   onIncludeTimecodeChange: (include: boolean) => void;
+  onIncludeTrimSelectionChange: (include: boolean) => void;
 }
 
 const shareCategories: ShareSettingsCategory[] = ['general', 'graphics', 'cosmetics', 'camera'];
@@ -25,9 +27,11 @@ export function SharePanel({
   url,
   categories,
   includeTimecode,
+  includeTrimSelection,
   onCategoriesChange,
   onCopy,
   onIncludeTimecodeChange,
+  onIncludeTrimSelectionChange,
 }: SharePanelProps) {
   const [copied, setCopied] = useState(false);
   const copyTimeoutRef = useRef(0);
@@ -78,6 +82,10 @@ export function SharePanel({
           <label className="flex items-center justify-between gap-3 text-xs font-medium">
             {t('includeTimecode')}
             <Switch checked={includeTimecode} onCheckedChange={onIncludeTimecodeChange} />
+          </label>
+          <label className="flex items-center justify-between gap-3 text-xs font-medium">
+            {t('includeTrimSelection')}
+            <Switch checked={includeTrimSelection} onCheckedChange={onIncludeTrimSelectionChange} />
           </label>
           <div className="grid gap-1.5">
             <span className="text-xs font-medium">{t('includeSettings')}</span>

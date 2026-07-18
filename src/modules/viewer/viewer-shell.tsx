@@ -212,6 +212,12 @@ export function ViewerShell() {
 
   const beatStep = transport.beatStepNumerator / transport.beatStepDenominator;
   const displayBeat = quantizedBeatAt(transport.time, sources.songBpm, beatStep);
+  const trimStartBeat = quantizedBeatAt(transport.clockRef.current?.getTimeStart() ?? 0, sources.songBpm, beatStep);
+  const trimEndBeat = quantizedBeatAt(
+    transport.clockRef.current?.getTimeEnd() ?? transport.duration,
+    sources.songBpm,
+    beatStep,
+  );
   const selectedDifficulty = useMemo(
     () => sources.rows.find((row) => row.key === session.selectedKey)?.difficulty ?? null,
     [session.selectedKey, sources.rows],
@@ -234,6 +240,8 @@ export function ViewerShell() {
   );
   const share = useViewerShare({
     beat: displayBeat,
+    trimStartBeat: trimStartBeat,
+    trimEndBeat: trimEndBeat,
     lightshowMode,
     liveTarget: liveTarget ?? undefined,
     mapIdentity: sources.mapIdentity,
@@ -465,7 +473,9 @@ export function ViewerShell() {
         hasMap={sources.mapMeta !== null}
         settingsOpen={settingsOpen}
         shareCategories={share.shareCategories}
+        shareIncludeTrimSelection={share.includeTrimSelection}
         shareIncludeTimecode={share.includeTimecode}
+        onShareIncludeTrimSelectionChange={share.setIncludeTrimSelection}
         shareOpen={activePanel === 'share'}
         shareUrl={share.shareUrl}
         videoUrl={null}
@@ -497,6 +507,8 @@ export function ViewerShell() {
           visible={chromeVisible}
           playing={transport.playing}
           ended={transport.ended}
+          trimSelectionStart={transport.timeStart ?? 0}
+          trimSelectionEnd={transport.timeEnd ?? transport.duration}
           time={transport.time}
           duration={transport.duration}
           songBpm={sources.songBpm}
@@ -521,7 +533,7 @@ export function ViewerShell() {
           hitsoundVolume={settings.hitsoundVolume}
           reverseTimelineScroll={settings.reverseTimelineScroll}
           markers={timelineMarkers}
-          onSetRange={transport.setRange}
+          onTrimSelection={transport.trim}
           onTogglePlay={transport.play}
           onSeek={transport.seek}
           onSeekBeats={(beats) => {

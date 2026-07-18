@@ -37,8 +37,22 @@ type RemoteSourceCommand =
   | { type: 'lookup'; lookup: MapLookup }
   | { type: 'input'; input: string; source: ViewerSource }
   | { type: 'shared-map'; mapSource: string }
-  | { type: 'shared-replay'; replayUrl: string; beat?: number; autoplay?: boolean }
-  | { type: 'shared-score'; scoreId: string; beat?: number; autoplay?: boolean };
+  | {
+      type: 'shared-replay';
+      replayUrl: string;
+      beat?: number;
+      autoplay?: boolean;
+      trimStartBeat?: number;
+      trimEndBeat?: number;
+    }
+  | {
+      type: 'shared-score';
+      scoreId: string;
+      beat?: number;
+      autoplay?: boolean;
+      trimStartBeat?: number;
+      trimEndBeat?: number;
+    };
 
 export interface SourceDownload {
   kind: ViewerSource | 'replay';
@@ -98,7 +112,10 @@ export function useViewerRemoteSource({
     });
   }
 
-  async function loadScoreSaberScore(scoreId: string, pending: { beat?: number; autoplay?: boolean } = {}) {
+  async function loadScoreSaberScore(
+    scoreId: string,
+    pending: { beat?: number; trimStartBeat?: number; trimEndBeat?: number; autoplay?: boolean } = {},
+  ) {
     return Result.gen(async function* () {
       const metadataPromise = fetchScoreSaberReplayMetadata(scoreId, downloadOptions('scoresaber'));
       const initialReplayPromise = fetchScoreSaberReplayFile(scoreId, downloadOptions('scoresaber'));
@@ -152,7 +169,7 @@ export function useViewerRemoteSource({
 
   async function loadReplayData(
     data: ArrayBuffer,
-    pending: { beat?: number; autoplay?: boolean } = {},
+    pending: { beat?: number; trimStartBeat?: number; trimEndBeat?: number; autoplay?: boolean } = {},
     sourceLink?: ViewerSourceLink,
   ) {
     return Result.gen(async function* () {
@@ -179,7 +196,10 @@ export function useViewerRemoteSource({
     });
   }
 
-  async function loadReplayUrl(replayUrl: string, pending: { beat?: number; autoplay?: boolean } = {}) {
+  async function loadReplayUrl(
+    replayUrl: string,
+    pending: { beat?: number; trimStartBeat?: number; trimEndBeat?: number; autoplay?: boolean } = {},
+  ) {
     return Result.gen(async function* () {
       const data = yield* Result.await(
         requestArrayBuffer(sourceDownloadUrl(replayUrl), {
@@ -304,9 +324,19 @@ export function useViewerRemoteSource({
       case 'shared-map':
         return loadSharedMap(command.mapSource);
       case 'shared-replay':
-        return loadReplayUrl(command.replayUrl, { beat: command.beat, autoplay: command.autoplay });
+        return loadReplayUrl(command.replayUrl, {
+          beat: command.beat,
+          trimStartBeat: command.trimStartBeat,
+          trimEndBeat: command.trimStartBeat,
+          autoplay: command.autoplay,
+        });
       case 'shared-score':
-        return loadScoreSaberScore(command.scoreId, { beat: command.beat, autoplay: command.autoplay });
+        return loadScoreSaberScore(command.scoreId, {
+          beat: command.beat,
+          trimStartBeat: command.trimStartBeat,
+          trimEndBeat: command.trimEndBeat,
+          autoplay: command.autoplay,
+        });
     }
   }
 
@@ -358,12 +388,15 @@ export function useViewerRemoteSource({
       if (sharedSettings !== undefined) {
         setSettings((current) => applySharedViewerSettings(current, sharedSettings));
       }
+      console.log(search);
       setSourceInput(search.replayUrl);
       sourceMutation.mutate({
         type: 'shared-replay',
         replayUrl: search.replayUrl,
         beat: search.beat,
         autoplay: search.autoplay,
+        trimStartBeat: search.trimStartBeat,
+        trimEndBeat: search.trimEndBeat,
       });
       return;
     }
@@ -378,6 +411,8 @@ export function useViewerRemoteSource({
         scoreId: search.scoreId,
         beat: search.beat,
         autoplay: search.autoplay,
+        trimStartBeat: search.trimStartBeat,
+        trimEndBeat: search.trimEndBeat,
       });
       return;
     }
@@ -390,6 +425,8 @@ export function useViewerRemoteSource({
       autoplay: search.autoplay,
       difficultyIndex: search.difficulty,
       beat: search.beat,
+      trimStartBeat: search.trimStartBeat,
+      trimEndBeat: search.trimEndBeat,
     };
     setSourceInput(search.map);
     sourceMutation.mutate({ type: 'shared-map', mapSource: search.map });

@@ -21,15 +21,13 @@ interface TimelineSliderProps {
   beatStep: number;
   reverseScroll?: boolean;
   isPlaying: boolean;
-  startRange: number;
-  endRange: number;
+  trimSelectionStart: number;
+  trimSelectionEnd: number;
   interactive?: boolean;
   markers: TimelineMarker[];
   onSeek: (time: number) => void;
   onSeekBeats: (beats: number) => void;
-  onStartRange: (time: number) => void;
-  onEndRange: (time: number) => void;
-  onRange: (start: number, end: number) => void;
+  onTrimSelection: (start: number, end: number) => void;
 }
 
 const markerTranslationKeys = {
@@ -80,18 +78,20 @@ export function TimelineSlider({
   interactive = true,
   markers,
   isPlaying,
-  startRange,
-  endRange,
+  trimSelectionStart,
+  trimSelectionEnd,
   onSeek,
   onSeekBeats,
-  onStartRange,
-  onEndRange,
-  onRange,
+  onTrimSelection,
 }: TimelineSliderProps) {
   const format = useFormatter();
   const locale = useLocale();
   const t = useTranslations('viewer.transport');
   const [preview, setPreview] = useState<{ time: number; left: number } | null>(null);
+  const [trimSelction, setTrimSelection] = useState<{ start: number; end: number }>({
+    start: trimSelectionStart,
+    end: trimSelectionEnd,
+  });
   const playheadProgress = duration <= 0 ? 0 : Math.min(Math.max(time / duration, 0), 1) * 100;
 
   function positionAt(event: ReactPointerEvent<HTMLElement>) {
@@ -148,33 +148,30 @@ export function TimelineSlider({
         className="bg-timeline-playhead pointer-events-none absolute inset-y-0 z-20 w-0.5 -translate-x-1/2 animate-none shadow-none transition-none"
         style={{ left: `${String(playheadProgress)}%` }}
       />
-      <div className="pointer-events-none absolute inset-0">
+      <div className="pointer-events-none absolute inset-0 z-25">
         <Slider
-          variant="range-transport-slider"
-          aria-label={t('songPosition')}
-          aria-valuetext={t('timeRange', {
-            current: formatDuration(startRange, locale),
-            duration: formatDuration(endRange, locale),
+          variant="range-transport"
+          aria-label={t('songTrimSelection')}
+          aria-valuetext={t('trimSelection', {
+            start: formatDuration(trimSelectionStart, locale),
+            end: formatDuration(trimSelectionEnd, locale),
           })}
           min={0}
           max={duration}
           step={0.01}
-          value={[startRange, endRange]}
+          value={[trimSelction.start, trimSelction.end]}
           aria-readonly={!interactive && isPlaying}
           tabIndex={interactive && !isPlaying ? undefined : -1}
           disabled={isPlaying}
-          onPointerDown={(event) => {
-            console.log(event);
+          onPointerLeave={() => {
+            onTrimSelection(trimSelction.start, trimSelction.end);
+          }}
+          onPointerUp={() => {
+            onTrimSelection(trimSelction.start, trimSelction.end);
           }}
           onValueChange={([startValue, endValue]) => {
-            if (interactive && startValue !== undefined && startValue != startRange) {
-              onStartRange(startValue);
-              onRange(startValue, endRange);
-            }
-
-            if (interactive && endValue !== undefined && endValue != endRange) {
-              onEndRange(endValue);
-              onRange(startRange, endValue);
+            if (interactive && startValue !== undefined && endValue != undefined) {
+              setTrimSelection({ start: startValue, end: endValue });
             }
           }}
         />
