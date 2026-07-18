@@ -18,6 +18,9 @@ export interface SongClock {
   currentTime(): number;
   currentBeat(): number;
   play(): void;
+  setRange(start: number, end: number): void;
+  getStart(): number;
+  getEnd(): number;
   pause(): void;
   seek(songTime: number): void;
   setRate(rate: number): void;
@@ -40,19 +43,22 @@ export interface ClockDriver {
 export function createClock(duration: number, songBpm: number, driver: ClockDriver): SongClock {
   let state = createTransport();
 
-  const clamp = (songTime: number) => Math.min(Math.max(songTime, 0), duration);
+  state.end = duration;
+
+  const clampState = (songTime: number) => Math.min(Math.max(songTime, state.start), state.end);
+  const clampSong = (songTime: number) => Math.min(Math.max(songTime, 0), duration);
 
   function syncEnd() {
     const now = driver.now();
-    if (state.playing && songTimeAt(state, now) >= duration) {
-      state = transportSeek(transportPause(state, now), now, duration);
+    if (state.playing && songTimeAt(state, now) >= state.end) {
+      state = transportSeek(transportPause(state, now), now, state.end);
       driver.stop?.();
     }
   }
 
   function currentTime() {
     syncEnd();
-    return clamp(songTimeAt(state, driver.now()));
+    return clampState(songTimeAt(state, driver.now()));
   }
 
   return {
@@ -71,13 +77,22 @@ export function createClock(duration: number, songBpm: number, driver: ClockDriv
       state = transportPlay(state, driver.now());
       driver.start?.(state.anchorSongTime, state.rate);
     },
+    getEnd: () => state.end,
+    getStart: () => state.start,
+    setRange: (start, end) => {
+      syncEnd();
+      if (state.playing) return;
+      state.end = clampSong(end);
+      state.start = clampSong(start);
+      state.anchorSongTime = clampState(state.anchorSongTime);
+    },
     pause: () => {
       if (!state.playing) return;
       state = transportPause(state, driver.now());
       driver.stop?.();
     },
     seek: (songTime: number) => {
-      const target = clamp(songTime);
+      const target = clampState(songTime);
       state = transportSeek(state, driver.now(), target);
       if (state.playing) {
         driver.stop?.();
@@ -95,7 +110,7 @@ export function createClock(duration: number, songBpm: number, driver: ClockDriv
       const wasBlocked = driver.audioBlocked?.() ?? false;
       const unlocked = (await driver.unlockAudio?.()) ?? true;
       if (wasBlocked && unlocked && state.playing) {
-        const songTime = clamp(songTimeAt(state, driver.now()));
+        const songTime = clampSong(songTimeAt(state, driver.now()));
         driver.stop?.();
         driver.start?.(songTime, state.rate);
       }

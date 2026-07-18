@@ -32,7 +32,7 @@ export function useLiveExperience(options: LiveExperienceOptions) {
       setState((current) => ({ ...current, audioBlocked: false, status: 'paused' }));
       return true;
     }
-    if (!clock.isPlaying()) transport.togglePlay();
+    if (!clock.isPlaying()) transport.togglePlay(0, clock.duration);
     setState((current) => ({ ...current, audioBlocked: false, status: 'watching' }));
     return true;
   }, []);

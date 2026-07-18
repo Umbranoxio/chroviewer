@@ -82,6 +82,7 @@
   --input: oklch(1 0 0 / 0.16);
   --ring: oklch(0.72 0 0);
   --timeline-playhead: oklch(0.82 0.22 145);
+  --timeline-rangehead: oklch(59.732% 0.1598 145.087);
   --difficulty-easy: #3cb371;
   --difficulty-normal: #59b0f4;
   --difficulty-hard: tomato;
@@ -114,6 +115,7 @@
   --color-input: var(--input);
   --color-ring: var(--ring);
   --color-timeline-playhead: var(--timeline-playhead);
+  --color-timeline-rangehead: var(--timeline-rangehead);
   --color-difficulty-easy: var(--difficulty-easy);
   --color-difficulty-normal: var(--difficulty-normal);
   --color-difficulty-hard: var(--difficulty-hard);

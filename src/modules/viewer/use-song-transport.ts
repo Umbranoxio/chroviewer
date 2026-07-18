@@ -157,15 +157,19 @@ export function useSongTransport({
     return clock;
   }
 
+  function setRange(start: number, end: number) {
+    clockRef.current?.setRange(start, end);
+  }
+
   function play({ autoplay = false }: { autoplay?: boolean } = {}) {
     const clock = clockRef.current;
     if (clock === null) return undefined;
     autoplayRef.current = autoplay;
     if (clock.isPlaying()) return true;
-    if (clock.currentTime() >= clock.duration) {
-      clock.seek(0);
-      hitsounds.seek(0);
-      setTime(0);
+    if (clock.currentTime() >= clock.getEnd()) {
+      clock.seek(clock.getStart());
+      hitsounds.seek(clock.getStart());
+      setTime(clock.getStart());
     }
     if (settings.hitsounds) hitsounds.resume();
     clock.play();
@@ -199,7 +203,7 @@ export function useSongTransport({
   function seek(target: number) {
     const clock = clockRef.current;
     if (clock === null) return;
-    const next = Math.min(Math.max(target, 0), clock.duration);
+    const next = Math.min(Math.max(target, clock.getStart()), clock.getEnd());
     clock.seek(next);
     hitsounds.seek(next);
     setTime(next);
@@ -242,6 +246,7 @@ export function useSongTransport({
     started,
     time,
     togglePlay,
+    setRange,
     unlockAudio,
   };
 }

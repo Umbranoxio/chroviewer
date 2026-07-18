@@ -19,10 +19,16 @@ interface TimelineSliderProps {
   duration: number;
   songBpm: number;
   beatStep: number;
+  isPlaying: boolean;
+  startRange: number;
+  endRange: number;
   interactive?: boolean;
   markers: TimelineMarker[];
   onSeek: (time: number) => void;
   onSeekBeats: (beats: number) => void;
+  onStartRange: (time: number) => void;
+  onEndRange: (time: number) => void;
+  onRange: (start: number, end: number) => void;
 }
 
 const markerTranslationKeys = {
@@ -71,8 +77,14 @@ export function TimelineSlider({
   beatStep,
   interactive = true,
   markers,
+  isPlaying,
+  startRange,
+  endRange,
   onSeek,
   onSeekBeats,
+  onStartRange,
+  onEndRange,
+  onRange,
 }: TimelineSliderProps) {
   const format = useFormatter();
   const locale = useLocale();
@@ -134,6 +146,37 @@ export function TimelineSlider({
         className="bg-timeline-playhead pointer-events-none absolute inset-y-0 z-20 w-0.5 -translate-x-1/2 animate-none shadow-none transition-none"
         style={{ left: `${String(playheadProgress)}%` }}
       />
+      <div className="pointer-events-none absolute inset-0">
+        <Slider
+          variant="range-transport-slider"
+          aria-label={t('songPosition')}
+          aria-valuetext={t('timeRange', {
+            current: formatDuration(startRange, locale),
+            duration: formatDuration(endRange, locale),
+          })}
+          min={0}
+          max={duration}
+          step={0.01}
+          value={[startRange, endRange]}
+          aria-readonly={!interactive && isPlaying}
+          tabIndex={interactive && !isPlaying ? undefined : -1}
+          disabled={isPlaying}
+          onPointerDown={(event) => {
+            console.log(event);
+          }}
+          onValueChange={([startValue, endValue]) => {
+            if (interactive && startValue !== undefined && startValue != startRange) {
+              onStartRange(startValue);
+              onRange(startValue, endRange);
+            }
+
+            if (interactive && endValue !== undefined && endValue != endRange) {
+              onEndRange(endValue);
+              onRange(startRange, endValue);
+            }
+          }}
+        />
+      </div>
       <TooltipProvider delayDuration={100}>
         <div className="pointer-events-none absolute inset-0 z-10">
           {markers.map((marker) => {

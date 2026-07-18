@@ -1,3 +1,5 @@
+import { useState } from 'react';
+
 import { Pause, Play, RotateCcw } from 'lucide-react';
 import { useTranslations } from 'use-intl';
 
@@ -46,6 +48,7 @@ interface TransportControlsProps {
   hitsoundVolume: number;
   markers: TimelineMarker[];
   onTogglePlay: () => void;
+  onSetRange: (start: number, end: number) => void;
   onSeek: (time: number) => void;
   onSeekBeats: (beats: number) => void;
   onNumeratorChange: (value: number) => void;
@@ -88,6 +91,7 @@ export function TransportControls({
   hitsoundVolume,
   markers,
   onTogglePlay,
+  onSetRange,
   onSeek,
   onSeekBeats,
   onNumeratorChange,
@@ -108,6 +112,8 @@ export function TransportControls({
   const live = mode === 'live';
   const beatStep = beatStepNumerator / beatStepDenominator;
   const displayBeat = quantizedBeatAt(time, songBpm, beatStep);
+  const [startRange, setStartRange] = useState(0);
+  const [endRange, setEndRange] = useState(duration);
 
   return (
     <Card
@@ -141,6 +147,9 @@ export function TransportControls({
       <TimelineSlider
         className="max-sm:order-1 max-sm:col-span-3"
         time={time}
+        startRange={startRange}
+        endRange={endRange}
+        isPlaying={playing}
         duration={duration}
         songBpm={songBpm}
         beatStep={beatStep}
@@ -148,6 +157,9 @@ export function TransportControls({
         markers={markers}
         onSeek={onSeek}
         onSeekBeats={onSeekBeats}
+        onStartRange={setStartRange}
+        onEndRange={setEndRange}
+        onRange={onSetRange}
       />
       <Separator orientation="vertical" className="h-8 max-sm:hidden" />
       <TimelineReadout

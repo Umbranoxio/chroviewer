@@ -193,7 +193,6 @@ export function ViewerShell() {
     setSettingsOpen((open) => !open);
   }
 
-
   useViewerControls({
     activePanel,
     autoHide: liveActive ? false : settings.autoHide,
@@ -459,11 +458,12 @@ export function ViewerShell() {
         onShortcutsOpenChange={(open) => {
           setActivePanel(open ? 'shortcuts' : null);
         }}
-        onStartRecord={()=> {
-
-          
+        onStartRecord={() => {
+          console.log('WIP');
         }}
-        onStopRecord={() => {}}
+        onStopRecord={() => {
+          console.log('WIP');
+        }}
         onRecordVideoOpenChange={(open) => {
           setActivePanel(open ? 'record-video' : null);
         }}
@@ -498,9 +498,8 @@ export function ViewerShell() {
           hitsounds={settings.hitsounds}
           hitsoundVolume={settings.hitsoundVolume}
           markers={timelineMarkers}
-          onTogglePlay={() => {
-            transport.togglePlay();
-          }}
+          onSetRange={transport.setRange}
+          onTogglePlay={transport.play}
           onSeek={transport.seek}
           onSeekBeats={(beats) => {
             transport.seekBeats(beats, sources.songBpm);
