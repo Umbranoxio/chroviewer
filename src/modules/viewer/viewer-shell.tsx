@@ -62,8 +62,6 @@ export function ViewerShell() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [chromeVisible, setChromeVisible] = useState(true);
   const [liveChatOpen, setLiveChatOpen] = useState(false);
-  const [videoChunks, setVideoChunks] = useState<Blob[]>([]);
-  const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [mobileMapCollapseRequest, setMobileMapCollapseRequest] = useState(0);
   const [mobileViewport, setMobileViewport] = useState({
     chatHeight: 'min(44dvh, 20.4rem)',
@@ -73,7 +71,6 @@ export function ViewerShell() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const liveChatInputRef = useRef<HTMLTextAreaElement>(null);
   const triggerRef = useRef<HTMLElement | null>(null);
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const sources = useViewerSources({
     setError,
     setSettings,
@@ -196,56 +193,6 @@ export function ViewerShell() {
     setSettingsOpen((open) => !open);
   }
 
-  function startRecordVideo() {
-    if (mediaRecorderRef.current == null) {
-      setVideoUrl(null);
-
-      try {
-        const options = {
-          videoBitsPerSecond: 3000000 * 8,
-        };
-
-        const stream = session.canvasRef.current?.captureStream(60);
-
-        if (!stream) return;
-
-        const audioTracks = audioDestinationRef.current?.stream.getAudioTracks();
-
-        if (audioTracks && audioTracks.length > 0) {
-          for (const audioTrack of audioTracks) {
-            stream.addTrack(audioTrack);
-          }
-        }
-
-        mediaRecorderRef.current = new MediaRecorder(stream, options);
-
-        mediaRecorderRef.current.start();
-
-        setVideoChunks([]);
-
-        mediaRecorderRef.current.onstop = () => {
-          const recVideoBlob = new Blob(videoChunks, {
-            type: 'video/webm',
-          });
-
-          setVideoUrl(window.URL.createObjectURL(recVideoBlob));
-          mediaRecorderRef.current = null;
-        };
-
-        mediaRecorderRef.current.ondataavailable = (e) => {
-          videoChunks.push(e.data);
-        };
-      } catch (error) {
-        console.log(error);
-      }
-    }
-  }
-
-  function stopRecordVideo() {
-    if (mediaRecorderRef.current != null) {
-      mediaRecorderRef.current.stop();
-    }
-  }
 
   useViewerControls({
     activePanel,
@@ -493,14 +440,14 @@ export function ViewerShell() {
       <ViewerActions
         recordVideoOpen={activePanel == 'record-video'}
         chromeVisible={chromeVisible}
-        recording={mediaRecorderRef.current != null}
+        recording={false}
         hasMap={sources.mapMeta !== null}
         settingsOpen={settingsOpen}
         shareCategories={share.shareCategories}
         shareIncludeTimecode={share.includeTimecode}
         shareOpen={activePanel === 'share'}
         shareUrl={share.shareUrl}
-        videoUrl={videoUrl}
+        videoUrl={null}
         shortcutsOpen={activePanel === 'shortcuts'}
         onCopyShare={share.copyShareLink}
         onSettingsClick={toggleSettings}
@@ -512,8 +459,11 @@ export function ViewerShell() {
         onShortcutsOpenChange={(open) => {
           setActivePanel(open ? 'shortcuts' : null);
         }}
-        onStartRecord={startRecordVideo}
-        onStopRecord={stopRecordVideo}
+        onStartRecord={()=> {
+
+          
+        }}
+        onStopRecord={() => {}}
         onRecordVideoOpenChange={(open) => {
           setActivePanel(open ? 'record-video' : null);
         }}
