@@ -15,6 +15,7 @@
     "fflate": "^0.8.3",
     "lucide-react": "^1.24.0",
     "lzma-web": "^3.0.1",
+    "mediabunny": "^1.50.8",
     "radix-ui": "^1.6.2",
     "react": "^19.2.7",
     "react-colorful": "^5.8.0",

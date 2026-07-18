@@ -24,6 +24,8 @@ const searchKeyAliases: Record<string, string> = {
   ssscoreid: 'scoreId',
   difficulty: 'difficulty',
   beat: 'beat',
+  trimstartbeat: 'trimStartBeat',
+  trimendbeat: 'trimEndBeat',
   autoplay: 'autoplay',
   lightshow: 'lightshow',
   settings: 'settings',

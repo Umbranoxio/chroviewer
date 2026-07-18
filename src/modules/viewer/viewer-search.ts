@@ -39,6 +39,8 @@ export const viewerSearchSchema = z.pipe(
     scoreId: z.catch(z.optional(scoreIdSchema), undefined),
     difficulty: z.catch(z.optional(difficultyIndexSchema), undefined),
     beat: z.catch(z.optional(nonnegativeNumberSchema), undefined),
+    trimStartBeat: z.catch(z.optional(nonnegativeNumberSchema), undefined),
+    trimEndBeat: z.catch(z.optional(nonnegativeNumberSchema), undefined),
     autoplay: z.catch(z.optional(z.boolean()), undefined),
     lightshow: z.catch(z.optional(z.literal('full-lightshow')), undefined),
     settings: z.catch(z.optional(viewerSettingsPatchSchema), undefined),
@@ -58,6 +60,8 @@ export const viewerSearchSchema = z.pipe(
         scoreId: undefined,
         difficulty: undefined,
         beat: undefined,
+        trimStartBeat: undefined,
+        trimEndBeat: undefined,
       };
     }
     if (search.replayUrl !== undefined) return { ...search, map: undefined, scoreId: undefined, difficulty: undefined };
@@ -72,9 +76,15 @@ export function isRemoteSourceUrl(value: string) {
   return remoteSourceUrlSchema.safeParse(value).success;
 }
 
+function parseBeat(beat: number | undefined) {
+  return beat !== undefined && beat > 0 ? Number(beat.toFixed(6)) : undefined;
+}
+
 export function viewerSearchForShare(
   source: ViewerShareSource,
   beat: number | undefined,
+  trimStartBeat: number | undefined,
+  trimEndBeat: number | undefined,
   settings?: SharedViewerSettings,
   lightshow?: 'full-lightshow',
 ): ViewerSearch {
@@ -88,17 +98,36 @@ export function viewerSearchForShare(
       lightshow,
     };
   }
-  const sharedBeat = beat !== undefined && beat > 0 ? Number(beat.toFixed(6)) : undefined;
+
+  const sharedBeat = parseBeat(beat);
+  const sharedTrimStartBeat = parseBeat(trimStartBeat);
+  const sharedTrimEndBeat = parseBeat(trimEndBeat);
   if (source.type === 'map') {
     return {
       map: source.mapKey,
       difficulty: source.difficultyIndex,
+      trimStartBeat: sharedTrimStartBeat,
+      trimEndBeat: sharedTrimEndBeat,
       beat: sharedBeat,
       settings,
       lightshow,
     };
   }
   return source.type === 'replay'
-    ? { replayUrl: source.replayUrl, beat: sharedBeat, settings, lightshow }
-    : { scoreId: source.scoreId, beat: sharedBeat, settings, lightshow };
+    ? {
+        replayUrl: source.replayUrl,
+        beat: sharedBeat,
+        trimStartBeat: sharedTrimStartBeat,
+        trimEndBeat: sharedTrimEndBeat,
+        settings,
+        lightshow,
+      }
+    : {
+        scoreId: source.scoreId,
+        beat: sharedBeat,
+        trimStartBeat: sharedTrimStartBeat,
+        trimEndBeat: sharedTrimEndBeat,
+        settings,
+        lightshow,
+      };
 }

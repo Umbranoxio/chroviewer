@@ -13,6 +13,8 @@ import type { MapIdentity, ViewerSourceLink } from './viewer-types';
 
 interface UseViewerShareOptions {
   beat: number;
+  trimStartBeat: number;
+  trimEndBeat: number;
   lightshowMode: LightshowMode;
   liveTarget?: LiveTarget;
   mapIdentity: MapIdentity | null;
@@ -25,6 +27,8 @@ interface UseViewerShareOptions {
 
 export function useViewerShare({
   beat,
+  trimStartBeat,
+  trimEndBeat,
   lightshowMode,
   liveTarget,
   mapIdentity,
@@ -38,6 +42,7 @@ export function useViewerShare({
   const t = useTranslations('viewer');
   const [categories, setCategories] = useState<ShareSettingsCategory[]>([]);
   const [includeTimecode, setIncludeTimecode] = useState(true);
+  const [includeTrimSelection, setIncludeTrimSelection] = useState(true);
   const [timelineCopied, setTimelineCopied] = useState<'time' | 'beat' | null>(null);
   const timelineCopyTimeoutRef = useRef(0);
 
@@ -77,13 +82,19 @@ export function useViewerShare({
     };
   }
 
-  function shareUrlFor(selectedCategories: readonly ShareSettingsCategory[], includeBeat: boolean) {
+  function shareUrlFor(
+    selectedCategories: readonly ShareSettingsCategory[],
+    includeBeat: boolean,
+    includeTrimSelection: boolean,
+  ) {
     if (source === null) return null;
     const location = router.buildLocation({
       to: '/',
       search: viewerSearchForShare(
         source,
         includeBeat ? beat : undefined,
+        includeTrimSelection ? trimStartBeat : undefined,
+        includeTrimSelection ? trimEndBeat : undefined,
         settingsForShareCategories(settings, selectedCategories),
         isForcedLightshowMode(lightshowMode) ? lightshowMode : undefined,
       ),
@@ -99,7 +110,7 @@ export function useViewerShare({
   }
 
   async function copyTimelineShareLink(target: 'time' | 'beat') {
-    const url = shareUrlFor([], true);
+    const url = shareUrlFor([], true, false);
     if (url === null || !(await copyShareLink(url))) {
       setTimelineCopied(null);
       return;
@@ -115,11 +126,13 @@ export function useViewerShare({
     copyShareLink,
     copyTimelineShareLink,
     includeTimecode,
+    includeTrimSelection,
     setIncludeTimecode,
+    setIncludeTrimSelection,
     setShareCategories: setCategories,
     shareCategories: categories,
-    shareUrl: shareUrlFor(categories, includeTimecode),
+    shareUrl: shareUrlFor(categories, includeTimecode, includeTrimSelection),
     timelineCopied,
-    timelineShareUrl: source?.type === 'live' ? null : shareUrlFor([], true),
+    timelineShareUrl: source?.type === 'live' ? null : shareUrlFor([], true, true),
   };
 }

@@ -17,6 +17,7 @@
     "play": "Play",
     "replay": "Replay",
     "shareLink": "Share link",
+    "recordVideo": "Record video",
     "settings": "Settings",
     "static": "Static"
   },
@@ -199,8 +200,17 @@
     "description": "Share the current map or score",
     "includeSettings": "Include settings",
     "includeTimecode": "Include timecode",
+    "includeTrimSelection": "Include trim selection",
     "localFilesUnavailable": "Local maps and replay files cannot be shared by URL",
     "title": "Share viewer"
+  },
+  "record": {
+    "recordProgress": "Recording",
+    "recordReady": "Ready to record",
+    "downloadVideo": "Download video",
+    "endRecord": "Stop recording",
+    "startRecord": "Start recording",
+    "title": "Record gameplay"
   },
   "source": {
     "beatsaver": "BeatSaver",
@@ -318,9 +328,11 @@
       "seekBack": "Seek back {step}",
       "seekForward": "Seek forward {step}",
       "song": "Song",
+      "songTrimSelection": "Song trim selection",
       "songPosition": "Song position",
       "songVolume": "Song volume",
       "speedValue": "{speed}x",
+      "trimSelection": "{start} to {end}",
       "timeRange": "{current} / {duration}",
       "unmuteHitsounds": "Unmute hitsounds",
       "unmuteMaster": "Unmute all audio",

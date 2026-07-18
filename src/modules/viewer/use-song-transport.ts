@@ -20,9 +20,17 @@ interface UseSongTransportOptions {
   lightshowModeRef: RefObject<LightshowMode>;
   settings: ViewerSettings;
   settingsRef: RefObject<ViewerSettings>;
+  audioContextRef: RefObject<AudioContext>;
+  audioDestinationRef: RefObject<MediaStreamAudioDestinationNode | null>;
 }
 
-export function useSongTransport({ lightshowModeRef, settings, settingsRef }: UseSongTransportOptions) {
+export function useSongTransport({
+  lightshowModeRef,
+  settings,
+  settingsRef,
+  audioContextRef,
+  audioDestinationRef,
+}: UseSongTransportOptions) {
   const clockRef = useRef<SongClock | null>(null);
   const autoplayRef = useRef(false);
   const [duration, setDuration] = useState(0);
@@ -121,6 +129,8 @@ export function useSongTransport({ lightshowModeRef, settings, settingsRef }: Us
 
   async function load(options: LoadSongOptions) {
     disposeClock();
+    console.log('Loading song');
+    audioDestinationRef.current = audioContextRef.current.createMediaStreamDestination();
     let clock: SongClock;
     const audioData = options.audioData;
     if (audioData === null) {
@@ -130,6 +140,8 @@ export function useSongTransport({ lightshowModeRef, settings, settingsRef }: Us
         audioData,
         songBpm: options.songBpm,
         volume: options.volume,
+        context: audioContextRef.current,
+        audioDestination: audioDestinationRef.current,
       });
       if (result.isErr()) {
         clock = createSilentClock(options.fallbackDuration, options.songBpm);
@@ -151,15 +163,19 @@ export function useSongTransport({ lightshowModeRef, settings, settingsRef }: Us
     return clock;
   }
 
+  function trim(start: number, end: number) {
+    clockRef.current?.setTrim(start, end);
+  }
+
   function play({ autoplay = false }: { autoplay?: boolean } = {}) {
     const clock = clockRef.current;
     if (clock === null) return undefined;
     autoplayRef.current = autoplay;
     if (clock.isPlaying()) return true;
-    if (clock.currentTime() >= clock.duration) {
-      clock.seek(0);
-      hitsounds.seek(0);
-      setTime(0);
+    if (clock.currentTime() >= clock.getTimeEnd()) {
+      clock.seek(clock.getTimeStart());
+      hitsounds.seek(clock.getTimeStart());
+      setTime(clock.getTimeStart());
     }
     if (settings.hitsounds) hitsounds.resume();
     clock.play();
@@ -193,7 +209,7 @@ export function useSongTransport({ lightshowModeRef, settings, settingsRef }: Us
   function seek(target: number) {
     const clock = clockRef.current;
     if (clock === null) return;
-    const next = Math.min(Math.max(target, 0), clock.duration);
+    const next = Math.min(Math.max(target, clock.getTimeStart()), clock.getTimeEnd());
     clock.seek(next);
     hitsounds.seek(next);
     setTime(next);
@@ -216,6 +232,8 @@ export function useSongTransport({ lightshowModeRef, settings, settingsRef }: Us
   }
 
   return {
+    timeStart: clockRef.current?.getTimeStart(),
+    timeEnd: clockRef.current?.getTimeEnd(),
     audioBlocked,
     beatStepDenominator,
     beatStepNumerator,
@@ -236,6 +254,7 @@ export function useSongTransport({ lightshowModeRef, settings, settingsRef }: Us
     started,
     time,
     togglePlay,
+    trim,
     unlockAudio,
   };
 }

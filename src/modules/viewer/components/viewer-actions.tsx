@@ -1,6 +1,6 @@
 import type { MouseEventHandler } from 'react';
 
-import { CircleHelp, Settings, Share2 } from 'lucide-react';
+import { CircleHelp, Settings, Share2, Video } from 'lucide-react';
 import { useTranslations } from 'use-intl';
 
 import type { ShareSettingsCategory } from '../../../core/share-link';
@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 
 import { cn } from '@/lib/utils';
+import { RecordVideoPanel } from '@/modules/record-video/record-video-panel';
 
 interface ViewerActionsProps {
   chromeVisible: boolean;
@@ -18,15 +19,23 @@ interface ViewerActionsProps {
   settingsOpen: boolean;
   shareCategories: ShareSettingsCategory[];
   shareIncludeTimecode: boolean;
+  shareIncludeTrimSelection: boolean;
   shareOpen: boolean;
   shareUrl: string | null;
+  videoUrl: string | null;
+  recording: boolean;
   shortcutsOpen: boolean;
+  recordVideoOpen: boolean;
+  onStartRecord: () => void;
+  onStopRecord: () => void;
   onCopyShare: (url: string) => Promise<boolean>;
   onSettingsClick: MouseEventHandler<HTMLButtonElement>;
   onShareCategoriesChange: (categories: ShareSettingsCategory[]) => void;
   onShareIncludeTimecodeChange: (include: boolean) => void;
+  onShareIncludeTrimSelectionChange: (range: boolean) => void;
   onShareOpenChange: (open: boolean) => void;
   onShortcutsOpenChange: (open: boolean) => void;
+  onRecordVideoOpenChange: (open: boolean) => void;
 }
 
 export function ViewerActions({
@@ -35,15 +44,23 @@ export function ViewerActions({
   settingsOpen,
   shareCategories,
   shareIncludeTimecode,
+  shareIncludeTrimSelection,
   shareOpen,
   shareUrl,
+  videoUrl,
   shortcutsOpen,
+  recordVideoOpen,
+  recording,
+  onStartRecord,
+  onStopRecord,
   onCopyShare,
   onSettingsClick,
   onShareCategoriesChange,
   onShareIncludeTimecodeChange,
   onShareOpenChange,
   onShortcutsOpenChange,
+  onRecordVideoOpenChange,
+  onShareIncludeTrimSelectionChange,
 }: ViewerActionsProps) {
   const t = useTranslations('viewer');
   const tc = useTranslations('common');
@@ -57,6 +74,23 @@ export function ViewerActions({
       )}
       aria-label={t('actions')}
     >
+      {hasMap && (
+        <Popover open={recordVideoOpen} onOpenChange={onRecordVideoOpenChange}>
+          <PopoverTrigger asChild>
+            <Button variant="ghost" size="icon-sm" aria-label={tc('recordVideo')} title={tc('recordVideo')}>
+              <Video />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent>
+            <RecordVideoPanel
+              videoUrl={videoUrl}
+              recording={recording}
+              onStartRecord={onStartRecord}
+              onStopRecord={onStopRecord}
+            />
+          </PopoverContent>
+        </Popover>
+      )}
       {hasMap && (
         <Popover open={shareOpen} onOpenChange={onShareOpenChange}>
           <PopoverTrigger asChild>
@@ -75,9 +109,11 @@ export function ViewerActions({
               url={shareUrl}
               categories={shareCategories}
               includeTimecode={shareIncludeTimecode}
+              includeTrimSelection={shareIncludeTrimSelection}
               onCategoriesChange={onShareCategoriesChange}
               onCopy={onCopyShare}
               onIncludeTimecodeChange={onShareIncludeTimecodeChange}
+              onIncludeTrimSelectionChange={onShareIncludeTrimSelectionChange}
             />
           </PopoverContent>
         </Popover>

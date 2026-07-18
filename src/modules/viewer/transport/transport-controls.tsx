@@ -27,6 +27,8 @@ interface TransportControlsProps {
   playing: boolean;
   ended: boolean;
   time: number;
+  trimSelectionStart: number;
+  trimSelectionEnd: number;
   duration: number;
   songBpm: number;
   beatStepNumerator: number;
@@ -47,6 +49,7 @@ interface TransportControlsProps {
   reverseTimelineScroll: boolean;
   markers: TimelineMarker[];
   onTogglePlay: () => void;
+  onTrimSelection: (start: number, end: number) => void;
   onSeek: (time: number) => void;
   onSeekBeats: (beats: number) => void;
   onNumeratorChange: (value: number) => void;
@@ -70,6 +73,8 @@ export function TransportControls({
   playing,
   ended,
   time,
+  trimSelectionStart,
+  trimSelectionEnd,
   duration,
   songBpm,
   beatStepNumerator,
@@ -90,6 +95,7 @@ export function TransportControls({
   reverseTimelineScroll,
   markers,
   onTogglePlay,
+  onTrimSelection,
   onSeek,
   onSeekBeats,
   onNumeratorChange,
@@ -143,6 +149,9 @@ export function TransportControls({
       <TimelineSlider
         className="max-sm:order-1 max-sm:col-span-3"
         time={time}
+        trimSelectionStart={trimSelectionStart}
+        trimSelectionEnd={trimSelectionEnd}
+        isPlaying={playing}
         duration={duration}
         songBpm={songBpm}
         beatStep={beatStep}
@@ -151,6 +160,7 @@ export function TransportControls({
         markers={markers}
         onSeek={onSeek}
         onSeekBeats={onSeekBeats}
+        onTrimSelection={onTrimSelection}
       />
       <Separator orientation="vertical" className="h-8 max-sm:hidden" />
       <TimelineReadout

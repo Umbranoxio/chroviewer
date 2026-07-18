@@ -3,10 +3,12 @@ export interface TransportState {
   rate: number;
   anchorNow: number;
   anchorSongTime: number;
+  start: number;
+  end: number;
 }
 
 export function createTransport(): TransportState {
-  return { playing: false, rate: 1, anchorNow: 0, anchorSongTime: 0 };
+  return { playing: false, rate: 1, anchorNow: 0, anchorSongTime: 0, start: 0, end: 0 };
 }
 
 export function songTimeAt(state: TransportState, now: number): number {

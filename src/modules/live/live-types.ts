@@ -45,7 +45,7 @@ export interface LiveExperience extends LiveExperienceState {
 interface LiveTransport {
   clockRef: RefObject<SongClock | null>;
   seek(time: number): void;
-  togglePlay(): boolean | undefined;
+  togglePlay(start: number, end: number): boolean | undefined;
 }
 
 export interface LiveExperienceOptions {

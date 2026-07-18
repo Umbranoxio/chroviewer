@@ -2,6 +2,14 @@ import { useEffect, useMemo, useRef, useState, type CSSProperties, type MouseEve
 
 import { useRouter, useSearch } from '@tanstack/react-router';
 import { AlertCircle, Download, LoaderCircle, Menu, Pause, Play, RotateCcw, Volume2, X } from 'lucide-react';
+import {
+  Output,
+  BufferTarget,
+  Mp4OutputFormat,
+  CanvasSource,
+  getFirstEncodableVideoCodec,
+  QUALITY_MEDIUM,
+} from 'mediabunny';
 import { useTranslations } from 'use-intl';
 
 import type { LightshowMode } from '../../core/lighting/basic-light';
@@ -43,6 +51,9 @@ export function ViewerShell() {
   });
   const settingsRef = useRef(settings);
   settingsRef.current = settings;
+
+  const audioContextRef = useRef(new AudioContext());
+  const audioDestinationRef = useRef<MediaStreamAudioDestinationNode | null>(null);
   const [error, setError] = useState('');
   const [lightshowMode, setLightshowMode] = useState<LightshowMode>(
     search.lightshow ?? (settings.staticLights ? 'static' : 'full'),
@@ -52,7 +63,10 @@ export function ViewerShell() {
     lightshowModeRef,
     settings,
     settingsRef,
+    audioContextRef,
+    audioDestinationRef,
   });
+
   const [activePanel, setActivePanel] = useState<ViewerPanel>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [chromeVisible, setChromeVisible] = useState(true);
@@ -77,6 +91,7 @@ export function ViewerShell() {
       session.clearMapSelection();
     },
   });
+
   const session = useViewerSession({
     lightshowMode,
     lightshowModeRef,
@@ -89,6 +104,7 @@ export function ViewerShell() {
     sources,
     transport,
   });
+
   const liveTarget: LiveTarget | null =
     search.playerId === undefined
       ? null
@@ -207,6 +223,12 @@ export function ViewerShell() {
 
   const beatStep = transport.beatStepNumerator / transport.beatStepDenominator;
   const displayBeat = quantizedBeatAt(transport.time, sources.songBpm, beatStep);
+  const trimStartBeat = quantizedBeatAt(transport.clockRef.current?.getTimeStart() ?? 0, sources.songBpm, beatStep);
+  const trimEndBeat = quantizedBeatAt(
+    transport.clockRef.current?.getTimeEnd() ?? transport.duration,
+    sources.songBpm,
+    beatStep,
+  );
   const selectedDifficulty = useMemo(
     () => sources.rows.find((row) => row.key === session.selectedKey)?.difficulty ?? null,
     [session.selectedKey, sources.rows],
@@ -227,8 +249,85 @@ export function ViewerShell() {
       sources.songBpm,
     ],
   );
+
+  async function render() {
+    const exportCanvas = new OffscreenCanvas(1920, 1080);
+
+    const output = new Output({
+      target: new BufferTarget(), // Stored in memory
+      format: new Mp4OutputFormat(),
+    });
+
+    const videoCodec = await getFirstEncodableVideoCodec(output.format.getSupportedVideoCodecs(), {
+      width: session.canvasRef.current?.width,
+      height: session.canvasRef.current?.height,
+    });
+
+    let currentTime = 0;
+    const durationSec = 15;
+    const durationFrames = durationSec * 60;
+
+    transport.clockRef.current?.useExportDriver(() => currentTime);
+    transport.clockRef.current?.seek(0);
+    transport.togglePlay();
+
+    const originalNow: () => number = performance.now; // eslint-disable-line
+
+    performance.now = new Proxy(originalNow, {
+      apply() {
+        return currentTime * 1000;
+      },
+    });
+
+    if (!videoCodec) {
+      throw new Error("Your browser doesn't support video encoding.");
+    }
+
+    session.replaceCanvas(exportCanvas);
+
+    const canvasSource = new CanvasSource(exportCanvas, {
+      codec: videoCodec,
+      bitrate: QUALITY_MEDIUM,
+    });
+
+    output.addVideoTrack(canvasSource, { frameRate: 60 });
+
+    await output.start();
+
+    let currentFrame = 0;
+
+    console.log('Step 1');
+    for (currentFrame; currentFrame < durationFrames; currentFrame++) {
+      currentTime = currentFrame / 60;
+
+      session.renderOnce();
+
+      await canvasSource.add(currentTime, 1 / 60);
+    }
+
+    console.log('Step 2');
+
+    canvasSource.close();
+
+    await output.finalize();
+    if (session.canvasRef.current) session.replaceCanvas(session.canvasRef.current);
+
+    // 3. Revert to the original method
+    performance.now = originalNow;
+
+    session.resumeRenderLoop();
+    transport.clockRef.current?.disableExportDriver();
+
+    if (!output.target.buffer) return;
+
+    const videoBlob = new Blob([output.target.buffer], { type: output.format.mimeType });
+    console.log(URL.createObjectURL(videoBlob));
+  }
+
   const share = useViewerShare({
     beat: displayBeat,
+    trimStartBeat: trimStartBeat,
+    trimEndBeat: trimEndBeat,
     lightshowMode,
     liveTarget: liveTarget ?? undefined,
     mapIdentity: sources.mapIdentity,
@@ -454,13 +553,18 @@ export function ViewerShell() {
       )}
 
       <ViewerActions
+        recordVideoOpen={activePanel == 'record-video'}
         chromeVisible={chromeVisible}
+        recording={false}
         hasMap={sources.mapMeta !== null}
         settingsOpen={settingsOpen}
         shareCategories={share.shareCategories}
+        shareIncludeTrimSelection={share.includeTrimSelection}
         shareIncludeTimecode={share.includeTimecode}
+        onShareIncludeTrimSelectionChange={share.setIncludeTrimSelection}
         shareOpen={activePanel === 'share'}
         shareUrl={share.shareUrl}
+        videoUrl={null}
         shortcutsOpen={activePanel === 'shortcuts'}
         onCopyShare={share.copyShareLink}
         onSettingsClick={toggleSettings}
@@ -472,6 +576,17 @@ export function ViewerShell() {
         onShortcutsOpenChange={(open) => {
           setActivePanel(open ? 'shortcuts' : null);
         }}
+        onStartRecord={() => {
+          void render().then(() => {
+            console.log('Finished rendering!');
+          });
+        }}
+        onStopRecord={() => {
+          console.log('WIP');
+        }}
+        onRecordVideoOpenChange={(open) => {
+          setActivePanel(open ? 'record-video' : null);
+        }}
       />
 
       {session.selectedKey !== '' && (
@@ -480,6 +595,8 @@ export function ViewerShell() {
           visible={chromeVisible}
           playing={transport.playing}
           ended={transport.ended}
+          trimSelectionStart={transport.timeStart ?? 0}
+          trimSelectionEnd={transport.timeEnd ?? transport.duration}
           time={transport.time}
           duration={transport.duration}
           songBpm={sources.songBpm}
@@ -504,9 +621,8 @@ export function ViewerShell() {
           hitsoundVolume={settings.hitsoundVolume}
           reverseTimelineScroll={settings.reverseTimelineScroll}
           markers={timelineMarkers}
-          onTogglePlay={() => {
-            transport.togglePlay();
-          }}
+          onTrimSelection={transport.trim}
+          onTogglePlay={transport.play}
           onSeek={transport.seek}
           onSeekBeats={(beats) => {
             transport.seekBeats(beats, sources.songBpm);
