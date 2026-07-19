@@ -8,7 +8,7 @@ import {
   Mp4OutputFormat,
   CanvasSource,
   getFirstEncodableVideoCodec,
-  QUALITY_MEDIUM,
+  QUALITY_HIGH,
 } from 'mediabunny';
 import { useTranslations } from 'use-intl';
 
@@ -263,12 +263,14 @@ export function ViewerShell() {
       height: session.canvasRef.current?.height,
     });
 
+    if (!transport.clockRef.current) return;
+
     let currentTime = 0;
-    const durationSec = 15;
+    const durationSec = transport.clockRef.current.getTimeEnd() - transport.clockRef.current.getTimeStart();
     const durationFrames = durationSec * 60;
 
-    transport.clockRef.current?.useExportDriver(() => currentTime);
-    transport.clockRef.current?.seek(0);
+    transport.clockRef.current.useExportDriver(() => currentTime);
+    transport.clockRef.current.seek(0);
     transport.togglePlay();
 
     const originalNow: () => number = performance.now; // eslint-disable-line
@@ -287,7 +289,7 @@ export function ViewerShell() {
 
     const canvasSource = new CanvasSource(exportCanvas, {
       codec: videoCodec,
-      bitrate: QUALITY_MEDIUM,
+      bitrate: QUALITY_HIGH,
     });
 
     output.addVideoTrack(canvasSource, { frameRate: 60 });
@@ -316,7 +318,7 @@ export function ViewerShell() {
     performance.now = originalNow;
 
     session.resumeRenderLoop();
-    transport.clockRef.current?.disableExportDriver();
+    transport.clockRef.current.disableExportDriver();
 
     if (!output.target.buffer) return;
 
