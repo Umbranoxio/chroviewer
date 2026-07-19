@@ -32,6 +32,7 @@ interface ViewerSessionOptions {
   setError: (message: string) => void;
   setLightshowMode: Dispatch<SetStateAction<LightshowMode>>;
   setSettings: Dispatch<SetStateAction<ViewerSettings>>;
+  persistedSettings: ViewerSettings;
   settings: ViewerSettings;
   settingsRef: RefObject<ViewerSettings>;
   sources: Pick<
@@ -48,6 +49,7 @@ export function useViewerSession({
   setError,
   setLightshowMode,
   setSettings,
+  persistedSettings,
   settings,
   settingsRef,
   sources,
@@ -55,6 +57,8 @@ export function useViewerSession({
 }: ViewerSessionOptions) {
   const t = useTranslations('viewer');
   const activeSelectionRef = useRef<ActiveSelection | null>(null);
+  const selectionRequestRef = useRef(0);
+  const selectionGenerationRef = useRef(0);
   const [selectedKey, setSelectedKey] = useState('');
   const { canvasRef, environmentLoading, viewerReady, viewerRef } = useViewerRenderer({
     activeSelectionRef,
@@ -67,9 +71,12 @@ export function useViewerSession({
   });
 
   useEffect(() => {
-    saveViewerSettings(settings);
+    saveViewerSettings(persistedSettings);
+  }, [persistedSettings]);
+
+  useEffect(() => {
     viewerRef.current?.lifecycle.setRenderScale(settings.renderScale);
-  }, [settings]);
+  }, [settings.renderScale]);
 
   useEffect(() => {
     viewerRef.current?.view.setScreenDisplacementEffects(settings.screenDisplacementEffects);
@@ -193,6 +200,7 @@ export function useViewerSession({
   }
 
   async function selectDifficulty(row: DifficultyRow, initialBeat = 0) {
+    const requestId = ++selectionRequestRef.current;
     const viewer = viewerRef.current;
     if (
       viewer === null ||
@@ -227,9 +235,12 @@ export function useViewerSession({
     });
     const environmentResult = await viewer.view.setEnvironment(environmentId);
     if (environmentResult.isErr()) {
-      reportEnvironmentError(environmentResult.error);
+      if (requestId >= selectionGenerationRef.current) reportEnvironmentError(environmentResult.error);
       return;
     }
+    if (requestId < selectionGenerationRef.current) return;
+    selectionGenerationRef.current = requestId;
+    const generation = requestId;
     viewer.view.setLightshowMode(lightshowModeRef.current);
 
     activeSelectionRef.current = {
@@ -263,9 +274,13 @@ export function useViewerSession({
         onAudioDecodeError() {
           setError(t('errors.audioDecode'));
         },
+        shouldCommit() {
+          return generation === selectionGenerationRef.current;
+        },
         songBpm: sources.songBpm,
         volume: settings.masterMuted || settings.songMuted ? 0 : settings.masterVolume * settings.songVolume,
       });
+      if (clock === null || generation !== selectionGenerationRef.current) return;
     } else {
       transport.setHitsoundEvents(hitsoundEvents);
     }
@@ -273,6 +288,7 @@ export function useViewerSession({
     viewer.view.setSongDuration(clock.duration);
     viewer.view.setBeatSource(() => clock.currentBeat());
     setSelectedKey(row.key);
+    return true;
   }
 
   async function selectEnvironment(nextEnvironmentId: string) {
@@ -316,7 +332,9 @@ export function useViewerSession({
   }, [sources.rows, sources.songBpm, viewerReady]);
 
   function clearViewer() {
+    selectionGenerationRef.current = ++selectionRequestRef.current;
     activeSelectionRef.current = null;
+    setSelectedKey('');
     viewerRef.current?.view.clear();
   }
 
@@ -330,13 +348,17 @@ export function useViewerSession({
     applyLightshowMode(next);
   }
 
-  function applyLightshowMode(mode: LightshowMode) {
+  function applyLightshowMode(mode: LightshowMode, updateSettings = true) {
     lightshowModeRef.current = mode;
     setLightshowMode(mode);
     viewerRef.current?.view.setLightshowMode(mode);
-    if (mode !== 'none') {
+    if (updateSettings && mode !== 'none') {
       setSettings((current) => ({ ...current, staticLights: mode === 'static' }));
     }
+  }
+
+  function applyAuthoritativeLightshowMode(mode: LightshowMode) {
+    applyLightshowMode(mode, false);
   }
 
   function changeLightshowMode(mode: LightshowMode) {
@@ -391,6 +413,7 @@ export function useViewerSession({
     canvasRef,
     appendLiveReplayHeightEvents,
     appendLiveReplayNoteEvents,
+    applyAuthoritativeLightshowMode,
     changeLightshowMode,
     clearMapSelection,
     clearViewer,
@@ -402,5 +425,6 @@ export function useViewerSession({
     selectDifficulty,
     selectedDifficultyIndex,
     selectedKey,
+    viewerReady,
   };
 }

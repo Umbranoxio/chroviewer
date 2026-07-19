@@ -6,6 +6,17 @@ import { LivePlayerPlatform, LudusClientType } from './generated/proto/scoresabe
 import { LudusEnvelopeSchema, type LudusEnvelope } from './generated/proto/scoresaber/live/v1/ludus_pb';
 import { FollowRoomRequestSchema, LudusRoomContextType } from './generated/proto/scoresaber/live/v1/room_actions_pb';
 import { ConnectRequestSchema, HeartbeatSchema } from './generated/proto/scoresaber/live/v1/session_pb';
+import {
+  ClearWatchPartyMapRequestSchema,
+  MuteWatchPartyParticipantRequestSchema,
+  SetWatchPartyMapRequestSchema,
+  SetWatchPartyPlaybackStateRequestSchema,
+  SetWatchPartyViewerSettingsRequestSchema,
+  UnmuteWatchPartyParticipantRequestSchema,
+  type WatchPartyMap,
+  type WatchPartyViewerSettings,
+  WatchPartyPlaybackState,
+} from './generated/proto/scoresaber/live/v1/watch_party_pb';
 
 const protocolVersion = 1;
 
@@ -54,6 +65,21 @@ export function encodeConnectEnvelope(
   );
 }
 
+export function encodeWatchPartyConnectEnvelope(authToken: string, playerId: string | undefined, sequence: bigint) {
+  return encodeEnvelope(
+    {
+      case: 'connectRequest',
+      value: create(ConnectRequestSchema, {
+        authToken,
+        playerId,
+        clientType: LudusClientType.WEBSITE,
+        initialRoomContext: LudusRoomContextType.WATCH_PARTY,
+      }),
+    },
+    { sequence },
+  );
+}
+
 export function encodeFollowRoomEnvelope(matchId: string, playerId: string, sequence: bigint, connectionId: string) {
   return encodeEnvelope(
     {
@@ -87,6 +113,82 @@ export function encodeChatEnvelope(
       value: create(LiveChatMessageRequestSchema, { matchId, text }),
     },
     { sequence, connectionId, messageId },
+  );
+}
+
+export function encodeSetWatchPartyMapEnvelope(map: WatchPartyMap, sequence: bigint, connectionId: string) {
+  return encodeEnvelope(
+    {
+      case: 'setWatchPartyMapRequest',
+      value: create(SetWatchPartyMapRequestSchema, { map }),
+    },
+    { sequence, connectionId },
+  );
+}
+
+export function encodeClearWatchPartyMapEnvelope(sequence: bigint, connectionId: string) {
+  return encodeEnvelope(
+    {
+      case: 'clearWatchPartyMapRequest',
+      value: create(ClearWatchPartyMapRequestSchema),
+    },
+    { sequence, connectionId },
+  );
+}
+
+export function encodeSetWatchPartyPlaybackStateEnvelope(
+  playbackState: WatchPartyPlaybackState,
+  sequence: bigint,
+  connectionId: string,
+) {
+  return encodeEnvelope(
+    {
+      case: 'setWatchPartyPlaybackStateRequest',
+      value: create(SetWatchPartyPlaybackStateRequestSchema, { playbackState }),
+    },
+    { sequence, connectionId },
+  );
+}
+
+export function encodeSetWatchPartyViewerSettingsEnvelope(
+  viewerSettings: WatchPartyViewerSettings,
+  sequence: bigint,
+  connectionId: string,
+) {
+  return encodeEnvelope(
+    {
+      case: 'setWatchPartyViewerSettingsRequest',
+      value: create(SetWatchPartyViewerSettingsRequestSchema, { viewerSettings }),
+    },
+    { sequence, connectionId },
+  );
+}
+
+export function encodeMuteWatchPartyParticipantEnvelope(
+  participantConnectionId: string,
+  sequence: bigint,
+  connectionId: string,
+) {
+  return encodeEnvelope(
+    {
+      case: 'muteWatchPartyParticipantRequest',
+      value: create(MuteWatchPartyParticipantRequestSchema, { connectionId: participantConnectionId }),
+    },
+    { sequence, connectionId },
+  );
+}
+
+export function encodeUnmuteWatchPartyParticipantEnvelope(
+  participantConnectionId: string,
+  sequence: bigint,
+  connectionId: string,
+) {
+  return encodeEnvelope(
+    {
+      case: 'unmuteWatchPartyParticipantRequest',
+      value: create(UnmuteWatchPartyParticipantRequestSchema, { connectionId: participantConnectionId }),
+    },
+    { sequence, connectionId },
   );
 }
 

@@ -27,8 +27,10 @@ const difficultyAccent: Record<string, string> = {
 };
 
 interface MapSummaryCardProps {
+  difficultyReadOnly?: boolean;
   dockedOnMobile?: boolean;
   mobileCollapseRequest?: number;
+  showBackButton?: boolean;
   title: string;
   subtitle: string;
   author: string;
@@ -47,8 +49,10 @@ interface MapSummaryCardProps {
 }
 
 export function MapSummaryCard({
+  difficultyReadOnly = false,
   dockedOnMobile = false,
   mobileCollapseRequest = 0,
+  showBackButton = true,
   title,
   subtitle,
   author,
@@ -184,16 +188,18 @@ export function MapSummaryCard({
             mobileCollapsed && 'max-sm:hidden',
           )}
         >
-          <Button
-            className="size-6 max-sm:hidden"
-            variant="ghost"
-            size="icon-sm"
-            aria-label={tc('back')}
-            title={tc('back')}
-            onClick={onBack}
-          >
-            <ArrowLeft />
-          </Button>
+          {showBackButton && (
+            <Button
+              className="size-6 max-sm:hidden"
+              variant="ghost"
+              size="icon-sm"
+              aria-label={tc('back')}
+              title={tc('back')}
+              onClick={onBack}
+            >
+              <ArrowLeft />
+            </Button>
+          )}
           {mapUrl !== null && (
             <Button className="size-5" variant="ghost" size="icon-sm" asChild>
               <a
@@ -258,7 +264,7 @@ export function MapSummaryCard({
             </p>
           )}
           <div className="mt-auto pt-2 max-sm:pt-1">
-            <Select value={selectedKey} onValueChange={onSelectDifficulty}>
+            <Select value={selectedKey} disabled={difficultyReadOnly} onValueChange={onSelectDifficulty}>
               <SelectTrigger
                 className={cn(
                   'relative h-8 bg-background/70 pl-5 text-xs before:absolute before:left-2 before:h-4 before:w-0.5 before:bg-border max-sm:h-7',

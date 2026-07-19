@@ -12,6 +12,7 @@ interface LoadSongOptions {
   fallbackDuration: number;
   hitsoundEvents: HitsoundEvent[];
   onAudioDecodeError: () => void;
+  shouldCommit?: () => boolean;
   songBpm: number;
   volume: number;
 }
@@ -25,6 +26,7 @@ interface UseSongTransportOptions {
 export function useSongTransport({ lightshowModeRef, settings, settingsRef }: UseSongTransportOptions) {
   const clockRef = useRef<SongClock | null>(null);
   const autoplayRef = useRef(false);
+  const loadGenerationRef = useRef(0);
   const [duration, setDuration] = useState(0);
   const [time, setTime] = useState(0);
   const [started, setStarted] = useState(false);
@@ -109,6 +111,7 @@ export function useSongTransport({ lightshowModeRef, settings, settingsRef }: Us
   }
 
   function clear() {
+    loadGenerationRef.current++;
     hitsounds.clear();
     disposeClock();
     autoplayRef.current = false;
@@ -120,8 +123,9 @@ export function useSongTransport({ lightshowModeRef, settings, settingsRef }: Us
   }
 
   async function load(options: LoadSongOptions) {
-    disposeClock();
+    const generation = ++loadGenerationRef.current;
     let clock: SongClock;
+    let audioDecodeFailed = false;
     const audioData = options.audioData;
     if (audioData === null) {
       clock = createSilentClock(options.fallbackDuration, options.songBpm);
@@ -133,11 +137,17 @@ export function useSongTransport({ lightshowModeRef, settings, settingsRef }: Us
       });
       if (result.isErr()) {
         clock = createSilentClock(options.fallbackDuration, options.songBpm);
-        options.onAudioDecodeError();
+        audioDecodeFailed = true;
       } else {
         clock = result.value;
       }
     }
+    if (generation !== loadGenerationRef.current || options.shouldCommit?.() === false) {
+      clock.dispose();
+      return null;
+    }
+    disposeClock();
+    if (audioDecodeFailed) options.onAudioDecodeError();
     clock.setAudioOffset(settingsRef.current.audioOffsetMs / 1000);
     clock.setRate(playbackRate);
     clockRef.current = clock;
@@ -170,15 +180,30 @@ export function useSongTransport({ lightshowModeRef, settings, settingsRef }: Us
     return nextPlaying;
   }
 
-  function togglePlay() {
+  function pause() {
     const clock = clockRef.current;
-    if (clock === null) return undefined;
-    if (!clock.isPlaying()) return play();
-    clock.pause();
+    if (clock === null) return false;
+    if (clock.isPlaying()) clock.pause();
     autoplayRef.current = false;
     setAudioBlocked(false);
     setPlaying(false);
     return false;
+  }
+
+  function stop() {
+    const clock = clockRef.current;
+    if (clock === null) return;
+    pause();
+    clock.seek(0);
+    hitsounds.seek(0);
+    setTime(0);
+    setStarted(false);
+  }
+
+  function togglePlay() {
+    const clock = clockRef.current;
+    if (clock === null) return undefined;
+    return clock.isPlaying() ? pause() : play();
   }
 
   async function unlockAudio() {
@@ -225,6 +250,7 @@ export function useSongTransport({ lightshowModeRef, settings, settingsRef }: Us
     ended: duration > 0 && time >= duration && !playing,
     load,
     playbackRate,
+    pause,
     play,
     playing,
     seek,
@@ -234,6 +260,7 @@ export function useSongTransport({ lightshowModeRef, settings, settingsRef }: Us
     setHitsoundEvents,
     setPlaybackRate,
     started,
+    stop,
     time,
     togglePlay,
     unlockAudio,

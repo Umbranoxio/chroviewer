@@ -4,7 +4,7 @@ import { Result } from 'better-result';
 
 import type { Replay } from '../../core/replay/types';
 import type { ViewerSettings } from '../../core/viewer-settings';
-import { fetchBeatSaverHash } from '../../sources/beatsaver/provider';
+import { fetchBeatSaverHash, fetchBeatSaverMap } from '../../sources/beatsaver/provider';
 import type { DownloadProgress, MapLookup } from '../../sources/source-types';
 import { LiveMapCache } from '../live/live-map-cache';
 import { useViewerFileSource } from './use-viewer-file-source';
@@ -30,6 +30,8 @@ export function useViewerSources({ setError, setSettings, onClearViewer, onMapLo
     },
   });
   const remote = useViewerRemoteSource({
+    beginSourceRequest: files.beginSourceRequest,
+    isSourceRequestCurrent: files.isSourceRequestCurrent,
     mapIdentity: files.mapIdentity,
     loadSourceFiles: files.loadSourceFiles,
     parseReplay: files.parseReplay,
@@ -41,6 +43,7 @@ export function useViewerSources({ setError, setSettings, onClearViewer, onMapLo
 
   return {
     audioDataRef: files.audioDataRef,
+    clearSource: files.clearSource,
     coverUrl: files.coverUrl,
     hasLiveMap(hash: string) {
       return liveMapCache.current.has(hash);
@@ -50,22 +53,70 @@ export function useViewerSources({ setError, setSettings, onClearViewer, onMapLo
     },
     loadLookup: remote.loadLookup,
     async loadLiveReplay(hash: string, replay: Replay) {
+      const requestId = files.beginSourceRequest();
       files.pendingSharedViewRef.current = {};
       const cached = liveMapCache.current.get(hash);
       if (cached !== undefined) {
         setLiveDownloadProgress(null);
-        return files.loadSourceFiles(cached.files, replay, {
+        const loaded = await files.loadSourceFiles(requestId, cached.files, replay, {
           identity: { key: cached.key, hash: cached.hash },
         });
+        return loaded.isErr() ? Result.err(loaded.error) : Result.ok(undefined);
       }
       setLiveDownloadProgress(null);
-      const source = await fetchBeatSaverHash(hash, { onProgress: setLiveDownloadProgress });
+      const source = await fetchBeatSaverHash(hash, {
+        onProgress(progress) {
+          if (files.isSourceRequestCurrent(requestId)) setLiveDownloadProgress(progress);
+        },
+      });
+      if (!files.isSourceRequestCurrent(requestId)) return Result.ok(undefined);
       if (source.isErr()) return Result.err(source.error);
-      const loaded = await files.loadSourceFiles(source.value.files, replay, {
+      const loaded = await files.loadSourceFiles(requestId, source.value.files, replay, {
         identity: { key: source.value.key, hash: source.value.hash },
       });
-      if (loaded.isOk()) liveMapCache.current.set(source.value);
-      return loaded;
+      if (loaded.isErr()) return Result.err(loaded.error);
+      if (files.isSourceRequestCurrent(requestId)) liveMapCache.current.set(source.value);
+      return Result.ok(undefined);
+    },
+    async loadWatchPartyMapByHash(hash: string, signal?: AbortSignal) {
+      const requestId = files.beginSourceRequest();
+      files.pendingSharedViewRef.current = null;
+      setLiveDownloadProgress(null);
+      const source = await fetchBeatSaverHash(hash, {
+        onProgress(progress) {
+          if (files.isSourceRequestCurrent(requestId)) setLiveDownloadProgress(progress);
+        },
+        signal,
+      });
+      if (!files.isSourceRequestCurrent(requestId)) return Result.ok(null);
+      if (source.isErr()) return Result.err(source.error);
+      const loaded = await files.loadSourceFiles(requestId, source.value.files, null, {
+        identity: { key: source.value.key, hash: source.value.hash },
+      });
+      if (loaded.isErr()) return Result.err(loaded.error);
+      if (!files.isSourceRequestCurrent(requestId)) return Result.ok(null);
+      liveMapCache.current.set(source.value);
+      return Result.ok({ identity: { key: source.value.key, hash: source.value.hash }, rows: loaded.value });
+    },
+    async loadWatchPartyMapById(input: string, signal?: AbortSignal) {
+      const requestId = files.beginSourceRequest();
+      files.pendingSharedViewRef.current = null;
+      setLiveDownloadProgress(null);
+      const source = await fetchBeatSaverMap(input, {
+        onProgress(progress) {
+          if (files.isSourceRequestCurrent(requestId)) setLiveDownloadProgress(progress);
+        },
+        signal,
+      });
+      if (!files.isSourceRequestCurrent(requestId)) return Result.ok(null);
+      if (source.isErr()) return Result.err(source.error);
+      const loaded = await files.loadSourceFiles(requestId, source.value.files, null, {
+        identity: { key: source.value.key, hash: source.value.hash },
+      });
+      if (loaded.isErr()) return Result.err(loaded.error);
+      if (!files.isSourceRequestCurrent(requestId)) return Result.ok(null);
+      liveMapCache.current.set(source.value);
+      return Result.ok({ identity: { key: source.value.key, hash: source.value.hash }, rows: loaded.value });
     },
     loadSource: remote.loadSource,
     liveDownloadProgress,

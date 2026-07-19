@@ -34,6 +34,7 @@ const livePlayerIdSchema = liveIdSchema.check(z.regex(/^\d+$/));
 
 export const viewerSearchSchema = z.pipe(
   z.object({
+    party: z.catch(z.optional(livePlayerIdSchema), undefined),
     map: z.catch(z.optional(mapSourceSchema), undefined),
     replayUrl: z.catch(z.optional(remoteSourceUrlSchema), undefined),
     scoreId: z.catch(z.optional(scoreIdSchema), undefined),
@@ -50,6 +51,23 @@ export const viewerSearchSchema = z.pipe(
     authToken: z.catch(z.optional(z.string().check(z.minLength(1), z.maxLength(4096))), undefined),
   }),
   z.transform((search) => {
+    if (search.party !== undefined) {
+      return {
+        ...search,
+        map: undefined,
+        replayUrl: undefined,
+        scoreId: undefined,
+        difficulty: undefined,
+        beat: undefined,
+        autoplay: undefined,
+        playerId: undefined,
+        tournamentId: undefined,
+        roomId: undefined,
+        matchId: undefined,
+        watcherPlayerId: undefined,
+        authToken: undefined,
+      };
+    }
     if (search.playerId !== undefined) {
       return {
         ...search,

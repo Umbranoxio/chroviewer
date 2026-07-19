@@ -9,6 +9,7 @@ import "scoresaber/live/v1/replay_stream.proto";
 import "scoresaber/live/v1/room_state.proto";
 import "scoresaber/live/v1/room_actions.proto";
 import "scoresaber/live/v1/session.proto";
+import "scoresaber/live/v1/watch_party.proto";
 
 option csharp_namespace = "ScoreSaber.Live.V1";
 option go_package = "github.com/ScoreSaber/platform/apps/ludus/src/generated/proto/scoresaber/live/v1;livev1";
@@ -50,5 +51,14 @@ message LudusEnvelope {
     LiveChatMessageRequest chat_message_request = 70;
     LiveChatMessage chat_message = 71;
     LiveChatSnapshot chat_snapshot = 72;
+
+    WatchPartyStateSnapshot watch_party_state_snapshot = 80;
+    WatchPartyRosterSnapshot watch_party_roster_snapshot = 81;
+    SetWatchPartyMapRequest set_watch_party_map_request = 82;
+    ClearWatchPartyMapRequest clear_watch_party_map_request = 83;
+    SetWatchPartyPlaybackStateRequest set_watch_party_playback_state_request = 84;
+    MuteWatchPartyParticipantRequest mute_watch_party_participant_request = 85;
+    UnmuteWatchPartyParticipantRequest unmute_watch_party_participant_request = 86;
+    SetWatchPartyViewerSettingsRequest set_watch_party_viewer_settings_request = 87;
   }
 }

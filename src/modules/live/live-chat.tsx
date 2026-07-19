@@ -1,12 +1,12 @@
-import { useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent, type RefObject } from 'react';
+import { useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode, type RefObject } from 'react';
 
 import { ArrowDown, ChevronDown, ChevronUp, Send, Volume2 } from 'lucide-react';
 import { useTranslations } from 'use-intl';
 
-import { LiveChatMessageKind } from './generated/proto/scoresaber/live/v1/chat_pb';
+import { LiveChatMessageKind, type LiveChatMessage } from './generated/proto/scoresaber/live/v1/chat_pb';
 import { LiveChatMessageRow } from './live-chat-message';
 import { chatMessageKey } from './live-chat-state';
-import type { LiveExperience } from './live-types';
+import type { ChatExperience } from './live-types';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -19,13 +19,15 @@ const bottomThreshold = 48;
 const groupWindowMs = 5 * 60 * 1000;
 
 interface LiveChatProps {
+  disabledPlaceholder?: string;
   inputRef: RefObject<HTMLTextAreaElement | null>;
-  live: LiveExperience;
+  live: ChatExperience;
   open: boolean;
   onToggle: () => void;
+  renderMessageActions?: (message: LiveChatMessage) => ReactNode;
 }
 
-export function LiveChat({ inputRef, live, open, onToggle }: LiveChatProps) {
+export function LiveChat({ disabledPlaceholder, inputRef, live, open, onToggle, renderMessageActions }: LiveChatProps) {
   const t = useTranslations('live');
   const [draft, setDraft] = useState('');
   const [newMessageCount, setNewMessageCount] = useState(0);
@@ -95,7 +97,7 @@ export function LiveChat({ inputRef, live, open, onToggle }: LiveChatProps) {
     sendDraft();
   }
 
-  const inputPlaceholder = live.canChat ? t('chat.placeholder') : t('chat.signIn');
+  const inputPlaceholder = live.canChat ? t('chat.placeholder') : (disabledPlaceholder ?? t('chat.signIn'));
 
   return (
     <Card
@@ -154,6 +156,7 @@ export function LiveChat({ inputRef, live, open, onToggle }: LiveChatProps) {
                 {rows.map(({ message, grouped }) => (
                   <LiveChatMessageRow
                     key={chatMessageKey(message)}
+                    actions={renderMessageActions?.(message)}
                     message={message}
                     grouped={grouped}
                     pending={live.pendingChatMessageIds.includes(message.messageId)}

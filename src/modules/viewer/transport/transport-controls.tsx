@@ -22,7 +22,7 @@ import { cn } from '@/lib/utils';
 type TransportPanel = 'speed' | 'lights' | 'camera' | 'volume';
 
 interface TransportControlsProps {
-  mode: 'live' | 'playback';
+  mode: 'live' | 'party' | 'playback';
   visible: boolean;
   playing: boolean;
   ended: boolean;
@@ -36,6 +36,7 @@ interface TransportControlsProps {
   panel: TransportPanel | null;
   playbackRate: number;
   lightshowMode: LightshowMode;
+  lightshowReadOnly: boolean;
   replayCamera: ViewerSettings['replayCamera'];
   hasReplay: boolean;
   songMuted: boolean;
@@ -79,6 +80,7 @@ export function TransportControls({
   panel,
   playbackRate,
   lightshowMode,
+  lightshowReadOnly,
   replayCamera,
   hasReplay,
   songMuted,
@@ -107,7 +109,8 @@ export function TransportControls({
   onToggleHitsounds,
 }: TransportControlsProps) {
   const t = useTranslations('common');
-  const live = mode === 'live';
+  const partyT = useTranslations('watchParty');
+  const readOnly = mode !== 'playback';
   const beatStep = beatStepNumerator / beatStepDenominator;
   const displayBeat = quantizedBeatAt(time, songBpm, beatStep);
 
@@ -116,15 +119,15 @@ export function TransportControls({
       data-transport-controls
       className={cn(
         'fixed bottom-3 left-1/2 z-30 flex w-[min(52rem,calc(100vw-1.5rem))] -translate-x-1/2 items-center gap-2 bg-card/88 px-1.5 py-0 backdrop-blur-xl transition duration-200 max-sm:bottom-2 max-sm:grid max-sm:w-[calc(100vw-1rem)] max-sm:grid-cols-[auto_minmax(0,1fr)_auto] max-sm:gap-1.5 max-sm:p-2',
-        live && '!right-3 !left-[calc(var(--live-sidebar-width)+1.5rem)] !w-auto !translate-x-0 max-sm:!hidden',
+        readOnly && '!right-3 !left-[calc(var(--live-sidebar-width)+1.5rem)] !w-auto !translate-x-0 max-sm:!hidden',
         !visible && 'pointer-events-none translate-y-2 opacity-0',
       )}
     >
-      {live ? (
+      {readOnly ? (
         <span
           className="relative flex size-9 shrink-0 items-center justify-center max-sm:order-2 max-sm:size-8"
-          aria-label={t('live')}
-          title={t('live')}
+          aria-label={mode === 'party' ? partyT('transport') : t('live')}
+          title={mode === 'party' ? partyT('transport') : t('live')}
         >
           {playing && <span className="bg-timeline-playhead absolute size-2.5 animate-ping rounded-full opacity-40" />}
           <span className="bg-timeline-playhead relative size-2.5 rounded-full" />
@@ -147,7 +150,7 @@ export function TransportControls({
         songBpm={songBpm}
         beatStep={beatStep}
         reverseScroll={reverseTimelineScroll}
-        interactive={!live}
+        interactive={!readOnly}
         markers={markers}
         onSeek={onSeek}
         onSeekBeats={onSeekBeats}
@@ -164,9 +167,9 @@ export function TransportControls({
         copied={timelineCopied}
         onCopy={onCopyTimeline}
         onSeekBeats={onSeekBeats}
-        interactive={!live}
+        interactive={!readOnly}
       />
-      {!live && (
+      {!readOnly && (
         <>
           <BeatStepControl
             className="max-sm:hidden"
@@ -186,6 +189,7 @@ export function TransportControls({
         </>
       )}
       <LightshowMenu
+        disabled={lightshowReadOnly}
         open={panel === 'lights'}
         mode={lightshowMode}
         onOpenChange={(open) => {

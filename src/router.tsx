@@ -27,6 +27,7 @@ const searchKeyAliases: Record<string, string> = {
   autoplay: 'autoplay',
   lightshow: 'lightshow',
   settings: 'settings',
+  party: 'party',
   playerid: 'playerId',
   tournamentid: 'tournamentId',
   roomid: 'roomId',
@@ -36,6 +37,7 @@ const searchKeyAliases: Record<string, string> = {
 };
 
 const stringSearchAliases: Record<string, string[]> = {
+  party: ['party'],
   map: ['map'],
   replayUrl: ['replayurl'],
   scoreId: ['scoreid', 'ssscoreid'],

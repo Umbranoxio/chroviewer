@@ -30,21 +30,16 @@ export function LiveViewerPanel({ chatInputRef, chatOpen, live, onChatOpenChange
 
   return (
     <>
-      <div className="flex min-h-0 w-(--live-sidebar-width) flex-1 flex-col max-sm:hidden">
+      <div
+        className={cn(
+          'flex min-h-0 w-(--live-sidebar-width) flex-1 flex-col max-sm:fixed max-sm:inset-x-0 max-sm:bottom-[var(--live-keyboard-inset)] max-sm:z-40 max-sm:w-full max-sm:flex-none max-sm:pr-[env(safe-area-inset-right)] max-sm:pb-[var(--live-safe-area-bottom)] max-sm:pl-[env(safe-area-inset-left)]',
+          chatOpen &&
+            'max-sm:animate-in max-sm:slide-in-from-bottom-4 max-sm:fade-in max-sm:h-[calc(var(--live-mobile-chat-height)+env(safe-area-inset-bottom))] max-sm:duration-300',
+        )}
+      >
         <div className="shrink-0">
           <LivePlayerCard live={live} />
         </div>
-        <LiveChat inputRef={chatInputRef} live={live} open={chatOpen} onToggle={toggleChat} />
-      </div>
-
-      <div
-        className={cn(
-          'bg-card/92 fixed inset-x-0 bottom-[var(--live-keyboard-inset)] z-40 hidden flex-col pr-[env(safe-area-inset-right)] pb-[var(--live-safe-area-bottom)] pl-[env(safe-area-inset-left)] max-sm:flex',
-          chatOpen &&
-            'animate-in slide-in-from-bottom-4 fade-in h-[calc(var(--live-mobile-chat-height)+env(safe-area-inset-bottom))] duration-300',
-        )}
-      >
-        <LivePlayerCard live={live} />
         <LiveChat inputRef={chatInputRef} live={live} open={chatOpen} onToggle={toggleChat} />
       </div>
 

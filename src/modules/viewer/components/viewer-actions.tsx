@@ -15,6 +15,7 @@ import { cn } from '@/lib/utils';
 interface ViewerActionsProps {
   chromeVisible: boolean;
   hasMap: boolean;
+  shareEnabled?: boolean;
   settingsOpen: boolean;
   shareCategories: ShareSettingsCategory[];
   shareIncludeTimecode: boolean;
@@ -32,6 +33,7 @@ interface ViewerActionsProps {
 export function ViewerActions({
   chromeVisible,
   hasMap,
+  shareEnabled = true,
   settingsOpen,
   shareCategories,
   shareIncludeTimecode,
@@ -57,7 +59,7 @@ export function ViewerActions({
       )}
       aria-label={t('actions')}
     >
-      {hasMap && (
+      {hasMap && shareEnabled && (
         <Popover open={shareOpen} onOpenChange={onShareOpenChange}>
           <PopoverTrigger asChild>
             <Button

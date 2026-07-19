@@ -202,6 +202,44 @@
     "localFilesUnavailable": "Local maps and replay files cannot be shared by URL",
     "title": "Share viewer"
   },
+  "watchParty": {
+    "actionsFor": "Actions for {name}",
+    "chat": {
+      "muted": "You are muted",
+      "unavailable": "Chat is unavailable"
+    },
+    "clear": "Clear",
+    "connecting": "Joining watch party...",
+    "controls": "Host controls",
+    "downloadingMap": "Downloading map",
+    "errors": {
+      "action": "That watch-party action could not be sent",
+      "difficultyMissing": "The host-selected difficulty is not available in this map",
+      "invalidMapId": "Enter a BeatSaver ID",
+      "mapLoad": "The watch-party map could not be loaded",
+      "noPlayableDifficulty": "This map has no playable difficulty",
+      "session": "The watch party could not be joined"
+    },
+    "host": "Host",
+    "leave": "Leave party",
+    "mapInput": "BeatSaver ID",
+    "mapInputPlaceholder": "Map key",
+    "mute": "Mute",
+    "muted": "Muted",
+    "muteParticipant": "Mute {name}",
+    "hostedBy": "Hosted by",
+    "pause": "Pause",
+    "reconnecting": "Reconnecting to watch party...",
+    "retry": "Retry",
+    "set": "Set",
+    "start": "Start",
+    "stop": "Stop",
+    "transport": "Watch party",
+    "unmute": "Unmute",
+    "unmuteParticipant": "Unmute {name}",
+    "waitingForHostMap": "Waiting for host to set a map...",
+    "waitingForHostStart": "Waiting for host to start map..."
+  },
   "source": {
     "beatsaver": "BeatSaver",
     "beatsaverInputLabel": "BeatSaver map",

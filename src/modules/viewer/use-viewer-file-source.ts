@@ -69,6 +69,7 @@ export function useViewerFileSource({
   const replayRef = useRef<Replay | null>(null);
   const audioDataRef = useRef<ArrayBuffer | null>(null);
   const pendingSharedViewRef = useRef<PendingSharedView | null>(null);
+  const sourceGenerationRef = useRef(0);
   const [mapMeta, setMapMeta] = useState<MapMeta | null>(null);
   const [coverUrl, setCoverUrl] = useState<string | null>(null);
   const [songBpm, setSongBpm] = useState(0);
@@ -88,11 +89,21 @@ export function useViewerFileSource({
     const parser = new BeatmapParser();
     parserRef.current = parser;
     return () => {
+      sourceGenerationRef.current++;
       parser.dispose();
       parserRef.current = null;
       revokeCover();
     };
   }, []);
+
+  function beginSourceRequest() {
+    sourceGenerationRef.current++;
+    return sourceGenerationRef.current;
+  }
+
+  function isSourceRequestCurrent(requestId: number) {
+    return sourceGenerationRef.current === requestId;
+  }
 
   async function parseReplay(data: ArrayBuffer, source: SourceError['source'] = 'local') {
     parserRef.current ??= new BeatmapParser();
@@ -109,10 +120,14 @@ export function useViewerFileSource({
   }
 
   async function loadSourceFiles(
+    requestId: number,
     files: MapSourceFile[],
     replay: Replay | null = null,
     context: LoadedSourceContext = {},
   ) {
+    if (!isSourceRequestCurrent(requestId)) return Result.ok<DifficultyRow[]>([]);
+    const source =
+      context.scoreId !== undefined ? 'scoresaber' : context.identity === undefined ? 'local' : 'beatsaver';
     setError('');
     replayRef.current = replay;
     setShareScoreId(context.scoreId ?? null);
@@ -122,8 +137,6 @@ export function useViewerFileSource({
     onClearViewer();
     revokeCover();
     setCoverUrl(null);
-    const source =
-      context.scoreId !== undefined ? 'scoresaber' : context.identity === undefined ? 'local' : 'beatsaver';
     if (!files.some((file) => file.name.toLowerCase() === 'info.dat')) {
       return Result.err(
         new SourceError({
@@ -144,6 +157,7 @@ export function useViewerFileSource({
           operation: 'parse-map-package',
         }),
     });
+    if (!isSourceRequestCurrent(requestId)) return Result.ok([]);
     if (mapPackage.isErr()) {
       setMapMeta(null);
       setRows([]);
@@ -163,13 +177,31 @@ export function useViewerFileSource({
     onSourceLoaded();
     onMapLoaded();
     setMapIdentity(context.identity ?? null);
-    return Result.ok(undefined);
+    return Result.ok(mapPackage.value.rows);
+  }
+
+  function clearSource() {
+    beginSourceRequest();
+    pendingSharedViewRef.current = null;
+    replayRef.current = null;
+    audioDataRef.current = null;
+    setMapMeta(null);
+    setSongBpm(0);
+    setRows([]);
+    setMapIdentity(null);
+    setShareScoreId(null);
+    setSourceLink(null);
+    setReplayPlayer(null);
+    onClearViewer();
+    revokeCover();
+    setCoverUrl(null);
   }
 
   async function loadFiles(
     files: File[],
     resolveReplayMap: (hash: string) => Promise<SourceResult<BeatSaverMapSource>>,
   ) {
+    const requestId = beginSourceRequest();
     const result = await Result.gen(async function* () {
       pendingSharedViewRef.current = null;
       setMapIdentity(null);
@@ -179,6 +211,7 @@ export function useViewerFileSource({
       let replay: Replay | null = null;
       let identity: MapIdentity | undefined;
       for (const file of files) {
+        if (!isSourceRequestCurrent(requestId)) return Result.ok(undefined);
         if (/\.zip$/i.test(file.name)) {
           const data = yield* Result.await(
             Result.tryPromise({
@@ -191,7 +224,9 @@ export function useViewerFileSource({
                 }),
             }),
           );
+          if (!isSourceRequestCurrent(requestId)) return Result.ok(undefined);
           const archive = yield* Result.await(extractMapArchive(new Uint8Array(data)));
+          if (!isSourceRequestCurrent(requestId)) return Result.ok(undefined);
           sourceFiles.push(...archive);
         } else if (/\.dat$/i.test(file.name)) {
           const data = yield* Result.await(
@@ -205,6 +240,7 @@ export function useViewerFileSource({
                 }),
             }),
           );
+          if (!isSourceRequestCurrent(requestId)) return Result.ok(undefined);
           if (isScoreSaberReplay(new Uint8Array(data))) {
             if (replay !== null) {
               return Result.err(
@@ -216,6 +252,7 @@ export function useViewerFileSource({
               );
             }
             replay = yield* Result.await(parseReplay(data));
+            if (!isSourceRequestCurrent(requestId)) return Result.ok(undefined);
             const legacyMetadata = legacyMetadataFromFilename(file.name);
             if (legacyMetadata !== null) applyLegacyScoreSaberMetadata(replay, legacyMetadata);
           } else sourceFiles.push(file);
@@ -233,14 +270,16 @@ export function useViewerFileSource({
           );
         }
         const source = yield* Result.await(resolveReplayMap(hash));
+        if (!isSourceRequestCurrent(requestId)) return Result.ok(undefined);
         sourceFiles.push(...source.files);
         identity = { key: source.key, hash: source.hash };
       }
+      if (!isSourceRequestCurrent(requestId)) return Result.ok(undefined);
       if (replay !== null) pendingSharedViewRef.current = {};
-      yield* Result.await(loadSourceFiles(sourceFiles, replay, { identity }));
+      yield* Result.await(loadSourceFiles(requestId, sourceFiles, replay, { identity }));
       return Result.ok(undefined);
     });
-    if (result.isErr()) {
+    if (result.isErr() && isSourceRequestCurrent(requestId)) {
       pendingSharedViewRef.current = null;
       setMapMeta(null);
       setRows([]);
@@ -256,8 +295,11 @@ export function useViewerFileSource({
 
   return {
     audioDataRef,
+    beginSourceRequest,
+    clearSource,
     coverUrl,
     loadFiles,
+    isSourceRequestCurrent,
     loadSourceFiles,
     mapIdentity,
     mapMeta,

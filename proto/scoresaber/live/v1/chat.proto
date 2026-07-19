@@ -14,6 +14,11 @@ enum LiveChatMessageKind {
   LIVE_CHAT_MESSAGE_KIND_SYSTEM = 3;
 }
 
+enum LiveChatAudience {
+  LIVE_CHAT_AUDIENCE_UNSPECIFIED = 0;
+  LIVE_CHAT_AUDIENCE_MODERATORS = 1;
+}
+
 message LiveChatMessageRequest {
   string match_id = 1;
   string text = 2;
@@ -33,6 +38,7 @@ message LiveChatMessage {
   string text = 10;
   int64 created_at_unix_ms = 11;
   uint64 room_sequence = 12;
+  LiveChatAudience audience = 13;
 }
 
 message LiveChatSnapshot {

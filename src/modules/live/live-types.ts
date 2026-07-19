@@ -36,10 +36,18 @@ export interface LiveExperienceState {
   viewerCount: number | null;
 }
 
-export interface LiveExperience extends LiveExperienceState {
-  player: ScoreSaberReplayPlayer | null;
+export interface ChatExperience {
+  audioBlocked: boolean;
+  canChat: boolean;
+  chatError: boolean;
+  messages: LiveChatMessage[];
+  pendingChatMessageIds: string[];
   sendChatMessage(text: string): boolean;
   unlockAudio(): Promise<boolean>;
+}
+
+export interface LiveExperience extends LiveExperienceState, ChatExperience {
+  player: ScoreSaberReplayPlayer | null;
 }
 
 interface LiveTransport {

@@ -13,12 +13,13 @@ import { cn } from '@/lib/utils';
 const linkPattern = /https?:\/\/[^\s<>"']+/gi;
 
 interface LiveChatMessageRowProps {
+  actions?: ReactNode;
   grouped: boolean;
   message: LiveChatMessage;
   pending: boolean;
 }
 
-export function LiveChatMessageRow({ message, grouped, pending }: LiveChatMessageRowProps) {
+export function LiveChatMessageRow({ actions, message, grouped, pending }: LiveChatMessageRowProps) {
   const format = useFormatter();
   const t = useTranslations('live');
   const isChat = message.kind === LiveChatMessageKind.CHAT;
@@ -75,6 +76,7 @@ export function LiveChatMessageRow({ message, grouped, pending }: LiveChatMessag
                 {time}
               </time>
             )}
+            {actions}
           </div>
         )}
         <p className="mt-1 text-[13px] leading-relaxed break-words whitespace-pre-wrap">{linkify(message.text)}</p>

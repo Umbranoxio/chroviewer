@@ -1,0 +1,82 @@
+syntax = "proto3";
+
+package scoresaber.live.v1;
+
+option csharp_namespace = "ScoreSaber.Live.V1";
+option go_package = "github.com/ScoreSaber/platform/apps/ludus/src/generated/proto/scoresaber/live/v1;livev1";
+
+enum WatchPartyPlaybackState {
+  WATCH_PARTY_PLAYBACK_STATE_UNSPECIFIED = 0;
+  WATCH_PARTY_PLAYBACK_STATE_STOPPED = 1;
+  WATCH_PARTY_PLAYBACK_STATE_PAUSED = 2;
+  WATCH_PARTY_PLAYBACK_STATE_PLAYING = 3;
+}
+
+message WatchPartyMap {
+  string beat_saver_id = 1;
+  string hash = 2;
+  string characteristic = 3;
+  string difficulty = 4;
+}
+
+message WatchPartyViewerSettings {
+  uint32 schema_version = 1;
+  string json = 2;
+}
+
+message WatchPartyState {
+  uint64 revision = 1;
+  optional WatchPartyMap map = 2;
+  WatchPartyPlaybackState playback_state = 3;
+  double anchor_song_seconds = 4;
+  int64 anchor_server_unix_ms = 5;
+  double playback_rate = 6;
+  bool map_revealed = 7;
+  optional WatchPartyViewerSettings viewer_settings = 8;
+}
+
+message WatchPartyParticipant {
+  string connection_id = 1;
+  string player_id = 2;
+  string display_name = 3;
+  bool authenticated = 4;
+  bool host = 5;
+  bool muted = 6;
+}
+
+message WatchPartySelfCapabilities {
+  bool host = 1;
+  bool can_moderate = 2;
+  bool can_chat = 3;
+}
+
+message WatchPartyStateSnapshot {
+  WatchPartyState state = 1;
+}
+
+message WatchPartyRosterSnapshot {
+  repeated WatchPartyParticipant participants = 1;
+  WatchPartySelfCapabilities self_capabilities = 2;
+}
+
+message SetWatchPartyMapRequest {
+  WatchPartyMap map = 1;
+}
+
+message ClearWatchPartyMapRequest {}
+
+message SetWatchPartyPlaybackStateRequest {
+  WatchPartyPlaybackState playback_state = 1;
+}
+
+message SetWatchPartyViewerSettingsRequest {
+  WatchPartyViewerSettings viewer_settings = 1;
+}
+
+message MuteWatchPartyParticipantRequest {
+  string connection_id = 1;
+}
+
+message UnmuteWatchPartyParticipantRequest {
+  string connection_id = 1;
+}
