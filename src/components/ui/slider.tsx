@@ -11,20 +11,7 @@ interface SliderProps extends ComponentProps<typeof SliderPrimitive.Root> {
   onValueChange: (value: number[]) => void;
 }
 
-function Slider({
-  className,
-  value,
-  defaultValue,
-  min = 0,
-  explicitMin = min,
-  max = 100,
-  step = 1,
-  variant = 'default',
-  orientation = 'horizontal',
-  notchDivisor = 1,
-  onValueChange,
-  ...props
-}: SliderProps) {
+function Slider({ className, value, defaultValue, min = 0, explicitMin = min, max = 100, step = 1, variant = 'default', orientation = 'horizontal', notchDivisor = 1, onValueChange, ...props }: SliderProps) {
   const mappedValue = value?.map((v) => (v === explicitMin ? min : v));
   const mappedDefaultValue = defaultValue?.map((v) => (v === explicitMin ? min : v));
 
