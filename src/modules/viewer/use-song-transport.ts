@@ -41,6 +41,9 @@ export function useSongTransport({ lightshowModeRef, settings, settingsRef }: Us
     lightshowModeRef,
     settingsRef,
     volume: settings.masterMuted ? 0 : settings.masterVolume * settings.hitsoundVolume,
+    hitsoundPreset: settings.hitsoundPreset,
+    customGoodHitsound: settings.customGoodHitsound,
+    customBadHitsound: settings.customBadHitsound,
   });
 
   useEffect(() => {

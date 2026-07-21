@@ -66,6 +66,9 @@ export interface ViewerSettings {
   saberYRotation: number;
   saberZRotation: number;
   hitsounds: boolean;
+  hitsoundPreset: HitsoundPreset;
+  customGoodHitsound: string | null;
+  customBadHitsound: string | null;
   masterMuted: boolean;
   songMuted: boolean;
   masterVolume: number;
@@ -89,6 +92,8 @@ export interface ViewerSettings {
   replayCameraForceUpright: boolean;
   autoHide: boolean;
 }
+
+export type HitsoundPreset = z.infer<typeof hitsoundPresetSchema>;
 
 export const MIN_AUDIO_OFFSET_MS = -1000;
 export const MAX_AUDIO_OFFSET_MS = 1000;
@@ -242,6 +247,9 @@ export const DEFAULT_VIEWER_SETTINGS: ViewerSettings = {
   hsvProfile: '',
   ...DEFAULT_REPLAY_SABER_SETTINGS,
   hitsounds: true,
+  hitsoundPreset: 'default',
+  customGoodHitsound: null,
+  customBadHitsound: null,
   masterMuted: false,
   songMuted: false,
   masterVolume: 1,
@@ -254,8 +262,9 @@ export const DEFAULT_VIEWER_SETTINGS: ViewerSettings = {
   autoHide: true,
 };
 
-const storageKey = 'chroviewer.settings.v7';
-const previousStorageKey = 'chroviewer.settings.v6';
+const storageKey = 'chroviewer.settings.v8';
+const previousStorageKey = 'chroviewer.settings.v7';
+const v6StorageKey = 'chroviewer.settings.v6';
 const incorrectColorStorageKey = 'chroviewer.settings.v5';
 const olderStorageKey = 'chroviewer.settings.v4';
 const legacyStorageKey = 'chroviewer.settings.v3';
@@ -292,6 +301,16 @@ function hexColorSchema(fallback: string) {
     fallback,
   );
 }
+
+const hitsoundPresetSchema = z.enum([
+  'default',
+  'ChromapperTick',
+  'OsuHitsound',
+  'ThumpyHitsound',
+  'GalxHitsound',
+  'RabbitViewerTick',
+  'custom',
+]);
 
 const viewerSettingsObjectSchema = z.object({
   graphicsQuality: z.catch(z.enum(['none', 'low', 'medium', 'high']), DEFAULT_VIEWER_SETTINGS.graphicsQuality),
@@ -352,6 +371,9 @@ const viewerSettingsObjectSchema = z.object({
   saberYRotation: numberSetting(DEFAULT_VIEWER_SETTINGS.saberYRotation, -45, 45),
   saberZRotation: numberSetting(DEFAULT_VIEWER_SETTINGS.saberZRotation, -45, 45),
   hitsounds: z.catch(z.boolean(), DEFAULT_VIEWER_SETTINGS.hitsounds),
+  hitsoundPreset: z.catch(hitsoundPresetSchema, DEFAULT_VIEWER_SETTINGS.hitsoundPreset),
+  customGoodHitsound: z.catch(z.nullable(z.string()), DEFAULT_VIEWER_SETTINGS.customGoodHitsound),
+  customBadHitsound: z.catch(z.nullable(z.string()), DEFAULT_VIEWER_SETTINGS.customBadHitsound),
   masterMuted: z.catch(z.boolean(), DEFAULT_VIEWER_SETTINGS.masterMuted),
   songMuted: z.catch(z.boolean(), DEFAULT_VIEWER_SETTINGS.songMuted),
   masterVolume: numberSetting(DEFAULT_VIEWER_SETTINGS.masterVolume, 0, 1),
@@ -408,6 +430,13 @@ export function loadViewerSettings(
   const previousText = storage.getItem(previousStorageKey);
   if (previousText !== null) {
     const parsed = Result.try((): unknown => JSON.parse(previousText));
+    if (parsed.isErr()) return defaults;
+    return sanitizeViewerSettings(parsed.value);
+  }
+
+  const v6Text = storage.getItem(v6StorageKey);
+  if (v6Text !== null) {
+    const parsed = Result.try((): unknown => JSON.parse(v6Text));
     if (parsed.isErr()) return defaults;
     return resetSaberModel(sanitizeViewerSettings(parsed.value));
   }

@@ -47,47 +47,119 @@ export function firstHitsoundAfter(events: HitsoundEvent[], time: number) {
   return low;
 }
 
+const SILENCE_THRESHOLD = 0.001;
+
+function trimLeadingSilence(buffer: AudioBuffer, context: AudioContext): AudioBuffer {
+  const { numberOfChannels, sampleRate, length } = buffer;
+  let startSample = 0;
+  outer: for (let i = 0; i < length; i++) {
+    for (let c = 0; c < numberOfChannels; c++) {
+      if (Math.abs(buffer.getChannelData(c)[i] ?? 0) > SILENCE_THRESHOLD) {
+        startSample = i;
+        break outer;
+      }
+    }
+  }
+  if (startSample === 0) return buffer;
+  const trimmedLength = length - startSample;
+  const trimmed = context.createBuffer(numberOfChannels, trimmedLength, sampleRate);
+  for (let c = 0; c < numberOfChannels; c++) {
+    trimmed.copyToChannel(buffer.getChannelData(c).subarray(startSample), c);
+  }
+  return trimmed;
+}
+
 export class HitsoundPlayer {
   private context: AudioContext | null = null;
-  private sounds = new Map<OscillatorNode, GainNode>();
+  private sounds = new Map<AudioScheduledSourceNode, GainNode>();
   private volume = 1;
+  private goodCutBuffer: AudioBuffer | null = null;
+  private badCutBuffer: AudioBuffer | null = null;
+  private customGoodCutArrayBuffer: ArrayBuffer | null = null;
+  private customBadCutArrayBuffer: ArrayBuffer | null = null;
 
   setVolume(volume: number) {
     this.volume = Math.min(Math.max(volume, 0), 1);
   }
 
+  async setBuffers(goodBuffer: ArrayBuffer | null, badBuffer: ArrayBuffer | null) {
+    this.customGoodCutArrayBuffer = goodBuffer;
+    this.customBadCutArrayBuffer = badBuffer;
+    if (this.context !== null) {
+      this.goodCutBuffer = goodBuffer ? await this.decodeBuffer(goodBuffer) : null;
+      this.badCutBuffer = badBuffer ? await this.decodeBuffer(badBuffer) : null;
+    }
+  }
+
+  private async decodeBuffer(arrayBuffer: ArrayBuffer): Promise<AudioBuffer | null> {
+    if (!this.context) return null;
+    try {
+      // we need a copy because decodeAudioData detaches the buffer
+      const buf = arrayBuffer.slice(0);
+      const decoded = await this.context.decodeAudioData(buf);
+      return trimLeadingSilence(decoded, this.context);
+    } catch (e) {
+      console.warn('Failed to decode hitsound buffer', e);
+      return null;
+    }
+  }
+
   resume() {
-    this.context ??= new AudioContext();
+    if (!this.context) {
+      this.context = new AudioContext();
+      if (this.customGoodCutArrayBuffer)
+        void this.decodeBuffer(this.customGoodCutArrayBuffer).then((b) => (this.goodCutBuffer = b));
+      if (this.customBadCutArrayBuffer)
+        void this.decodeBuffer(this.customBadCutArrayBuffer).then((b) => (this.badCutBuffer = b));
+    }
     void this.context.resume();
   }
 
   play(good: boolean, delay = 0) {
     const context = this.context;
     if (context === null || this.volume === 0) return;
-    const oscillator = context.createOscillator();
-    const gain = context.createGain();
+
+    const buffer = good ? this.goodCutBuffer : this.badCutBuffer;
     const start = context.currentTime + Math.max(delay, 0);
-    oscillator.type = good ? 'sine' : 'square';
-    oscillator.frequency.setValueAtTime(good ? 880 : 180, start);
-    gain.gain.setValueAtTime((good ? 1 : 0.67) * this.volume, start);
-    gain.gain.exponentialRampToValueAtTime(0.0001, start + (good ? 0.035 : 0.07));
-    this.sounds.set(oscillator, gain);
-    oscillator.onended = () => {
-      oscillator.disconnect();
-      gain.disconnect();
-      this.sounds.delete(oscillator);
-    };
-    oscillator.connect(gain);
-    gain.connect(context.destination);
-    oscillator.start(start);
-    oscillator.stop(start + (good ? 0.04 : 0.075));
+    const gain = context.createGain();
+
+    if (buffer) {
+      const source = context.createBufferSource();
+      source.buffer = buffer;
+      gain.gain.setValueAtTime((good ? 1 : 0.67) * this.volume, start);
+      this.sounds.set(source, gain);
+      source.onended = () => {
+        source.disconnect();
+        gain.disconnect();
+        this.sounds.delete(source);
+      };
+      source.connect(gain);
+      gain.connect(context.destination);
+      source.start(start);
+    } else {
+      const oscillator = context.createOscillator();
+      oscillator.type = good ? 'sine' : 'square';
+      oscillator.frequency.setValueAtTime(good ? 880 : 180, start);
+      gain.gain.setValueAtTime((good ? 1 : 0.67) * this.volume, start);
+      gain.gain.exponentialRampToValueAtTime(0.0001, start + (good ? 0.035 : 0.07));
+      this.sounds.set(oscillator, gain);
+      oscillator.onended = () => {
+        oscillator.disconnect();
+        gain.disconnect();
+        this.sounds.delete(oscillator);
+      };
+      oscillator.connect(gain);
+      gain.connect(context.destination);
+      oscillator.start(start);
+      oscillator.stop(start + (good ? 0.04 : 0.075));
+    }
   }
 
   stop() {
-    for (const [oscillator, gain] of this.sounds) {
-      oscillator.onended = null;
-      oscillator.stop();
-      oscillator.disconnect();
+    for (const [source, gain] of this.sounds) {
+      source.onended = null;
+      source.stop();
+      source.disconnect();
       gain.disconnect();
     }
     this.sounds.clear();
@@ -97,5 +169,7 @@ export class HitsoundPlayer {
     this.stop();
     if (this.context !== null) void this.context.close();
     this.context = null;
+    this.goodCutBuffer = null;
+    this.badCutBuffer = null;
   }
 }
