@@ -18,8 +18,10 @@ import {
   RGBAFormat,
   Scene,
   ShaderMaterial,
+  SRGBColorSpace,
   TextureLoader,
   Vector2,
+  Vector4,
   ZeroFactor,
   type PerspectiveCamera,
   type Texture,
@@ -27,6 +29,7 @@ import {
   WebGLRenderTarget,
 } from 'three';
 
+import type { EnvironmentBackgroundGradient } from '../environment/environment-runtime';
 import { GAME_FOG_PARAMS, type FogParams } from '../fog-math';
 import {
   BLOOMFOG_DOWNSAMPLE_FRAG,
@@ -35,6 +38,8 @@ import {
   CAPTURE_FRAG,
   CAPTURE_VERT,
   FULLSCREEN_VERT,
+  SKY_GRADIENT_FRAG,
+  SKY_GRADIENT_VERT,
 } from '../shaders/passes';
 import {
   BLOOMFOG_CAPTURE_FOV,
@@ -125,7 +130,11 @@ export class BloomfogPipeline {
   private readonly captureMesh: Mesh;
   private readonly quadGeometry = new BufferGeometry();
   private alphaMask: Texture = buildAlphaMask();
-  private readonly captureUniforms = { _BloomfogAlphaMask: { value: this.alphaMask } };
+  private readonly captureUniforms = {
+    _BloomfogAlphaMask: { value: this.alphaMask },
+    _CaptureFalloff: { value: GAME_FOG_PARAMS.attenuation },
+    _CaptureOffset: { value: GAME_FOG_PARAMS.offset },
+  };
 
   private capacity = 0;
   private quadAttributes: BufferAttribute[] = [];
@@ -151,6 +160,16 @@ export class BloomfogPipeline {
   private readonly downsampleMaterial: ShaderMaterial;
   private readonly upsampleMaterial: ShaderMaterial;
   private readonly finalUpsampleMaterial: ShaderMaterial;
+  private readonly gradientMaterial: ShaderMaterial;
+  private gradientTexture: DataTexture | null = null;
+  private readonly gradientUniforms = {
+    _GradientTex: { value: null as Texture | null },
+    _InverseProjectionMatrix: { value: new Matrix4() },
+    _CameraToWorldMatrix: { value: new Matrix4() },
+    _Color: { value: new Vector4(1, 1, 1, 1) },
+  };
+  private readonly cachedGradientCamera = new Float64Array(32);
+  private readonly nextGradientCamera = new Float64Array(32);
   private readonly downsampleUniforms = {
     _SourceTex: { value: this.raw.texture },
     _SourceTexelSize: { value: new Vector2() },
@@ -230,6 +249,21 @@ export class BloomfogPipeline {
     this.downsampleMaterial = passMaterial(BLOOMFOG_DOWNSAMPLE_FRAG, this.downsampleUniforms);
     this.upsampleMaterial = passMaterial(BLOOMFOG_UPSAMPLE_FRAG, this.upsampleUniforms);
     this.finalUpsampleMaterial = passMaterial(BLOOMFOG_FINAL_UPSAMPLE_FRAG, this.finalUpsampleUniforms);
+    this.gradientMaterial = new ShaderMaterial({
+      vertexShader: SKY_GRADIENT_VERT,
+      fragmentShader: SKY_GRADIENT_FRAG,
+      uniforms: this.gradientUniforms,
+      depthTest: false,
+      depthWrite: false,
+      transparent: true,
+      blending: CustomBlending,
+      blendEquation: AddEquation,
+      blendSrc: OneFactor,
+      blendDst: OneFactor,
+      blendEquationAlpha: AddEquation,
+      blendSrcAlpha: ZeroFactor,
+      blendDstAlpha: OneFactor,
+    });
 
     this.ensureCapacity(1);
     this.captureMesh = new Mesh(this.quadGeometry, [this.addCaptureMaterial, this.maxCaptureMaterial]);
@@ -317,6 +351,11 @@ export class BloomfogPipeline {
     if (!Object.is(Math.fround(this.finalUpsampleUniforms._AutoExposureLimit.value), this.cachedAutoExposureLimit)) {
       return false;
     }
+    if (this.gradientTexture !== null) {
+      for (let index = 0; index < 32; index++) {
+        if (this.nextGradientCamera[index] !== this.cachedGradientCamera[index]) return false;
+      }
+    }
     return (
       uint32PrefixEqual(this.positionsBits, this.nextPositionsBits, quadCount * 12) &&
       uint32PrefixEqual(this.viewPosBits, this.nextViewPosBits, quadCount * 12) &&
@@ -355,7 +394,19 @@ export class BloomfogPipeline {
     this.cachedQuadCount = quadCount;
     this.cachedAdditiveQuadCount = additiveQuadCount;
     this.cachedAutoExposureLimit = Math.fround(this.finalUpsampleUniforms._AutoExposureLimit.value);
+    this.cachedGradientCamera.set(this.nextGradientCamera);
     this.cacheValid = true;
+  }
+
+  private renderGradientPass(renderer: WebGLRenderer) {
+    const previousTarget = renderer.getRenderTarget();
+    const previousAutoClear = renderer.autoClear;
+    renderer.autoClear = false;
+    this.fsMesh.material = this.gradientMaterial;
+    renderer.setRenderTarget(this.prepass);
+    renderer.render(this.passScene, this.passCamera);
+    renderer.autoClear = previousAutoClear;
+    renderer.setRenderTarget(previousTarget);
   }
 
   private clearPrepass(renderer: WebGLRenderer) {
@@ -369,11 +420,33 @@ export class BloomfogPipeline {
     renderer.setClearColor(this.clearColorTmp, previousClearAlpha);
   }
 
+  setBackgroundGradient(gradient: EnvironmentBackgroundGradient | null) {
+    this.gradientTexture?.dispose();
+    this.gradientTexture = null;
+    this.gradientUniforms._GradientTex.value = null;
+    if (gradient !== null) {
+      const texture = new DataTexture(new Uint8Array(gradient.ramp), gradient.ramp.length / 4, 1, RGBAFormat);
+      texture.colorSpace = SRGBColorSpace;
+      texture.minFilter = LinearFilter;
+      texture.magFilter = LinearFilter;
+      texture.wrapS = ClampToEdgeWrapping;
+      texture.wrapT = ClampToEdgeWrapping;
+      texture.needsUpdate = true;
+      this.gradientTexture = texture;
+      this.gradientUniforms._GradientTex.value = texture;
+      const tint = new Color(gradient.tint[0], gradient.tint[1], gradient.tint[2]).convertSRGBToLinear();
+      this.gradientUniforms._Color.value.set(tint.r, tint.g, tint.b, gradient.tint[3]);
+    }
+    this.invalidate();
+  }
+
   setFogParams(params: FogParams) {
     this.fogUniforms._CustomFogOffset.value = params.offset;
     this.fogUniforms._CustomFogAttenuation.value = params.attenuation;
     this.fogUniforms._CustomFogHeightFogStartY.value = params.startY;
     this.fogUniforms._CustomFogHeightFogHeight.value = params.height;
+    this.captureUniforms._CaptureOffset.value = params.offset;
+    this.captureUniforms._CaptureFalloff.value = params.attenuation;
     this.finalUpsampleUniforms._AutoExposureLimit.value = params.autoExposureLimit;
     this.invalidate();
   }
@@ -396,11 +469,18 @@ export class BloomfogPipeline {
     elements[5] *= ratioY;
     elements[9] *= ratioY;
     this.fogUniforms._CustomFogTextureToScreenRatio.value.set(ratioX, ratioY);
+    if (this.gradientTexture !== null) {
+      this.gradientUniforms._InverseProjectionMatrix.value.copy(projection).invert();
+      this.gradientUniforms._CameraToWorldMatrix.value.copy(camera.matrixWorld);
+      this.nextGradientCamera.set(camera.matrixWorld.elements);
+      this.nextGradientCamera.set(elements, 16);
+    }
     const { quadCount, additiveQuadCount } = this.writeQuads(lights, camera.matrixWorldInverse.elements, elements);
 
     if (this.outputMatches(quadCount, additiveQuadCount)) return;
     if (quadCount === 0) {
       this.clearPrepass(renderer);
+      if (this.gradientTexture !== null) this.renderGradientPass(renderer);
       this.commitOutput(renderer, quadCount, additiveQuadCount);
       return;
     }
@@ -446,6 +526,8 @@ export class BloomfogPipeline {
       source = target;
     }
 
+    if (this.gradientTexture !== null) this.renderGradientPass(renderer);
+
     renderer.setRenderTarget(previousTarget);
     renderer.setClearColor(this.clearColorTmp, previousClearAlpha);
     this.commitOutput(renderer, quadCount, additiveQuadCount);
@@ -461,6 +543,8 @@ export class BloomfogPipeline {
     this.downsampleMaterial.dispose();
     this.upsampleMaterial.dispose();
     this.finalUpsampleMaterial.dispose();
+    this.gradientMaterial.dispose();
+    this.gradientTexture?.dispose();
     this.quadGeometry.dispose();
     this.fsMesh.geometry.dispose();
     this.alphaMask.dispose();

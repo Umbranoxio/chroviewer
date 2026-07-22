@@ -16,6 +16,6 @@ ChroViewer's environment data, preview math, shaders, materials, lighting and re
 
 ChroViewer is distributed under [GNU GPL v2](LICENSE) (`GPL-2.0-only`)
 
-The replay headset uses [VR Headset](https://poly.pizza/m/raCB2tOkk3) by J-Toastie under [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/) with a dark recolor and custom lighting materials
+Third-party asset attributions are listed in [ATTRIBUTIONS.md](ATTRIBUTIONS.md)
 
 ChroViewer is an unofficial community project. It is not affiliated with or endorsed by Beat Games, Meta, ChroMapper or BeatSaver. Any Beat Saber names / assets belong to their respective owners

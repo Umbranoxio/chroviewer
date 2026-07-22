@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import { parseV3ChromaEnvironment } from '../chroma-environment';
+import { parseNoodleBeatmap } from '../noodle-data';
 import { parseV3Gls } from './parse-gls';
 import {
   createDifficulty,
@@ -103,7 +105,7 @@ const bookmarkSchema = z.object({
   n: beatSaberStringSchema,
   c: z.array(numberSchema).min(3).max(4).optional().catch(undefined),
 });
-const customDifficultyDataSchema = z.object({
+const customDifficultyDataSchema = z.looseObject({
   bookmarks: z.array(bookmarkSchema).catch([]),
   fakeColorNotes: z.array(colorNoteSchema).catch([]),
   fakeBombNotes: z.array(bombNoteSchema).catch([]),
@@ -297,6 +299,8 @@ export function parseV3Difficulty(input: unknown): Difficulty {
 
   const customData = root.customData;
   if (customData !== undefined) {
+    difficulty.chromaEnvironment = parseV3ChromaEnvironment(customData);
+    difficulty.noodle = parseNoodleBeatmap(customData, 3);
     for (const bookmark of customData.bookmarks) {
       difficulty.bookmarks.push({
         jsonTime: bookmark.b,

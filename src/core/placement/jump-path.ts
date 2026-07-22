@@ -3,7 +3,7 @@ import { Z_OFFSET } from './grid';
 const leadInSeconds = 0.5;
 const leadInDistance = 100;
 const wallTailGraceSeconds = 0.15;
-const wallRetreatDistance = 500;
+const jumpRetreatDistance = 500;
 
 export interface ObjectMotion {
   beat: number;
@@ -35,12 +35,22 @@ export function aheadDistance(motion: ObjectMotion, nowBeat: number): number {
   return jumpLineDistance(motion, motion.spawnBeat) + leadInDistance * (1 - travel);
 }
 
+export function noteJumpAheadDistance(motion: ObjectMotion, nowBeat: number): number {
+  const regularDistance = aheadDistance(motion, nowBeat);
+  const jumpDuration = motion.hjdBeats * 2;
+  const retreatDuration = jumpDuration * 0.25;
+  const retreatBeat = motion.spawnBeat + jumpDuration - retreatDuration;
+  if (nowBeat <= retreatBeat || retreatDuration <= 0) return regularDistance;
+  const retreat = clamp01((nowBeat - retreatBeat) / retreatDuration);
+  return regularDistance - jumpRetreatDistance * retreat ** 3;
+}
+
 export function wallAheadDistance(motion: ObjectMotion, pullBeat: number, nowBeat: number): number {
   const regularDistance = aheadDistance(motion, nowBeat);
   const retreatDuration = motion.despawnBeat - pullBeat;
   if (nowBeat <= pullBeat || retreatDuration <= 0) return regularDistance;
   const retreat = clamp01((nowBeat - pullBeat) / retreatDuration);
-  return regularDistance - wallRetreatDistance * retreat ** 3;
+  return regularDistance - jumpRetreatDistance * retreat ** 3;
 }
 
 export function isVisible(motion: ObjectMotion, nowBeat: number): boolean {
@@ -77,8 +87,10 @@ export function spawnRotationProgress(motion: ObjectMotion, nowBeat: number): nu
   return Math.sin(turn * Math.PI * 0.5);
 }
 
-export function wallSpawnScale(motion: ObjectMotion, nowBeat: number): number {
-  const growBeats = motion.hjdBeats * 0.25;
+// the game's ObstacleScaleUp sizes its window from the global movement provider,
+// so per-object noodle njs/offset must not stretch the grow duration
+export function wallSpawnScale(motion: ObjectMotion, nowBeat: number, globalHjdBeats = motion.hjdBeats): number {
+  const growBeats = globalHjdBeats * 0.25;
   const progress = clamp01((nowBeat - motion.spawnBeat) / growBeats);
   return progress * (2 - progress);
 }

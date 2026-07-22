@@ -1,5 +1,7 @@
 export type Rgb = readonly [number, number, number];
 
+export const BOMB_COLOR: Rgb = [0.538, 0.538, 0.538];
+
 export interface ColorScheme {
   leftNote: Rgb;
   rightNote: Rgb;

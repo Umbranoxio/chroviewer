@@ -22,3 +22,22 @@ export const beatSaberBooleanSchema = z
   .catch(false);
 
 export const beatSaberJsonObjectSchema = z.record(z.string(), z.json());
+
+export const beatSaberJsonArraySchema = z.array(z.json());
+
+export const beatSaberStringArraySchema = z
+  .array(z.string().optional().catch(undefined))
+  .transform((values) => values.filter((value) => value !== undefined))
+  .catch([]);
+
+export const beatSaberTrackSchema = z
+  .union([z.string().transform((value) => [value]), beatSaberStringArraySchema])
+  .catch([]);
+
+export const beatSaberVector3Schema = z
+  .array(z.json())
+  .min(3)
+  .transform(
+    ([x, y, z]) =>
+      [beatSaberNumberSchema.parse(x), beatSaberNumberSchema.parse(y), beatSaberNumberSchema.parse(z)] as const,
+  );

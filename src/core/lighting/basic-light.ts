@@ -19,6 +19,7 @@ export interface BasicLightSample {
   customColor?: Rgb;
   customAlpha?: number;
   alpha: number;
+  resolvedAlpha?: number;
   fading?: true;
   transition?: {
     color: BasicLightColor;
@@ -116,8 +117,12 @@ function eventGradient(event: BasicEvent): ChromaGradient | undefined {
   const parsed = lightGradientSchema.safeParse(event.customData?._lightGradient ?? event.customData?.lightGradient);
   if (!parsed.success) return undefined;
   const data = parsed.data;
-  const startColor = chromaColor({ color: data._startColor ?? data.startColor ?? null });
-  const endColor = chromaColor({ color: data._endColor ?? data.endColor ?? null });
+  const startColor = chromaColor({
+    color: data._startColor ?? data.startColor ?? null,
+  });
+  const endColor = chromaColor({
+    color: data._endColor ?? data.endColor ?? null,
+  });
   if (startColor === undefined || endColor === undefined) return undefined;
   const duration = numberSchema.parse(data._duration ?? data.duration);
   return {
@@ -204,7 +209,10 @@ export function sampleBasicLightTimeline(
   const events = timeline.events;
   const index = eventIndexAt(events, beat);
   if (index < 0) {
-    return { color: 'red', alpha: options.lightOnStart ? options.offIntensity : 0 };
+    return {
+      color: 'red',
+      alpha: options.lightOnStart ? options.offIntensity : 0,
+    };
   }
 
   const event = events[index];
@@ -230,11 +238,18 @@ export function sampleBasicLightTimeline(
       customColor = nextCustomColor;
       customAlpha = nextCustomAlpha;
     }
+    const stateAlpha = lerp(alpha, next.floatValue * normalAlpha, time);
+    const resolvedAlpha = lerp(
+      alpha * (customAlpha ?? 1),
+      next.floatValue * normalAlpha * (nextCustomAlpha ?? 1),
+      time,
+    );
     const sample: BasicLightSample = {
       color,
       ...(customColor === undefined ? {} : { customColor }),
       ...(customAlpha === undefined ? {} : { customAlpha }),
-      alpha: lerp(alpha, next.floatValue * normalAlpha, time),
+      alpha: stateAlpha,
+      ...(resolvedAlpha === stateAlpha ? {} : { resolvedAlpha }),
       transition:
         color === nextColor && sameColor(customColor, nextCustomColor) && customAlpha === nextCustomAlpha
           ? undefined
@@ -379,12 +394,21 @@ function lerpHsv(start: Rgb, end: Rgb, time: number): Rgb {
 }
 
 export function resolveBasicLightAlpha(sample: BasicLightSample) {
+  if (sample.resolvedAlpha !== undefined) return sample.resolvedAlpha;
   if (sample.transition === undefined) return sample.alpha * (sample.customAlpha ?? 1);
   return sample.alpha * lerp(sample.customAlpha ?? 1, sample.transition.customAlpha ?? 1, sample.transition.progress);
 }
 
 export function customLightIds(event: BasicEvent): number[] | undefined {
   const value = event.customData?._lightID ?? event.customData?.lightID;
+  if (value === undefined) return undefined;
+  const values = Array.isArray(value) ? value : [value];
+  const ids = values.map((id) => numberSchema.parse(id));
+  return ids.length === 0 ? undefined : ids;
+}
+
+export function customPropIds(event: BasicEvent): number[] | undefined {
+  const value = event.customData?._propID ?? event.customData?.propID;
   if (value === undefined) return undefined;
   const values = Array.isArray(value) ? value : [value];
   const ids = values.map((id) => numberSchema.parse(id));

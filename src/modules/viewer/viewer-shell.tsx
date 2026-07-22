@@ -157,6 +157,19 @@ export function ViewerShell() {
   });
   const partyIsHost = party.selfCapabilities?.host === true;
   useEffect(() => {
+    if (!partyActive) return;
+    const previewUrl = document.querySelector<HTMLMetaElement>('meta[property="og:image"]')?.content;
+    if (previewUrl === undefined) return;
+    const prefetch = document.createElement('link');
+    prefetch.rel = 'prefetch';
+    prefetch.as = 'image';
+    prefetch.href = previewUrl;
+    document.head.append(prefetch);
+    return () => {
+      prefetch.remove();
+    };
+  }, [partyActive, search.party]);
+  useEffect(() => {
     const viewerSettings = party.serverState?.viewerSettings;
     if (!partyActive || viewerSettings?.schemaVersion !== 1) {
       setPartyViewerSettingsJson(null);

@@ -18,6 +18,7 @@ export interface DifficultyRow {
   replayEnvironmentId?: string;
   colorScheme?: InfoColorScheme;
   replayMatch?: boolean;
+  legacyNoodleV2Semantics?: boolean;
 }
 
 export interface MapIdentity {

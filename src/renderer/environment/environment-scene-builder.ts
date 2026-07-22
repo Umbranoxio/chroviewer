@@ -12,7 +12,8 @@ import {
 import { MAIN_ONLY_LAYER } from '../mirror/planar-mirror';
 import { referenceKey, rendererObjectsForMpbController } from './environment-component-utils';
 import { createPositionConstraintApplicator } from './environment-constraints';
-import { createGeometry, nodeFor } from './environment-geometry';
+import { createGeometry, ensureGeometryTangents, nodeFor } from './environment-geometry';
+import { buildEnvironmentParticleSystems } from './environment-particle-systems';
 import type { EnvironmentBoostSwitch, EnvironmentEventSwitch } from './environment-runtime';
 import { createEnvironmentMaterial, type EnvironmentMaterialInstance } from './materials/create-environment-material';
 import type { EnvironmentMaterialContext } from './materials/material-context';
@@ -51,8 +52,11 @@ function controlledRendererObjects(data: EnvironmentData) {
     for (const controller of object.components?.MaterialLightController ?? []) {
       if (controller.enabled && controller.Renderer !== null) controlledObjects.add(controller.Renderer.obj);
     }
+    for (const controller of object.components?.MaterialLightsController ?? []) {
+      if (controller.enabled) controlledObjects.add(controller.MeshRenderer?.obj ?? index);
+    }
     for (const controller of object.components?.SpriteLightController ?? []) {
-      if (controller.enabled && controller.Renderer !== null) controlledObjects.add(controller.Renderer.obj);
+      if (controller.enabled) controlledObjects.add(controller.Renderer?.obj ?? index);
     }
     for (const controller of object.components?.MaterialPropertyBlockController ?? []) {
       if (!controller.enabled) continue;
@@ -115,7 +119,11 @@ function buildSwitches(data: EnvironmentData, nodes: Group[]) {
         }
       }
       apply(component.DefaultValue);
-      eventSwitches.push({ eventType, defaultValue: component.DefaultValue, apply });
+      eventSwitches.push({
+        eventType,
+        defaultValue: component.DefaultValue,
+        apply,
+      });
     }
     for (const component of object.components?.GameObjectSwitch ?? []) {
       if (!component.enabled || component.Effect.component !== 'ColorBoostEffect') continue;
@@ -138,6 +146,7 @@ function buildSwitches(data: EnvironmentData, nodes: Group[]) {
 export function buildEnvironmentScene(
   data: EnvironmentData,
   materialContext: EnvironmentMaterialContext,
+  customEnvironment: boolean,
 ): EnvironmentSceneBuild {
   const root = new Group();
   root.name = data.id;
@@ -152,7 +161,11 @@ export function buildEnvironmentScene(
   const materialInstances = new Set([...materials.values()].map((instance) => instance.material));
   const rendererMeshes = new Map<Object3D, Mesh>();
   const objectShaderMaterials: ShaderMaterial[][] = data.objects.map(() => []);
-  const nodes = data.objects.map(nodeFor);
+  const nodes = data.objects.map((object) => {
+    const node = nodeFor(object);
+    if (object.customEnvironmentOnly === true && !customEnvironment) node.visible = false;
+    return node;
+  });
   const chromaMarkers = data.objects.flatMap((object, index) => {
     const marker = object.components?.ChromaIDMarker?.[0];
     const node = nodes[index];
@@ -180,9 +193,13 @@ export function buildEnvironmentScene(
     const rendererMaterials = rendererInstances.map((instance) => instance.material);
     objectShaderMaterials[index] = rendererInstances.flatMap((instance) => instance.shader ?? []);
     if (geometry === undefined || rendererMaterials.length === 0) return;
+    if (object.materials?.some((name) => name !== null && data.materials[name]?.shader === 'ChroMapper/Water Lit')) {
+      ensureGeometryTangents(geometry);
+    }
     const mesh = new Mesh(geometry, rendererMaterials.length === 1 ? rendererMaterials[0] : rendererMaterials);
     rendererMeshes.set(node, mesh);
     mesh.name = `${object.name}:renderer`;
+    mesh.userData.environmentLayer = object.layer;
     mesh.visible = object.rendererEnabled !== false;
     const materialFamilies = object.materials?.flatMap((name) => (name === null ? [] : [data.materials[name]?.family]));
     if (materialFamilies?.includes('clouds')) {
@@ -201,6 +218,8 @@ export function buildEnvironmentScene(
     if (object.components?.PlanarReflection !== undefined) mesh.layers.set(MAIN_ONLY_LAYER);
     node.add(mesh);
   });
+
+  buildEnvironmentParticleSystems(data.particleSystems ?? [], materialContext, root, geometries, materialInstances);
 
   for (const object of data.objects) {
     for (const setter of object.components?.MaterialPropertyBlockFloatSetter ?? []) {

@@ -3,6 +3,7 @@ import {
   difficultyRank,
   environmentNameForDifficulty,
   type MapInfo,
+  usesLegacyNoodleV2Semantics,
 } from '../../core/beatmap/info';
 import type { Difficulty } from '../../core/beatmap/types';
 import { convertLegacyScoreSaberReplay } from '../../core/replay/legacy-scoresaber';
@@ -16,7 +17,11 @@ export interface MapPackageParser {
   parseDifficulty: (
     text: string,
     songBpm: number,
-    options: { lightshowText?: string; audioDataText?: string; bookmarkText?: string },
+    options: {
+      lightshowText?: string;
+      audioDataText?: string;
+      bookmarkText?: string;
+    },
   ) => Promise<Difficulty>;
 }
 
@@ -54,6 +59,7 @@ export async function parseMapPackage(
   texts.set('info.dat', infoText);
 
   const info = await parser.parseInfo(infoText);
+  const legacyNoodleV2 = usesLegacyNoodleV2Semantics(info) || undefined;
   const mapper =
     info.levelAuthorName !== ''
       ? info.levelAuthorName
@@ -144,6 +150,7 @@ export async function parseMapPackage(
               : undefined,
           colorScheme: mapScheme,
           replayMatch,
+          legacyNoodleV2Semantics: legacyNoodleV2,
         };
       }),
     ),

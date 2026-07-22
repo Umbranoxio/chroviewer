@@ -3,6 +3,7 @@ import type { CubeTexture, Texture } from 'three';
 import type { Rgb } from '../../../core/colors';
 import type { FogUniforms } from '../../bloomfog/pipeline';
 import type { DirectionalLightUniforms, MaterialFogSettings } from '../../materials/shared';
+import type { EnvironmentBakedReflectionProbe } from '../environment-runtime';
 import type { EnvironmentMaterialData } from '../types';
 
 export interface EnvironmentMaterialContext {
@@ -10,6 +11,7 @@ export interface EnvironmentMaterialContext {
   reflectionTexture: { value: Texture };
   directionalLights: DirectionalLightUniforms;
   reflectionProbe?: CubeTexture;
+  bakedReflectionProbe?: EnvironmentBakedReflectionProbe;
   songTime?: { value: number };
   textures?: ReadonlyMap<string, Texture>;
 }

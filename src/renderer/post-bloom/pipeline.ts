@@ -19,7 +19,7 @@ import {
   type WebGLRenderer,
 } from 'three';
 
-import { SCREEN_DISPLACEMENT_LAYER } from '../mirror/planar-mirror';
+import { AFTER_SCREEN_DISPLACEMENT_LAYER, SCREEN_DISPLACEMENT_LAYER } from '../mirror/planar-mirror';
 import { MULTISAMPLE_DEPTH_STENCIL_RESOLVE_OPTIONS } from '../platform';
 import { blueNoiseData } from './blue-noise';
 import {
@@ -174,6 +174,7 @@ export class PostBloomPipeline {
     if (this.screenDisplacementEnabled && displacementActive) {
       const layerMask = camera.layers.mask;
       camera.layers.disable(SCREEN_DISPLACEMENT_LAYER);
+      camera.layers.disable(AFTER_SCREEN_DISPLACEMENT_LAYER);
       renderer.setRenderTarget(this.screenDisplacementTarget);
       renderer.clear(true, true, true);
       renderer.render(scene, camera);

@@ -67,9 +67,7 @@ export function buildEnvironmentGlsColors(
     }
     if (reference.component === 'SpriteLightController') {
       const controller = components?.SpriteLightController?.[componentIndex];
-      return controller?.Renderer === null || controller?.Renderer === undefined
-        ? []
-        : (scene.objectShaderMaterials[controller.Renderer.obj] ?? []);
+      return scene.objectShaderMaterials[controller?.Renderer?.obj ?? reference.obj] ?? [];
     }
     return scene.objectShaderMaterials[reference.obj] ?? [];
   }
@@ -176,11 +174,13 @@ export function buildEnvironmentGlsColors(
         if (effects.length === 0) return;
         const materials = controllerMaterials(reference);
         if (materials.length === 0) return;
+        const node = scene.nodes[objectIndex];
         lighting.materialLights.push({
           materials,
           bindings: lightBindings(effects, controller.ID),
           intensityMultiplier: 1,
-          node: scene.nodes[objectIndex],
+          initialVisible: node?.visible,
+          node,
           transform: controllerColorTransform(reference),
           colorProperty: controllerColorProperty(reference) ?? '_Color',
         });

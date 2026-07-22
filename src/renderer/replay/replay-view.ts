@@ -1,7 +1,9 @@
 import { Group, Object3D, PerspectiveCamera, Quaternion, ShaderMaterial, Vector3, type BufferGeometry } from 'three';
 
+import { eulerFromQuaternion } from '../../core/animation/point-definition';
 import { DEFAULT_COLORS, type ColorScheme, type Rgb } from '../../core/colors';
 import { isForcedLightshowMode, type LightshowMode } from '../../core/lighting/basic-light';
+import type { NoodleTransform } from '../../core/noodle-runtime';
 import type { HitScoreVisualizerConfig } from '../../core/replay/hit-score-visualizer';
 import { sampleReplayFrames } from '../../core/replay/sampling';
 import type { Replay, ReplayTransform } from '../../core/replay/types';
@@ -11,6 +13,7 @@ import {
   type ReplaySaberSettings,
 } from '../../core/viewer-settings';
 import type { FogUniforms } from '../bloomfog/pipeline';
+import { NoodlePlayerTransform } from '../map/noodle-player-transform';
 import {
   createSaberCoreMaterial,
   createSaberGlowMaterial,
@@ -44,6 +47,13 @@ function saberCoreColor([red, green, blue]: Rgb): Rgb {
 export class ReplayView {
   readonly root = new Group();
 
+  private readonly replayPlayerRoot = new Object3D();
+  private readonly replayHeadTrack = new Object3D();
+  private readonly replayLeftHandTrack = new Object3D();
+  private readonly replayRightHandTrack = new Object3D();
+  private readonly posePlayerRoot = new Object3D();
+  private readonly poseHeadTrack = new Object3D();
+  private readonly poseHead = new Object3D();
   private readonly replayLeftHand = new Object3D();
   private readonly replayRightHand = new Object3D();
   private readonly replayLeftOffset = new Object3D();
@@ -57,15 +67,20 @@ export class ReplayView {
   private readonly cameraController: ReplayCameraController;
   private readonly replayPosition = new Vector3();
   private readonly replayQuaternion = new Quaternion();
+  private readonly worldQuaternion = new Quaternion();
   private readonly position = new Vector3();
+  private readonly worldHeadPosition = new Vector3();
+  private readonly noodlePlayerTransform = new NoodlePlayerTransform();
   private readonly replayGeometries: BufferGeometry[] = [];
   private readonly replayMaterials: ShaderMaterial[] = [];
   private readonly replaySabers: ReplaySaberModel[] = [];
   private readonly replayTrails: ReplaySaberTrail[] = [];
   private readonly replaySaberColorMaterials: { blade: ShaderMaterial; core: ShaderMaterial }[] = [];
   private replayTrailTime = Number.NEGATIVE_INFINITY;
+  private localSpaceSaberTrail = false;
   private saberSettings = DEFAULT_REPLAY_SABER_SETTINGS;
   private replay: Replay | null = null;
+  private hasSampledReplayPose = false;
   private lightshowMode: LightshowMode = 'full';
 
   constructor(
@@ -123,7 +138,13 @@ export class ReplayView {
     this.replayMaterials.push(metalMaterial, gripMaterial);
     this.replayLeftHand.add(this.replayLeftOffset);
     this.replayRightHand.add(this.replayRightOffset);
-    this.root.add(this.replayHeadset.root, this.replayLeftHand, this.replayRightHand);
+    this.replayHeadTrack.add(this.replayHeadset.root);
+    this.replayLeftHandTrack.add(this.replayLeftHand);
+    this.replayRightHandTrack.add(this.replayRightHand);
+    this.replayPlayerRoot.add(this.replayHeadTrack, this.replayLeftHandTrack, this.replayRightHandTrack);
+    this.root.add(this.replayPlayerRoot);
+    this.poseHeadTrack.add(this.poseHead);
+    this.posePlayerRoot.add(this.poseHeadTrack);
     this.root.visible = false;
   }
 
@@ -132,11 +153,48 @@ export class ReplayView {
   }
 
   get headPosition() {
-    return this.replayHeadset.root.position;
+    this.replayHeadset.root.updateWorldMatrix(true, false);
+    return this.replayHeadset.root.getWorldPosition(this.worldHeadPosition);
+  }
+
+  headPositionForPose(
+    transform: ReplayTransform,
+    target: Vector3,
+    noodle?: { root: NoodleTransform; head: NoodleTransform },
+    leftHanded = false,
+  ) {
+    this.posePlayerRoot.position.set(0, 0, 0);
+    this.posePlayerRoot.quaternion.identity();
+    this.posePlayerRoot.scale.set(1, 1, 1);
+    this.poseHeadTrack.position.set(0, 0, 0);
+    this.poseHeadTrack.quaternion.identity();
+    this.poseHeadTrack.scale.set(1, 1, 1);
+    this.poseHead.position.set(transform.position.x, transform.position.y, -transform.position.z);
+    this.poseHead.quaternion.set(
+      -transform.rotation.x,
+      -transform.rotation.y,
+      transform.rotation.z,
+      transform.rotation.w,
+    );
+    this.poseHead.scale.set(1, 1, 1);
+    if (noodle !== undefined) {
+      this.noodlePlayerTransform.apply(this.posePlayerRoot, noodle.root, leftHanded);
+      this.noodlePlayerTransform.apply(this.poseHeadTrack, noodle.head, leftHanded);
+    }
+    this.poseHead.updateWorldMatrix(true, false);
+    return this.poseHead.getWorldPosition(target);
+  }
+
+  get trackedHeadZ() {
+    return this.replayHeadset.root.position.z;
   }
 
   get hasReplay() {
     return this.replay !== null;
+  }
+
+  get cameraMode() {
+    return this.cameraController.cameraMode;
   }
 
   get hasPoses() {
@@ -165,6 +223,7 @@ export class ReplayView {
 
   setReplay(replay: Replay | null, hitScoreVisualizer?: HitScoreVisualizerConfig | null) {
     this.replay = replay;
+    this.hasSampledReplayPose = false;
     this.gameplayHud.setReplay(replay, hitScoreVisualizer);
     this.gameplayHud.setEnabled(!isForcedLightshowMode(this.lightshowMode));
     this.clearTrails();
@@ -210,6 +269,15 @@ export class ReplayView {
     this.applySaberOffsets();
   }
 
+  setNoodleTrailLocalSpace(enabled: boolean) {
+    if (enabled === this.localSpaceSaberTrail) return;
+    this.localSpaceSaberTrail = enabled;
+    this.clearTrails();
+    for (const trail of this.replayTrails) {
+      (enabled ? this.replayPlayerRoot : this.root).add(trail.mesh);
+    }
+  }
+
   setCameraAspect(aspect: number) {
     this.cameraController.setAspect(aspect);
   }
@@ -229,14 +297,107 @@ export class ReplayView {
     });
   }
 
-  update(time: number) {
+  baseProvider(name: string, time: number): readonly number[] | undefined {
+    const replay = this.replay;
+    const pose = replay === null ? null : sampleReplayFrames(replay.poses, time);
+    const transformName = /^(baseHead|baseLeftHand|baseRightHand)(Local)?(Position|Rotation|Scale)$/.exec(name);
+    if (transformName !== null) {
+      const target = transformName[1];
+      const local = transformName[2] !== undefined;
+      const property = transformName[3];
+      if (property === 'Scale' && !local) return undefined;
+      const object =
+        target === 'baseHead'
+          ? this.replayHeadset.root
+          : target === 'baseLeftHand'
+            ? this.replayLeftHand
+            : this.replayRightHand;
+      if (this.hasSampledReplayPose) {
+        if (property === 'Scale') return object.scale.toArray();
+        if (property === 'Position') {
+          if (local) this.position.copy(object.position);
+          else object.getWorldPosition(this.position);
+          return [this.position.x, this.position.y, -this.position.z];
+        }
+        if (local) this.replayQuaternion.copy(object.quaternion);
+        else object.getWorldQuaternion(this.replayQuaternion);
+        return eulerFromQuaternion([
+          -this.replayQuaternion.x,
+          -this.replayQuaternion.y,
+          this.replayQuaternion.z,
+          this.replayQuaternion.w,
+        ]);
+      }
+      if (property === 'Scale') return [1, 1, 1];
+      if (pose === null) return property === 'Position' && target === 'baseHead' ? [0, 1.7, 0] : [0, 0, 0];
+      const from =
+        target === 'baseHead' ? pose.from.head : target === 'baseLeftHand' ? pose.from.leftHand : pose.from.rightHand;
+      const to =
+        target === 'baseHead' ? pose.to.head : target === 'baseLeftHand' ? pose.to.leftHand : pose.to.rightHand;
+      if (property === 'Position') {
+        return [
+          from.position.x + (to.position.x - from.position.x) * pose.amount,
+          from.position.y + (to.position.y - from.position.y) * pose.amount,
+          from.position.z + (to.position.z - from.position.z) * pose.amount,
+        ];
+      }
+      this.replayQuaternion
+        .set(from.rotation.x, from.rotation.y, from.rotation.z, from.rotation.w)
+        .slerp(this.worldQuaternion.set(to.rotation.x, to.rotation.y, to.rotation.z, to.rotation.w), pose.amount);
+      return eulerFromQuaternion([
+        this.replayQuaternion.x,
+        this.replayQuaternion.y,
+        this.replayQuaternion.z,
+        this.replayQuaternion.w,
+      ]);
+    }
+    if (replay === null) {
+      if (name === 'baseMultiplier') return [1];
+      if (name === 'baseEnergy') return [0.5];
+      return name.startsWith('base') ? [0] : undefined;
+    }
+    const score = latestAt(replay.scores, time);
+    if (name === 'baseCombo') return [latestAt(replay.combos, time)?.combo ?? 0];
+    if (name === 'baseMultiplier') return [latestAt(replay.multipliers, time)?.multiplier ?? 1];
+    if (name === 'baseEnergy') return [latestAt(replay.energies, time)?.energy ?? 0.5];
+    if (name === 'baseMultipliedScore' || name === 'baseModifiedScore') return [score?.score ?? 0];
+    if (name === 'baseImmediateMaxPossibleMultipliedScore' || name === 'baseImmediateMaxPossibleModifiedScore') {
+      return [score?.immediateMaxPossibleScore ?? 0];
+    }
+    if (name === 'baseRelativeScore') {
+      const maximum = score?.immediateMaxPossibleScore ?? 0;
+      return [maximum === 0 ? 0 : (score?.score ?? 0) / maximum];
+    }
+    return undefined;
+  }
+
+  update(
+    time: number,
+    noodle?: { root: NoodleTransform; head: NoodleTransform; leftHand: NoodleTransform; rightHand: NoodleTransform },
+    leftHanded = false,
+  ) {
     if (this.replay === null) return;
     this.gameplayHud.update(time);
     const sample = sampleReplayFrames(this.replay.poses, time);
     if (sample === null) return;
+    this.replayPlayerRoot.position.set(0, 0, 0);
+    this.replayPlayerRoot.quaternion.identity();
+    this.replayPlayerRoot.scale.set(1, 1, 1);
+    for (const target of [this.replayHeadTrack, this.replayLeftHandTrack, this.replayRightHandTrack]) {
+      target.position.set(0, 0, 0);
+      target.quaternion.identity();
+      target.scale.set(1, 1, 1);
+    }
     this.sampleTransform(this.replayHeadset.root, sample.from.head, sample.to.head, sample.amount);
     this.sampleTransform(this.replayLeftHand, sample.from.leftHand, sample.to.leftHand, sample.amount);
     this.sampleTransform(this.replayRightHand, sample.from.rightHand, sample.to.rightHand, sample.amount);
+    if (noodle !== undefined) {
+      this.noodlePlayerTransform.apply(this.replayPlayerRoot, noodle.root, leftHanded);
+      this.noodlePlayerTransform.apply(this.replayHeadTrack, noodle.head, leftHanded);
+      this.noodlePlayerTransform.apply(this.replayLeftHandTrack, noodle.leftHand, leftHanded);
+      this.noodlePlayerTransform.apply(this.replayRightHandTrack, noodle.rightHand, leftHanded);
+    }
+    this.hasSampledReplayPose = true;
     this.updateTrails(time);
     this.cameraController.update(this.replayHeadset.root, time);
   }
@@ -244,6 +405,7 @@ export class ReplayView {
   private applyTransform(target: Object3D, transform: ReplayTransform) {
     target.position.set(transform.position.x, transform.position.y, -transform.position.z);
     target.quaternion.set(-transform.rotation.x, -transform.rotation.y, transform.rotation.z, transform.rotation.w);
+    target.scale.set(1, 1, 1);
   }
 
   private sampleTransform(target: Object3D, from: ReplayTransform, to: ReplayTransform, amount: number) {
@@ -290,6 +452,10 @@ export class ReplayView {
       if (trail === undefined) continue;
       base.getWorldPosition(this.position);
       tip.getWorldPosition(this.replayPosition);
+      if (this.localSpaceSaberTrail) {
+        this.replayPlayerRoot.worldToLocal(this.position);
+        this.replayPlayerRoot.worldToLocal(this.replayPosition);
+      }
       updateReplaySaberTrail(trail, this.position, this.replayPosition);
     }
     this.replayTrailTime = time;
@@ -301,4 +467,15 @@ export class ReplayView {
     for (const geometry of this.replayGeometries) geometry.dispose();
     for (const material of this.replayMaterials) material.dispose();
   }
+}
+
+function latestAt<T extends { time: number }>(events: readonly T[], time: number) {
+  let low = 0;
+  let high = events.length;
+  while (low < high) {
+    const middle = (low + high) >>> 1;
+    if ((events[middle]?.time ?? Number.POSITIVE_INFINITY) <= time) low = middle + 1;
+    else high = middle;
+  }
+  return events[low - 1];
 }
