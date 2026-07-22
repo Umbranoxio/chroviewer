@@ -95,6 +95,7 @@ export function useViewerRenderer({
               ? settingsRef.current.environmentOverrideId
               : 'BigMirrorEnvironment',
           ),
+        active?.data.chromaEnvironment,
       );
       if (!isCurrentViewer(viewerRef, view)) return;
       if (environmentResult.isErr() && !EnvironmentLoadAborted.is(environmentResult.error)) {

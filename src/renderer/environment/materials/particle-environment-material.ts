@@ -108,6 +108,9 @@ export function createParticleEnvironmentMaterial(
       mask2: keywords.has('MASK2')
         ? (materialTexture(data, context, '_Mask2Tex') ?? materialTexture(data, context, '_NoiseTex'))
         : undefined,
+      displacement: keywords.has('VERTEX_DISPLACEMENT')
+        ? materialTexture(data, context, '_DisplacementTex')
+        : undefined,
       colorGradient: keywords.has('COLOR_GRADIENT') ? materialTexture(data, context, '_ColorGradient') : undefined,
     },
     {
@@ -120,6 +123,11 @@ export function createParticleEnvironmentMaterial(
       vertexRedIsAlpha: keywords.has('VERTEX_RED_IS_ALPHA'),
       vertexSquareAlpha: keywords.has('VERTEX_SQUARE_ALPHA'),
       vertexChannelsAlpha: keywords.has('_VERTEXCHANNELS_A'),
+      spatialDisplacement: keywords.has('SPATIAL_DISPLACEMENT'),
+      displacementStrength: data.floats._DisplacementStrength ?? 0.1,
+      displacementAxes: vectorColor(data.colors._DisplacementAxes, [1, 1, 1]),
+      displacementPanning: vectorColor(data.colors._DisplacementPanning, [0, 0, 0]),
+      displacementPanningSpeed: data.floats._DisplacementPanningSpeed ?? 1,
       textureColor: keywords.has('TEXTURE_COLOR'),
       alphaChannelRed: keywords.has('_ALPHACHANNEL_RED'),
       squareAlpha: keywords.has('SQUARE_ALPHA'),
@@ -148,7 +156,7 @@ export function createParticleEnvironmentMaterial(
         data.floats._WhiteboostRemapStart ?? data.floats._WhiteBoostRemapStart ?? data.floats._WhiteBoostOffset ?? 0,
       bloomType: data.floats._BloomType ?? 0,
       bloomMultiplier: data.floats._BloomMultiplier ?? 1,
-      bloomWhiteMultiplier: data.floats._BloomWhiteMultiplier ?? 1,
+      bloomWhite: data.floats._BloomWhite ?? data.floats._BloomWhiteMultiplier ?? 1,
       fogType,
       fog: materialFog(data, fogType !== 'none'),
       maskRedIsAlpha: keywords.has('MASK_RED_IS_ALPHA'),

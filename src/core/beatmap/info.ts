@@ -122,6 +122,18 @@ const v2InfoSchema = z
     _allDirectionsEnvironmentName: stringSchema,
     _environmentNames: stringArraySchema,
     _colorSchemes: z.array(v2ColorSchemeSchema).catch([]),
+    _customData: z
+      .object({
+        _editors: z
+          .object({
+            _lastEditedBy: stringSchema.optional(),
+            ChroMapper: z.object({ version: stringSchema }).optional().catch(undefined),
+          })
+          .optional()
+          .catch(undefined),
+      })
+      .optional()
+      .catch(undefined),
     _difficultyBeatmapSets: z
       .array(
         z.object({
@@ -146,6 +158,7 @@ const v2InfoSchema = z
     _allDirectionsEnvironmentName: '',
     _environmentNames: [],
     _colorSchemes: [],
+    _customData: undefined,
     _difficultyBeatmapSets: [],
   });
 const v4InfoSchema = z
@@ -223,6 +236,8 @@ export interface MapInfo {
   environmentNames: string[];
   colorSchemes: InfoColorScheme[];
   difficultySets: InfoDifficultySet[];
+  lastEditedBy?: string;
+  chroMapperVersion?: string;
 }
 
 export interface InfoColorScheme {
@@ -270,6 +285,17 @@ export function effectiveNoteJumpSpeed(difficulty: InfoDifficulty): number {
     default:
       return 10;
   }
+}
+
+export function usesLegacyNoodleV2Semantics(info: MapInfo) {
+  if (
+    Number.parseInt(info.version, 10) !== 2 ||
+    info.lastEditedBy !== 'ChroMapper' ||
+    info.chroMapperVersion === undefined
+  )
+    return false;
+  const [major, minor] = info.chroMapperVersion.split('.').map((part) => Number.parseInt(part, 10));
+  return major === 0 && minor !== undefined && minor <= 7;
 }
 
 export function environmentNameForDifficulty(info: MapInfo, difficulty: InfoDifficulty): string {
@@ -404,6 +430,12 @@ function parseV2Info(input: unknown): MapInfo {
       environmentWhiteBoost: color.environmentColorWBoost,
     })),
     difficultySets,
+    ...(root._customData?._editors?._lastEditedBy === undefined
+      ? {}
+      : { lastEditedBy: root._customData._editors._lastEditedBy }),
+    ...(root._customData?._editors?.ChroMapper?.version === undefined
+      ? {}
+      : { chroMapperVersion: root._customData._editors.ChroMapper.version }),
   };
 }
 

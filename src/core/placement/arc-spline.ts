@@ -1,6 +1,5 @@
 import { MidAnchorMode, type Arc } from '../beatmap/types';
-import { noodleCoordinates, noodleTailCoordinates } from '../noodle';
-import { cutDirectionEuler, objectPosition } from './grid';
+import { cutDirectionEuler, gridPosition, type GridPosition } from './grid';
 
 export interface Vec3 {
   x: number;
@@ -20,6 +19,11 @@ export interface ArcPath {
   length: number;
 }
 
+export interface ArcEndpoints {
+  head: GridPosition;
+  tail: GridPosition;
+}
+
 type Segment = [Vec3, Vec3, Vec3, Vec3];
 
 export const ARC_SAMPLES = 50;
@@ -29,8 +33,16 @@ const noteRadius = 0.45 * 0.5;
 const degToRad = Math.PI / 180;
 const back: Vec3 = { x: 0, y: 0, z: -1 };
 
-const add = (a: Vec3, b: Vec3): Vec3 => ({ x: a.x + b.x, y: a.y + b.y, z: a.z + b.z });
-const subtract = (a: Vec3, b: Vec3): Vec3 => ({ x: a.x - b.x, y: a.y - b.y, z: a.z - b.z });
+const add = (a: Vec3, b: Vec3): Vec3 => ({
+  x: a.x + b.x,
+  y: a.y + b.y,
+  z: a.z + b.z,
+});
+const subtract = (a: Vec3, b: Vec3): Vec3 => ({
+  x: a.x - b.x,
+  y: a.y - b.y,
+  z: a.z - b.z,
+});
 function scale(point: Vec3, amount: number): Vec3 {
   return { x: point.x * amount, y: point.y * amount, z: point.z * amount };
 }
@@ -74,15 +86,27 @@ function estimatedLength([p0, p1, p2, p3]: Segment) {
   );
 }
 
-function segmentsFor(arc: Arc, zDistance: number, hasHeadNote: boolean, hasTailNote: boolean): Segment[] {
-  const head = objectPosition(arc.posX, arc.posY, noodleCoordinates(arc.customData));
-  const tail = objectPosition(arc.tailPosX, arc.tailPosY, noodleTailCoordinates(arc.customData));
+function segmentsFor(
+  arc: Arc,
+  zDistance: number,
+  hasHeadNote: boolean,
+  hasTailNote: boolean,
+  { head, tail }: ArcEndpoints,
+): Segment[] {
   const headDirection = cutDirectionVector(arc.cutDirection);
   const tailDirection = cutDirectionVector(arc.tailCutDirection);
   const headAttachment = scale(headDirection, noteRadius * (hasHeadNote ? 1 : 0.1));
   const tailAttachment = scale(tailDirection, -noteRadius * (hasTailNote ? 1 : 0.1));
-  const headAnchor = { x: head.x + headAttachment.x, y: head.y + headAttachment.y, z: noteRadius };
-  const tailAnchor = { x: tail.x + tailAttachment.x, y: tail.y + tailAttachment.y, z: zDistance + noteRadius };
+  const headAnchor = {
+    x: head.x + headAttachment.x,
+    y: head.y + headAttachment.y,
+    z: noteRadius,
+  };
+  const tailAnchor = {
+    x: tail.x + tailAttachment.x,
+    y: tail.y + tailAttachment.y,
+    z: zDistance + noteRadius,
+  };
   const headControl = add(headAnchor, scale(headDirection, arc.headControlPointLengthMultiplier));
   const tailControl = add(tailAnchor, scale(tailDirection, -arc.tailControlPointLengthMultiplier));
   const angleDifference = Math.abs(cutDirectionEuler(arc.cutDirection) - cutDirectionEuler(arc.tailCutDirection));
@@ -120,8 +144,17 @@ function rotateAroundAxis(point: Vec3, axis: Vec3, angle: number): Vec3 {
   return add(add(scale(point, cosine), scale(cross(axis, point), sine)), scale(axis, dot(axis, point) * (1 - cosine)));
 }
 
-export function arcPath(arc: Arc, zDistance: number, hasHeadNote = true, hasTailNote = true): ArcPath {
-  const segments = segmentsFor(arc, zDistance, hasHeadNote, hasTailNote);
+export function arcPath(
+  arc: Arc,
+  zDistance: number,
+  hasHeadNote = true,
+  hasTailNote = true,
+  endpoints: ArcEndpoints = {
+    head: gridPosition(arc.posX, arc.posY),
+    tail: gridPosition(arc.tailPosX, arc.tailPosY),
+  },
+): ArcPath {
+  const segments = segmentsFor(arc, zDistance, hasHeadNote, hasTailNote, endpoints);
   const segmentLengths = segments.map(estimatedLength);
   const estimatedTotal = segmentLengths.reduce((sum, length) => sum + length, 0);
   const positions: Vec3[] = [];

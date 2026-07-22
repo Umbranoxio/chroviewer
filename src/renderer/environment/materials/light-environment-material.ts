@@ -10,7 +10,7 @@ import type { EnvironmentMaterialData, EnvironmentTextureData } from '../types';
 import { materialFog, type EnvironmentMaterialContext } from './material-context';
 
 export const PARAMETRIC_FAKE_GLOW_TEXTURE = 'textures/rectangle-fake-glow.png';
-export const PARAMETRIC_SLICE_TEXTURE = 'textures/laser.png';
+export const PARAMETRIC_SLICE_TEXTURE = 'textures/game-e28988ba8e66079a.png';
 
 function createFakeGlowEnvironmentMaterial(
   data: EnvironmentMaterialData,

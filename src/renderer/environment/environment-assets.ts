@@ -5,10 +5,13 @@ import {
   RepeatWrapping,
   SRGBColorSpace,
   TextureLoader,
+  Vector3,
+  Vector4,
   type CubeTexture,
   type Texture,
 } from 'three';
 
+import type { EnvironmentBakedReflectionProbe } from './environment-runtime';
 import { loadEnvironmentData } from './environment-worker-client';
 import { PARAMETRIC_FAKE_GLOW_TEXTURE, PARAMETRIC_SLICE_TEXTURE } from './materials/light-environment-material';
 import type { EnvironmentData } from './types';
@@ -17,15 +20,19 @@ export interface LoadedEnvironmentAssets {
   data: EnvironmentData;
   textures: ReadonlyMap<string, Texture>;
   reflectionProbe?: CubeTexture;
+  bakedReflectionProbe?: EnvironmentBakedReflectionProbe;
   dispose: () => void;
 }
 
 type EnvironmentDataLoader = (id: string, signal?: AbortSignal) => Promise<EnvironmentData>;
 
 function materialTextureAssets(data: EnvironmentData) {
-  return Object.values(data.materials).flatMap((material) =>
-    Object.values(material.textures ?? {}).map((texture) => texture.asset),
-  );
+  return [
+    ...Object.values(data.materials).flatMap((material) =>
+      Object.values(material.textures ?? {}).map((texture) => texture.asset),
+    ),
+    ...(data.particleSystems ?? []).map((system) => system.texture),
+  ];
 }
 
 function linearTextureAssets(data: EnvironmentData) {
@@ -58,6 +65,9 @@ function linearTextureAssets(data: EnvironmentData) {
       return assets;
     }),
   );
+  for (const system of data.particleSystems ?? []) {
+    if (system.alphaChannelRed) linearAssets.add(system.texture);
+  }
   return linearAssets;
 }
 
@@ -76,6 +86,7 @@ export async function loadEnvironmentAssets(
         : [],
     ),
   );
+  for (const system of data.particleSystems ?? []) clampedAssets.add(system.texture);
   if (Object.values(data.materials).some((material) => material.shader === 'ChroMapper/Parametric Box Fake Glow')) {
     assets.add(PARAMETRIC_FAKE_GLOW_TEXTURE);
   }
@@ -87,9 +98,11 @@ export async function loadEnvironmentAssets(
   const textureLoader = new TextureLoader();
   const textures = new Map<string, Texture>();
   let reflectionProbe: CubeTexture | undefined;
+  let bakedReflectionProbe: EnvironmentBakedReflectionProbe | undefined;
   function dispose() {
     for (const texture of textures.values()) texture.dispose();
     reflectionProbe?.dispose();
+    for (const texture of bakedReflectionProbe?.textures ?? []) texture.dispose();
   }
 
   try {
@@ -116,8 +129,26 @@ export async function loadEnvironmentAssets(
             data.reflectionProbe.map((asset) => `${import.meta.env.BASE_URL}environments/${asset}`),
           );
     if (reflectionProbe !== undefined) reflectionProbe.colorSpace = SRGBColorSpace;
+    if (data.bakedReflectionProbe !== undefined) {
+      const [first, second] = data.bakedReflectionProbe.textures;
+      const textures: [CubeTexture, CubeTexture] = await Promise.all([
+        new CubeTextureLoader().loadAsync(first.map((asset) => `${import.meta.env.BASE_URL}environments/${asset}`)),
+        new CubeTextureLoader().loadAsync(second.map((asset) => `${import.meta.env.BASE_URL}environments/${asset}`)),
+      ]);
+      for (const texture of textures) texture.colorSpace = SRGBColorSpace;
+      const position = new Vector3(...data.bakedReflectionProbe.position);
+      const halfSize = new Vector3(...data.bakedReflectionProbe.size).multiplyScalar(0.5);
+      bakedReflectionProbe = {
+        textures,
+        position,
+        boxMin: position.clone().sub(halfSize),
+        boxMax: position.clone().add(halfSize),
+        lightColors: Array.from({ length: 6 }, () => new Vector4()),
+        lights: data.bakedReflectionProbe.lights,
+      };
+    }
     signal?.throwIfAborted();
-    return { data, textures, reflectionProbe, dispose };
+    return { data, textures, reflectionProbe, bakedReflectionProbe, dispose };
   } catch (error) {
     dispose();
     throw error;

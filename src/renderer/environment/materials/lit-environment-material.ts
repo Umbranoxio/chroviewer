@@ -1,5 +1,5 @@
 import type { Rgb } from '../../../core/colors';
-import { createEnvironmentLitMaterial } from '../../materials/environment-surface-materials';
+import { createEnvironmentLitMaterial, createWaterLitMaterial } from '../../materials/environment-surface-materials';
 import type { EnvironmentMaterialData } from '../types';
 import {
   materialFog,
@@ -19,6 +19,30 @@ export function createLitEnvironmentMaterial(
   context: EnvironmentMaterialContext,
   color: Rgb,
 ) {
+  if (data.shader === 'ChroMapper/Water Lit') {
+    const normal = materialTexture(data, context, '_NormalTexture');
+    if (normal !== undefined && (context.reflectionProbe !== undefined || context.bakedReflectionProbe !== undefined)) {
+      const scrolling = data.colors._NormalTexScrolling ?? [0, 0, 0, 0];
+      return createWaterLitMaterial(context.fog, color, data.colors._Color?.[3] ?? 1, normal, {
+        normalScale: data.floats._NormalScale ?? 1,
+        normalScaleVertical: data.floats._NormalScaleVertical ?? 0,
+        normalScrolling: [scrolling[0], scrolling[1]],
+        metallic: data.floats._Metallic ?? 0,
+        reflectionIntensity: data.floats._ReflectionProbeIntensity ?? 1,
+        smoothness: data.floats._Smoothness ?? 0.5,
+        fallingFogStartOffset: data.floats._FallingFogStartOffset ?? 0,
+        reflectionProbe: context.reflectionProbe,
+        bakedReflectionProbe: context.bakedReflectionProbe,
+        zFade: data.keywords.includes('Z_FADE')
+          ? {
+              position: data.floats._ZFadePosition ?? 0,
+              scale: data.floats._ZFadeScale ?? 1,
+            }
+          : undefined,
+        fog: materialFog(data),
+      });
+    }
+  }
   const diffuse = materialTexture(data, context, '_DiffuseTex') ?? materialTexture(data, context, '_DiffuseTexture');
   const metalSmoothness = data.keywords.includes('METAL_SMOOTHNESS_TEXTURE')
     ? materialTexture(data, context, '_MetalSmoothnessTex')
@@ -98,7 +122,14 @@ export function createLitEnvironmentMaterial(
     secondaryEmissionMaskSpeed: vectorColor(data.colors._SecondaryEmissionMaskSpeed, [0, 0, 0]),
     primaryEmissionGain: data.floats._EmissionMaskIntensity ?? 1,
     secondaryEmissionGain: data.floats._SecondaryEmissionMaskIntensity ?? 1,
-    reflectionProbe: (data.floats._EnableReflectionProbe ?? 0) !== 0 ? context.reflectionProbe : undefined,
+    reflectionProbe:
+      (data.floats._EnableReflectionProbe ?? 0) !== 0 || data.keywords.includes('REFLECTION_PROBE')
+        ? context.reflectionProbe
+        : undefined,
+    bakedReflectionProbe:
+      (data.floats._EnableReflectionProbe ?? 0) !== 0 || data.keywords.includes('REFLECTION_PROBE')
+        ? context.bakedReflectionProbe
+        : undefined,
     reflectionIntensity: data.floats._ReflectionProbeIntensity ?? 1,
     multiplyReflections: data.keywords.includes('MULTIPLY_REFLECTIONS'),
     emissionColor: vectorColor(data.colors._EmissionTexColor, [1, 1, 1]),

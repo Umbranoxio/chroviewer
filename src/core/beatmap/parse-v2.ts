@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import { parseV2ChromaEnvironment } from '../chroma-environment';
+import { parseNoodleBeatmap } from '../noodle-data';
 import {
   createDifficulty,
   ExecutionTime,
@@ -51,11 +53,11 @@ const bookmarkSchema = z.object({
   _name: beatSaberStringSchema,
   _color: z.array(numberSchema).min(3).max(4).optional().catch(undefined),
 });
-const difficultyCustomDataSchema = z.object({
+const difficultyCustomDataSchema = z.looseObject({
   _bookmarks: z.array(bookmarkSchema).catch([]),
 });
 const v2DifficultySchema = z
-  .object({
+  .looseObject({
     _version: beatSaberStringSchema,
     _events: z.array(eventSchema).catch([]),
     _notes: z.array(noteSchema).catch([]),
@@ -143,6 +145,8 @@ export function parseV2Difficulty(input: unknown): Difficulty {
   const root = v2DifficultySchema.parse(input);
   const version = root._version;
   const difficulty = createDifficulty(version === '' ? '2.0.0' : version);
+  difficulty.chromaEnvironment = parseV2ChromaEnvironment(root._customData);
+  difficulty.noodle = parseNoodleBeatmap(root._customData, 2);
 
   for (const bookmark of root._customData?._bookmarks ?? []) {
     difficulty.bookmarks.push({

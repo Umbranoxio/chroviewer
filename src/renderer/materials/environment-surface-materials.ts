@@ -1,12 +1,14 @@
-import { ShaderMaterial, Vector2, Vector3, type CubeTexture } from 'three';
+import { ShaderMaterial, Vector2, Vector3, Vector4, type CubeTexture } from 'three';
 
 import type { Rgb } from '../../core/colors';
 import type { FogUniforms } from '../bloomfog/pipeline';
+import type { EnvironmentBakedReflectionProbe } from '../environment/environment-runtime';
 import { OBJECT_VERT } from '../shaders/chunks';
 import {
   ENVIRONMENT_LIT_FRAG,
   ENVIRONMENT_LIT_VERT,
   ENVIRONMENT_UNLIT_FRAG,
+  WATER_LIT_FRAG,
 } from '../shaders/environment-surface-shaders';
 import {
   linearColor,
@@ -80,6 +82,7 @@ export interface EnvironmentLitSettings {
   primaryEmissionGain: number;
   secondaryEmissionGain: number;
   reflectionProbe?: CubeTexture;
+  bakedReflectionProbe?: EnvironmentBakedReflectionProbe;
   reflectionIntensity: number;
   multiplyReflections: boolean;
   emissionColor: Rgb;
@@ -96,6 +99,75 @@ export interface EnvironmentLitSettings {
   songTime?: { value: number };
   timeOffset: number;
   fog: MaterialFogSettings;
+}
+
+const EMPTY_PROBE_LIGHT_COLORS = Array.from({ length: 6 }, () => new Vector4());
+const EMPTY_PROBE_VECTOR = new Vector3();
+
+function reflectionProbeUniforms(
+  reflectionProbe: CubeTexture | undefined,
+  bakedReflectionProbe: EnvironmentBakedReflectionProbe | undefined,
+) {
+  return {
+    _ReflectionProbe: { value: bakedReflectionProbe?.textures[0] ?? reflectionProbe },
+    _ReflectionProbe2: { value: bakedReflectionProbe?.textures[1] ?? reflectionProbe },
+    _ReflectionProbePosition: { value: bakedReflectionProbe?.position ?? EMPTY_PROBE_VECTOR },
+    _ReflectionProbeBoxMin: { value: bakedReflectionProbe?.boxMin ?? EMPTY_PROBE_VECTOR },
+    _ReflectionProbeBoxMax: { value: bakedReflectionProbe?.boxMax ?? EMPTY_PROBE_VECTOR },
+    _LightProbeLightBakeId: { value: bakedReflectionProbe?.lightColors ?? EMPTY_PROBE_LIGHT_COLORS },
+  };
+}
+
+export function createWaterLitMaterial(
+  fog: FogUniforms,
+  color: Rgb,
+  colorAlpha: number,
+  normal: MaterialTexture,
+  settings: {
+    normalScale: number;
+    normalScaleVertical: number;
+    normalScrolling: [number, number];
+    metallic: number;
+    reflectionIntensity: number;
+    smoothness: number;
+    fallingFogStartOffset: number;
+    reflectionProbe?: CubeTexture;
+    bakedReflectionProbe?: EnvironmentBakedReflectionProbe;
+    zFade?: { position: number; scale: number };
+    fog: MaterialFogSettings;
+  },
+) {
+  const elapsed = { value: 0 };
+  const material = new ShaderMaterial({
+    defines: {
+      USE_TANGENT: 1,
+      ...(settings.zFade === undefined ? {} : { Z_FADE: 1 }),
+      ...(settings.bakedReflectionProbe === undefined ? {} : { BAKED_REFLECTION_PROBE: 1 }),
+    },
+    vertexShader: ENVIRONMENT_LIT_VERT,
+    fragmentShader: WATER_LIT_FRAG,
+    uniforms: {
+      ...materialFogUniforms(fog, settings.fog),
+      ...textureUniforms('_NormalTexture', normal),
+      _NormalTexScrolling: { value: new Vector2(...settings.normalScrolling) },
+      _NormalScale: { value: settings.normalScale },
+      _NormalScaleVertical: { value: settings.normalScaleVertical },
+      _Metallic: { value: settings.metallic },
+      ...reflectionProbeUniforms(settings.reflectionProbe, settings.bakedReflectionProbe),
+      _ReflectionIntensity: { value: settings.reflectionIntensity },
+      _Smoothness: { value: settings.smoothness },
+      _FallingFogStartOffset: { value: settings.fallingFogStartOffset },
+      _ZFadePosition: { value: settings.zFade?.position ?? 0 },
+      _ZFadeScale: { value: settings.zFade?.scale ?? 1 },
+      _Color: { value: linearColor(color) },
+      _ColorAlpha: { value: colorAlpha },
+      _TimeSeconds: elapsed,
+    },
+  });
+  material.onBeforeRender = () => {
+    elapsed.value = performance.now() * 0.001;
+  };
+  return material;
 }
 
 export function createEnvironmentLitMaterial(
@@ -151,8 +223,14 @@ export function createEnvironmentLitMaterial(
       ...(settings.secondaryEmissionMask !== undefined && settings.secondaryEmissionMaskSecondaryUvs
         ? { SECONDARY_EMISSION_MASK_SECONDARY_UV: 1, USE_SECONDARY_UV: 1 }
         : {}),
-      ...(settings.reflectionProbe === undefined ? {} : { REFLECTION_PROBE: 1 }),
-      ...(settings.reflectionProbe !== undefined && settings.multiplyReflections ? { MULTIPLY_REFLECTIONS: 1 } : {}),
+      ...(settings.reflectionProbe === undefined && settings.bakedReflectionProbe === undefined
+        ? {}
+        : { REFLECTION_PROBE: 1 }),
+      ...(settings.bakedReflectionProbe === undefined ? {} : { BAKED_REFLECTION_PROBE: 1 }),
+      ...((settings.reflectionProbe !== undefined || settings.bakedReflectionProbe !== undefined) &&
+      settings.multiplyReflections
+        ? { MULTIPLY_REFLECTIONS: 1 }
+        : {}),
       ...(settings.customTime === 'freeze' ? { CUSTOM_TIME_FREEZE: 1 } : {}),
       ...(settings.customTime === 'song' ? { CUSTOM_TIME_SONG: 1 } : {}),
     },
@@ -165,7 +243,9 @@ export function createEnvironmentLitMaterial(
       _EmissionColorAlpha: { value: settings.vertexEmissionColorAlpha },
       _VertexEmissionThreshold: { value: settings.vertexEmissionThreshold },
       _VertexEmissionStrength: { value: settings.vertexEmissionStrength },
-      _VertexEmissionBloomIntensity: { value: settings.vertexEmissionBloomIntensity },
+      _VertexEmissionBloomIntensity: {
+        value: settings.vertexEmissionBloomIntensity,
+      },
       ...textureUniforms('_DiffuseTex', settings.diffuse),
       _AlbedoMultiplier: { value: settings.albedoMultiplier },
       ...textureUniforms('_MetalSmoothnessTex', settings.metalSmoothness),
@@ -188,7 +268,7 @@ export function createEnvironmentLitMaterial(
       },
       _PrimaryEmissionGain: { value: settings.primaryEmissionGain },
       _SecondaryEmissionGain: { value: settings.secondaryEmissionGain },
-      _ReflectionProbe: { value: settings.reflectionProbe },
+      ...reflectionProbeUniforms(settings.reflectionProbe, settings.bakedReflectionProbe),
       _ReflectionIntensity: { value: settings.reflectionIntensity },
       _EmissionTexColor: { value: linearColor(settings.emissionColor) },
       _EmissionTexColorAlpha: { value: settings.emissionColorAlpha },

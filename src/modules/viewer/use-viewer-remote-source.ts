@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type Dispatch, type RefObject, type SetStateAction } from 'react';
+import { useEffect, useState, type Dispatch, type RefObject, type SetStateAction } from 'react';
 
 import { skipToken, useMutation, useQuery } from '@tanstack/react-query';
 import { useNavigate, useSearch } from '@tanstack/react-router';
@@ -82,7 +82,6 @@ export function useViewerRemoteSource({
   const sourceT = useTranslations('source');
   const navigate = useNavigate({ from: '/' });
   const search = useSearch({ from: '/' });
-  const startupRef = useRef(false);
   const [sourceInput, setSourceInput] = useState('');
   const [sourceDownload, setSourceDownload] = useState<SourceDownload | null>(null);
 
@@ -397,8 +396,6 @@ export function useViewerRemoteSource({
   }
 
   useEffect(() => {
-    if (startupRef.current) return;
-    startupRef.current = true;
     if (search.replayUrl !== undefined) {
       const requestId = beginSourceRequest();
       const sharedSettings = search.settings;

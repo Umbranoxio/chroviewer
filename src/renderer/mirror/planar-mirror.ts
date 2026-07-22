@@ -9,8 +9,10 @@ import {
   PerspectiveCamera,
   PlaneGeometry,
   RGBAFormat,
+  type IUniform,
   type Material,
   type Scene,
+  ShaderMaterial,
   type Texture,
   Vector3,
   Vector4,
@@ -30,6 +32,10 @@ import {
 
 export const MAIN_ONLY_LAYER = 1;
 export const SCREEN_DISPLACEMENT_LAYER = 2;
+export const AFTER_SCREEN_DISPLACEMENT_LAYER = 3;
+
+const MEDIUM_REFLECTION_LAYERS = 536885504;
+const HIGH_REFLECTION_LAYERS = 537952032;
 
 function blackTexture() {
   const texture = new DataTexture(new Uint8Array([0, 0, 0, 0]), 1, 1, RGBAFormat);
@@ -59,6 +65,9 @@ export class PlanarMirror {
   private readonly qScratch = new Vector4();
   private readonly cScratch = new Vector4();
   private readonly flippedMaterials = new Set<Material>();
+  private readonly mirrorPassUniforms = new Set<IUniform<number>>();
+  private readonly excludedObjects = new Set<Mesh>();
+  private readonly reflectionLayers: number;
 
   constructor(quality: QualitySettings, width: number, length: number) {
     const size = mirrorTextureSize(quality.mirrorQuality);
@@ -73,6 +82,7 @@ export class PlanarMirror {
             ...MULTISAMPLE_DEPTH_STENCIL_RESOLVE_OPTIONS,
           });
     this.reflectionTexture = { value: this.target?.texture ?? this.black };
+    this.reflectionLayers = quality.mirrorQuality === 'low' ? MEDIUM_REFLECTION_LAYERS : HIGH_REFLECTION_LAYERS;
     this.mesh = new Mesh(new PlaneGeometry(width, length));
     this.mesh.rotateX(-Math.PI / 2);
     this.mesh.layers.set(MAIN_ONLY_LAYER);
@@ -82,17 +92,33 @@ export class PlanarMirror {
 
   updateMaterials(scene: Scene) {
     this.flippedMaterials.clear();
+    this.mirrorPassUniforms.clear();
+    this.excludedObjects.clear();
     scene.traverse((object) => {
       if (!(object instanceof Mesh)) return;
       const mesh = object as Mesh;
+      if (mesh.userData.mirrorExcluded === true) this.excludedObjects.add(mesh);
+      const environmentLayer = mesh.userData.environmentLayer as number | undefined;
+      if (environmentLayer !== undefined && (this.reflectionLayers & (1 << environmentLayer)) === 0) {
+        mesh.layers.set(MAIN_ONLY_LAYER);
+      }
       const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
       for (const entry of materials) {
         if (entry.side === FrontSide || entry.side === BackSide) this.flippedMaterials.add(entry);
+        if (entry instanceof ShaderMaterial) {
+          const mirrorPass = entry.uniforms._MirrorPass as IUniform<number> | undefined;
+          if (mirrorPass !== undefined) this.mirrorPassUniforms.add(mirrorPass);
+        }
       }
     });
   }
 
-  render(renderer: WebGLRenderer, scene: Scene, camera: PerspectiveCamera) {
+  render(
+    renderer: WebGLRenderer,
+    scene: Scene,
+    camera: PerspectiveCamera,
+    prepareReflection?: (renderer: WebGLRenderer, camera: PerspectiveCamera) => void,
+  ) {
     if (this.target === null) return;
 
     this.mesh.updateMatrixWorld();
@@ -111,6 +137,8 @@ export class PlanarMirror {
     reflectionMatrix(plane, this.reflection);
     mirror.matrixWorldInverse.multiplyMatrices(camera.matrixWorldInverse, this.reflection);
     mirror.matrixWorld.copy(mirror.matrixWorldInverse).invert();
+    mirror.projectionMatrix.copy(camera.projectionMatrix);
+    mirror.projectionMatrixInverse.copy(camera.projectionMatrixInverse);
     const clipPlane = cameraSpacePlane(
       mirror.matrixWorldInverse,
       this.planePos,
@@ -119,15 +147,6 @@ export class PlanarMirror {
       this.pointScratch,
       this.normalScratch,
     );
-    obliqueProjection(
-      camera.projectionMatrix,
-      clipPlane,
-      mirror.projectionMatrix,
-      this.inverseProjectionScratch,
-      this.qScratch,
-      this.cScratch,
-    );
-    mirror.projectionMatrixInverse.copy(mirror.projectionMatrix).invert();
     mirror.layers.mask = camera.layers.mask;
     mirror.layers.disable(MAIN_ONLY_LAYER);
     mirror.layers.disable(SCREEN_DISPLACEMENT_LAYER);
@@ -135,18 +154,35 @@ export class PlanarMirror {
     for (const material of this.flippedMaterials) {
       material.side = material.side === FrontSide ? BackSide : FrontSide;
     }
+    for (const uniform of this.mirrorPassUniforms) uniform.value = 1;
+    const hiddenObjects = [...this.excludedObjects].filter((object) => object.visible);
+    for (const object of hiddenObjects) object.visible = false;
 
     const prevTarget = renderer.getRenderTarget();
     renderer.getClearColor(this.clearColorTmp);
     const prevClearAlpha = renderer.getClearAlpha();
-    renderer.setClearColor(0x000000, 0);
-    renderer.setRenderTarget(this.target);
-    renderer.render(scene, mirror);
-    renderer.setRenderTarget(prevTarget);
-    renderer.setClearColor(this.clearColorTmp, prevClearAlpha);
-
-    for (const material of this.flippedMaterials) {
-      material.side = material.side === FrontSide ? BackSide : FrontSide;
+    try {
+      renderer.setClearColor(0x000000, 0);
+      renderer.setRenderTarget(this.target);
+      prepareReflection?.(renderer, mirror);
+      obliqueProjection(
+        camera.projectionMatrix,
+        clipPlane,
+        mirror.projectionMatrix,
+        this.inverseProjectionScratch,
+        this.qScratch,
+        this.cScratch,
+      );
+      mirror.projectionMatrixInverse.copy(mirror.projectionMatrix).invert();
+      renderer.render(scene, mirror);
+    } finally {
+      renderer.setRenderTarget(prevTarget);
+      renderer.setClearColor(this.clearColorTmp, prevClearAlpha);
+      for (const material of this.flippedMaterials) {
+        material.side = material.side === FrontSide ? BackSide : FrontSide;
+      }
+      for (const uniform of this.mirrorPassUniforms) uniform.value = 0;
+      for (const object of hiddenObjects) object.visible = true;
     }
   }
 

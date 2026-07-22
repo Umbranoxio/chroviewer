@@ -2,19 +2,19 @@ import { Mesh, type Object3D } from 'three';
 
 import { createBackgroundGradientMaterial } from '../materials/scene-materials';
 import { shaderUniformValue } from '../materials/shared';
-import { MAIN_ONLY_LAYER } from '../mirror/planar-mirror';
 import { evaluateAnimationCurve } from './animation-curve';
 import { referenceKey, rendererObjectsForMpbController } from './environment-component-utils';
 import { fullscreenTriangleGeometry } from './environment-geometry';
 import { backgroundGradientTransform, lightBindings, lightSegment } from './environment-light-runtime';
 import type {
+  EnvironmentBackgroundGradient,
   EnvironmentDirectionalLight,
   EnvironmentLightSegment,
   EnvironmentMaterialLight,
 } from './environment-runtime';
 import type { EnvironmentSceneBuild } from './environment-scene-builder';
 import type { EnvironmentMaterialContext } from './materials/material-context';
-import type { EnvironmentData, ObjectReference } from './types';
+import type { BackgroundGradientData, EnvironmentData, ObjectReference } from './types';
 
 const OPAQUE_LIGHT_MIN_EMISSION = 0.25;
 
@@ -33,6 +33,51 @@ export interface EnvironmentLighting {
   lightSegments: EnvironmentLightSegment[];
   materialLights: EnvironmentMaterialLight[];
   parametricTargets: Map<string, EnvironmentParametricTarget>;
+  backgroundGradient: EnvironmentBackgroundGradient | null;
+}
+
+const SKY_GRADIENT_WIDTH = 128;
+
+function evaluateGradientColor(elements: BackgroundGradientData['Elements'], t: number) {
+  for (let index = elements.length - 2; index >= 0; index--) {
+    const element = elements[index];
+    if (element === undefined || t < element.startT) continue;
+    const next = elements[index + 1];
+    if (next === undefined) continue;
+    const factor = Math.pow((t - element.startT) / (next.startT - element.startT), element.exp);
+    return element.color.map((value, channel) => value + ((next.color[channel] ?? 0) - value) * factor);
+  }
+  return elements[elements.length - 1]?.color ?? [0, 0, 0, 0];
+}
+
+function objectActiveInHierarchy(data: EnvironmentData, index: number) {
+  let current = index;
+  let steps = data.objects.length;
+  while (steps-- > 0) {
+    const object = data.objects[current];
+    if (!object?.active) return false;
+    if (object.parent < 0) return true;
+    current = object.parent;
+  }
+  return false;
+}
+
+export function buildBackgroundGradient(data: EnvironmentData): EnvironmentBackgroundGradient | null {
+  for (const [index, object] of data.objects.entries()) {
+    for (const gradient of object.components?.BackgroundGradient ?? []) {
+      if (!gradient.enabled || gradient.ExecutionTime !== 2 || gradient.Elements.length < 2) continue;
+      if (!objectActiveInHierarchy(data, index)) continue;
+      const ramp = new Uint8Array(SKY_GRADIENT_WIDTH * 4);
+      for (let pixel = 0; pixel < SKY_GRADIENT_WIDTH; pixel++) {
+        const color = evaluateGradientColor(gradient.Elements, pixel / (SKY_GRADIENT_WIDTH - 1));
+        for (let channel = 0; channel < 4; channel++) {
+          ramp[pixel * 4 + channel] = Math.round(Math.min(Math.max(color[channel] ?? 0, 0), 1) * 255);
+        }
+      }
+      return { ramp, tint: gradient.TintColor };
+    }
+  }
+  return null;
 }
 
 function buildDirectionalLights(data: EnvironmentData, scene: EnvironmentSceneBuild) {
@@ -49,7 +94,10 @@ function buildDirectionalLights(data: EnvironmentData, scene: EnvironmentSceneBu
           data.objects[reference.obj]?.components?.LightIntensityController?.[reference.componentIndex ?? 0];
         if (!input?.enabled) return [];
         const effects = scene.lightEffectsByTarget.get(referenceKey(reference)) ?? [];
-        return lightBindings(effects, input.ID).map((binding) => ({ binding, intensity: input.Intensity ?? 1 }));
+        return lightBindings(effects, input.ID).map((binding) => ({
+          binding,
+          intensity: input.Intensity ?? 1,
+        }));
       });
       directionalLights.push({
         node: scene.nodes[index] ?? scene.root,
@@ -84,7 +132,6 @@ function addBackgroundGradients(
       mesh.name = `${object.name}:background-gradient`;
       mesh.frustumCulled = false;
       mesh.renderOrder = -999;
-      mesh.layers.set(MAIN_ONLY_LAYER);
       scene.nodes[objectIndex]?.add(mesh);
       const reference: ObjectReference = {
         obj: objectIndex,
@@ -125,7 +172,14 @@ function addParametricLights(
       object.components?.ParametricBloomFogLightController ?? []
     ).entries()) {
       if (!controller.enabled) continue;
-      const bindings = scene.lightEffectsByObject.get(index) ?? [];
+      const bindings =
+        scene.lightEffectsByTarget.get(
+          referenceKey({
+            obj: index,
+            component: 'ParametricBloomFogLightController',
+            componentIndex: controllerIndex,
+          }),
+        ) ?? [];
       const segment = lightSegment(controller, node, data, bindings);
       lightSegments.push(segment);
       const lengthSetters: ((length: number, collisionLength: number, startAlpha: number) => void)[] = [];
@@ -176,7 +230,7 @@ function addParametricLights(
         let currentLength = controller.Length;
         let currentCollisionLength = Number.POSITIVE_INFINITY;
         let currentStartAlpha = controller.StartAlpha;
-        if (box !== undefined) bindingTarget.matrixTargets.push(lightNode);
+        if (box !== undefined && box.UpdateTransform !== 0) bindingTarget.matrixTargets.push(lightNode);
         function applyAlpha(alpha: number) {
           currentAlpha = alpha;
           const renderedAlpha = Math.max(Math.abs(alpha * intensityMultiplier), controller.MinAlpha);
@@ -203,9 +257,11 @@ function addParametricLights(
                 ? box.Height
                 : (currentLength + (controller.AddWidthToLength === 0 ? 0 : controller.Width)) * lengthFactor;
             const height = Math.min(fullHeight, currentCollisionLength);
-            lightNode.scale.set(width * 0.5, height * 0.5, width * 0.5);
-            lightNode.position.set(0, (0.5 - controller.Center) * height, 0);
-            lightNode.updateMatrix();
+            if (box.UpdateTransform !== 0) {
+              lightNode.scale.set(width * 0.5, height * 0.5, width * 0.5);
+              lightNode.position.set(0, (0.5 - controller.Center) * height, 0);
+              lightNode.updateMatrix();
+            }
             const alphaStart = controller.OverrideChildrenAlpha === 0 ? box.AlphaStart : currentStartAlpha;
             const alphaEnd = controller.OverrideChildrenAlpha === 0 ? box.AlphaEnd : controller.EndAlpha;
             const clippedAlphaEnd =
@@ -304,6 +360,53 @@ function addRectangleFakeGlowLights(
   });
 }
 
+function addCombinedMaterialLights(
+  data: EnvironmentData,
+  scene: EnvironmentSceneBuild,
+  materialLights: EnvironmentMaterialLight[],
+) {
+  data.objects.forEach((object, objectIndex) => {
+    for (const controller of object.components?.MaterialLightsController ?? []) {
+      if (!controller.enabled) continue;
+      const rendererIndex = controller.MeshRenderer?.obj ?? objectIndex;
+      const materials = scene.objectShaderMaterials[rendererIndex] ?? [];
+      if (materials.length === 0) continue;
+      const inputs = controller.LightIntensityData.flatMap((reference) => {
+        if (reference.component !== 'LightIntensityController') return [];
+        const input =
+          data.objects[reference.obj]?.components?.LightIntensityController?.[reference.componentIndex ?? 0];
+        if (input?.enabled !== true) return [];
+        const effects = scene.lightEffectsByTarget.get(referenceKey(reference)) ?? [];
+        if (effects.length === 0) return [];
+        return [
+          {
+            bindings: lightBindings(effects, input.ID),
+            intensity: input.Intensity ?? 1,
+          },
+        ];
+      });
+      if (inputs.length === 0) continue;
+      materialLights.push({
+        materials,
+        bindings: [],
+        intensityMultiplier: 1,
+        node: scene.nodes[rendererIndex],
+        colorProperty: controller.ColorProperty,
+        combined: {
+          inputs,
+          intensity: controller.Intensity,
+          maxIntensity: controller.MaxIntensity,
+          multiplyColorByAlpha: controller.MultiplyColorByAlpha !== 0,
+          mixType: controller.MixType,
+          setAlphaOnly: controller.SetAlphaOnly !== 0,
+          alphaIntoColor: controller.AlphaIntoColor !== 0,
+          setColorOnly: controller.SetColorOnly !== 0,
+        },
+      });
+    }
+  });
+}
+
 export function buildEnvironmentLighting(
   data: EnvironmentData,
   materialContext: EnvironmentMaterialContext,
@@ -314,10 +417,12 @@ export function buildEnvironmentLighting(
   addBackgroundGradients(data, materialContext, scene, materialLights);
   const parametricTargets = addParametricLights(data, scene, lightSegments, materialLights);
   addRectangleFakeGlowLights(data, scene, materialLights);
+  addCombinedMaterialLights(data, scene, materialLights);
   return {
     directionalLights: buildDirectionalLights(data, scene),
     lightSegments,
     materialLights,
     parametricTargets,
+    backgroundGradient: buildBackgroundGradient(data),
   };
 }

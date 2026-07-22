@@ -2,6 +2,16 @@ import { ACES_CHUNK, FOG_CHUNK } from './chunks';
 
 export const CUSTOM_PARTICLES_VERT = /* glsl */ `
 uniform float _BillboardScale;
+uniform sampler2D _DisplacementTex;
+uniform vec2 _DisplacementTexScale;
+uniform vec2 _DisplacementTexOffset;
+uniform float _DisplacementStrength;
+uniform vec3 _DisplacementAxes;
+uniform vec2 _DisplacementPanning;
+uniform float _DisplacementPanningSpeed;
+uniform float _TimeSeconds;
+uniform float _SongTime;
+uniform float _TimeOffset;
 varying vec3 vWorldPos;
 varying vec3 vWorldNormal;
 varying vec2 vUv;
@@ -11,6 +21,27 @@ attribute vec4 color;
 varying vec4 vVertexColor;
 #endif
 void main() {
+  vec3 localPosition = position;
+  #ifdef VERTEX_DISPLACEMENT
+  float displacementTime = _TimeSeconds;
+    #ifdef CUSTOM_TIME_SONG
+    displacementTime = _SongTime;
+    #elif defined(CUSTOM_TIME_FREEZE)
+    displacementTime = _TimeOffset;
+    #endif
+  vec2 displacementUv = uv * _DisplacementTexScale + _DisplacementTexOffset;
+  displacementUv += _DisplacementPanning * displacementTime * _DisplacementPanningSpeed * _DisplacementTexScale;
+  vec3 sampledDisplacement = texture2D(_DisplacementTex, displacementUv).rgb * 2.0 - 1.0;
+  vec3 displacementOffset;
+    #ifdef SPATIAL_DISPLACEMENT
+    vec3 displacementDirection = vec3(sampledDisplacement.x, -sampledDisplacement.y, -sampledDisplacement.z);
+    displacementDirection *= inversesqrt(max(dot(displacementDirection, displacementDirection), 0.000001));
+    displacementOffset = displacementDirection * _DisplacementAxes * _DisplacementStrength;
+    #else
+    displacementOffset = vec3(0.0, 0.0, -sampledDisplacement.x * _DisplacementStrength);
+    #endif
+  localPosition += displacementOffset;
+  #endif
   vec3 worldPosition;
   #ifdef BILLBOARD_CAMERA
   vec3 worldOrigin = (modelMatrix * vec4(0.0, 0.0, 0.0, 1.0)).xyz;
@@ -18,7 +49,7 @@ void main() {
   vec3 cameraUp = vec3(viewMatrix[0][1], viewMatrix[1][1], viewMatrix[2][1]);
   vec3 cameraForward = vec3(viewMatrix[0][2], viewMatrix[1][2], viewMatrix[2][2]);
   worldPosition = worldOrigin + (
-    cameraRight * position.x + cameraUp * position.y + cameraForward * position.z
+    cameraRight * localPosition.x + cameraUp * localPosition.y + cameraForward * localPosition.z
   ) * _BillboardScale;
   vWorldNormal = normalize(cameraForward);
   #elif defined(BILLBOARD_Y_AXIS)
@@ -27,10 +58,10 @@ void main() {
   vec3 towardCamera = cameraPosition - worldOrigin;
   vec3 look = normalize(towardCamera - localUp * dot(towardCamera, localUp));
   vec3 right = -normalize(cross(localUp, look));
-  worldPosition = worldOrigin + (right * position.x + localUp * position.y) * _BillboardScale;
+  worldPosition = worldOrigin + (right * localPosition.x + localUp * localPosition.y) * _BillboardScale;
   vWorldNormal = look;
   #else
-  worldPosition = (modelMatrix * vec4(position, 1.0)).xyz;
+  worldPosition = (modelMatrix * vec4(localPosition, 1.0)).xyz;
   vWorldNormal = normalize(mat3(modelMatrix) * normal);
   #endif
   #ifdef USE_VERTEX_COLOR
@@ -63,7 +94,7 @@ uniform float _AlphaMultiplier;
 uniform float _WhiteBoostStart;
 uniform float _BloomType;
 uniform float _BloomMultiplier;
-uniform float _BloomWhiteMultiplier;
+uniform float _BloomWhite;
 uniform float _TimeSeconds;
 uniform float _SongTime;
 uniform float _TimeOffset;
@@ -107,7 +138,7 @@ void main() {
     sourceColor.rgb *= vVertexColor.rgb;
     #endif
     #ifdef VERTEX_SQUARE_ALPHA
-    sourceColor.a *= sourceColor.a;
+    sourceColor.a *= vVertexColor.a;
     #endif
   #endif
 
@@ -141,7 +172,6 @@ void main() {
   albedo.rgb += texture2D(_ColorGradient, gradientUv).rgb;
   #endif
 
-  // game applies strength as lerp toward no-mask: factor = 1 + strength * (mask - 1)
   #ifdef MASK
   vec4 mask = texture2D(
     _MaskTex,
@@ -154,8 +184,11 @@ void main() {
     albedo.rgb += mask.rgb * _MaskStrength;
     albedo.a *= mix(1.0, mask.a, _MaskStrength);
     #elif defined(MASK_BLEND_MASKED_ADD)
-    albedo.rgb += albedo.rgb * mask.rgb * _MaskStrength;
-    albedo.a *= mix(1.0, mask.a, _MaskStrength);
+      #ifdef MASK_RED_IS_ALPHA
+      albedo.a *= 1.0 + mask.a * _MaskStrength;
+      #else
+      albedo *= 1.0 + mask * _MaskStrength;
+      #endif
     #elif defined(MASK_RED_IS_ALPHA)
     albedo.a *= mix(1.0, mask.a, _MaskStrength);
     #else
@@ -174,8 +207,11 @@ void main() {
     albedo.rgb += mask2.rgb * _Mask2Strength;
     albedo.a *= mix(1.0, mask2.a, _Mask2Strength);
     #elif defined(MASK2_BLEND_MASKED_ADD)
-    albedo.rgb += albedo.rgb * mask2.rgb * _Mask2Strength;
-    albedo.a *= mix(1.0, mask2.a, _Mask2Strength);
+      #ifdef MASK2_RED_IS_ALPHA
+      albedo.a *= 1.0 + mask2.a * _Mask2Strength;
+      #else
+      albedo *= 1.0 + mask2 * _Mask2Strength;
+      #endif
     #elif defined(MASK2_RED_IS_ALPHA)
     albedo.a *= mix(1.0, mask2.a, _Mask2Strength);
     #else
@@ -210,13 +246,66 @@ void main() {
     albedo.rgb *= bloomMagnitude;
     albedo.a = clamp(bloomMagnitude * _BloomMultiplier, 0.0, 1.0);
   } else {
-    float whiteEnergy = bloomMagnitude * bloomMagnitude * _BloomWhiteMultiplier;
+    float whiteInput = bloomMagnitude * _BloomWhite;
+    float whiteEnergy = whiteInput * whiteInput;
     albedo.rgb = clamp(albedo.rgb * bloomMagnitude + vec3(whiteEnergy), 0.0, 1.0);
     albedo.a = clamp(bloomMagnitude * _BloomMultiplier, 0.0, 1.0);
   }
   // game writes to a unorm target: blend sources clamp to [0,1] per draw
   albedo.rgb = clamp(albedo.rgb, 0.0, 1.0);
   gl_FragColor = albedo;
+  #include <colorspace_fragment>
+}
+`;
+
+export const RAIN_VERT = /* glsl */ `
+uniform float _TimeSeconds;
+uniform float _Height;
+uniform float _Speed;
+uniform float _BottomFadeScale;
+uniform float _TopFadeScale;
+uniform float _BottomEnd;
+uniform float _TopEnd;
+attribute vec4 color;
+varying vec2 vUv;
+varying vec4 vVertexColor;
+varying vec4 vScreenPos;
+void main() {
+  float fall = fract(color.r - _TimeSeconds * _Speed) * _Height;
+  vec3 localPosition = position - normal * fall;
+  vec4 worldPosition = modelMatrix * vec4(localPosition, 1.0);
+  float bottomFade = smoothstep(
+    0.0,
+    1.0,
+    clamp((worldPosition.y - _BottomEnd) / _BottomFadeScale, 0.0, 1.0)
+  );
+  float topFade = clamp((worldPosition.y - _TopEnd) / -_TopFadeScale, 0.0, 1.0);
+  vVertexColor = vec4(color.rgb, color.a * bottomFade * topFade);
+  vUv = uv;
+  gl_Position = projectionMatrix * viewMatrix * worldPosition;
+  vScreenPos = vec4((gl_Position.xy + gl_Position.ww) * 0.5, gl_Position.zw);
+}
+`;
+
+export const RAIN_FRAG = /* glsl */ `
+uniform vec3 _Color;
+uniform float _ColorMultiplier;
+uniform float _Intensity;
+uniform float _AlphaMultiplier;
+uniform float _AlphaFromFog;
+varying vec2 vUv;
+varying vec4 vVertexColor;
+varying vec4 vScreenPos;
+${FOG_CHUNK}
+void main() {
+  vec3 fogColor = chroFogColor(vScreenPos).rgb;
+  float fogAlpha = (max(max(fogColor.r, fogColor.g), fogColor.b) * 3.0 - 0.1) * _AlphaFromFog;
+  float textureAlpha = 1.0;
+  float greenAlpha = mix(0.7, 1.1, vVertexColor.g);
+  float sourceAlpha = greenAlpha * textureAlpha;
+  sourceAlpha *= vVertexColor.a * vVertexColor.a;
+  float alpha = fogAlpha + sourceAlpha * _AlphaMultiplier * _ColorMultiplier;
+  gl_FragColor = vec4(0.0, 0.0, 0.0, alpha);
   #include <colorspace_fragment>
 }
 `;
@@ -301,10 +390,10 @@ varying vec2 vUv;
 varying vec4 vVertexColor;
 varying vec4 vScreenPos;
 void main() {
-  float radius = max(-position.z, 0.0001);
+  float radius = -position.z;
   float wave = sin(radius * 12.345);
-  float direction = wave > 0.0 ? -1.0 : 1.0;
-  float angularSpeed = (wave * 0.5 + 1.0) * _Speed * direction;
+  float angularSpeed = (wave * 0.5 - 1.0) * _Speed * sign(wave);
+  // intentional divide by zero: z=0 verts go NaN like the game, culling their triangles
   float angle = (position.x + _TimeSeconds * angularSpeed) / radius;
   vec3 wrappedPosition = vec3(sin(angle) * radius, position.y, -cos(angle) * radius);
   vec4 baseWorldPosition = modelMatrix * vec4(wrappedPosition, 1.0);
@@ -353,87 +442,6 @@ void main() {
   vec4 albedo = vec4(clamp(diffuseLight * atlas * vVertexColor.rgb, 0.0, 1.0), 0.0);
   albedo.rgb = chroToneMap(albedo.rgb);
   albedo = applyChroFog(albedo, vScreenPos, vWorldPos, _FogStartOffset, _FogScale);
-  gl_FragColor = albedo;
-  #include <colorspace_fragment>
-}
-`;
-
-export const TRANSPARENT_CLOUDS_VERT = /* glsl */ `
-uniform float _TimeSeconds;
-uniform float _VertexWaveFrequency;
-uniform float _VertexWaveAmplitude;
-uniform vec3 _RotateLayerSpeeds;
-attribute vec4 color;
-varying vec3 vWorldPos;
-varying vec3 vCloudNormal;
-varying vec2 vUv;
-void main() {
-  vec4 worldPosition = modelMatrix * vec4(position, 1.0);
-  worldPosition.y += sin(worldPosition.x * _VertexWaveFrequency + _TimeSeconds * 2.0) * _VertexWaveAmplitude;
-  float angle = dot(color.rgb, _RotateLayerSpeeds) * (_TimeSeconds / 20.0) * 0.01745329252;
-  float angleSin = sin(angle);
-  float angleCos = cos(angle);
-  worldPosition.xz = mat2(angleCos, angleSin, -angleSin, angleCos) * worldPosition.xz;
-  vWorldPos = worldPosition.xyz;
-  vCloudNormal = normalize(vec3(-worldPosition.x, 0.0, -worldPosition.z));
-  vUv = uv;
-  gl_Position = projectionMatrix * viewMatrix * worldPosition;
-}
-`;
-
-export const TRANSPARENT_CLOUDS_FRAG = /* glsl */ `
-uniform sampler2D _DiffuseTexture;
-uniform vec2 _DiffuseTextureScale;
-uniform vec2 _DiffuseTextureOffset;
-uniform sampler2D _DistortTex;
-uniform vec2 _DistortTexScale;
-uniform vec2 _DistortTexOffset;
-uniform vec2 _DistortTexSpeed;
-uniform float _DistortAmount;
-uniform float _TimeSeconds;
-uniform vec3 _Color;
-uniform float _ColorAlpha;
-uniform vec3 _DirectionalLightDirections[5];
-uniform vec3 _DirectionalLightColors[5];
-uniform float _BackLightingBoost;
-uniform float _FadeBottomMin;
-uniform float _FadeBottomMax;
-uniform float _RunwayFadeOffset;
-uniform float _RunwayFadeScale;
-varying vec3 vWorldPos;
-varying vec3 vCloudNormal;
-varying vec2 vUv;
-${ACES_CHUNK}
-void main() {
-  vec2 diffuseUv = vUv * _DiffuseTextureScale + _DiffuseTextureOffset;
-  #ifdef DISTORT_TEXTURE
-  vec2 distortUv = vUv * _DistortTexScale + _DistortTexOffset;
-  distortUv += _DistortTexSpeed * (_TimeSeconds / 20.0);
-  vec4 distort = texture2D(_DistortTex, distortUv);
-  diffuseUv += (vec2(distort.r, distort.a) - diffuseUv) * _DistortAmount;
-  #endif
-  vec4 diffuse = vec4(1.0);
-  #ifdef DIFFUSE_TEXTURE
-  diffuse = texture2D(_DiffuseTexture, diffuseUv);
-  #endif
-  vec3 frontLight = vec3(0.0);
-  vec3 backLight = vec3(0.0);
-  for (int index = 0; index < 5; index++) {
-    float amount = dot(vCloudNormal, normalize(_DirectionalLightDirections[index]));
-    frontLight += _DirectionalLightColors[index] * max(amount, 0.0);
-    backLight += _DirectionalLightColors[index] * max(-amount, 0.0);
-  }
-  vec3 diffuseLight = frontLight + backLight * diffuse.g * _BackLightingBoost;
-  float bottomRange = _FadeBottomMax - _FadeBottomMin;
-  float bottomFade = clamp((vWorldPos.y - _FadeBottomMin) / bottomRange, 0.0, 1.0);
-  bottomFade *= bottomFade;
-  float behindRunway = vWorldPos.z < 0.0 ? 1.0 : 0.0;
-  vec3 runwayPosition = vec3(vWorldPos.x, vWorldPos.y - 1.0, behindRunway);
-  float runwayRadius = behindRunway * inversesqrt(dot(runwayPosition, runwayPosition));
-  float runwayFade = 1.0 - clamp(runwayRadius * _RunwayFadeScale + _RunwayFadeOffset, 0.0, 1.0);
-  vec4 albedo = vec4(diffuseLight * _Color * diffuse.b, _ColorAlpha * diffuse.a) * bottomFade;
-  albedo.rgb = chroToneMap(albedo.rgb);
-  albedo.a *= runwayFade;
   gl_FragColor = albedo;
   #include <colorspace_fragment>
 }

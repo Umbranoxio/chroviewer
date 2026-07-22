@@ -7,20 +7,23 @@ void main() {
 `;
 
 const DOWNSAMPLE_13_CHUNK = /* glsl */ `
+#ifndef BLOOM_TAP
+#define BLOOM_TAP(tex, uv) texture2D(tex, uv)
+#endif
 vec4 downsample13(sampler2D tex, vec2 uv, vec2 texelSize) {
-  vec4 a = texture2D(tex, uv + texelSize * vec2(-1.0, -1.0));
-  vec4 b = texture2D(tex, uv + texelSize * vec2(0.0, -1.0));
-  vec4 c = texture2D(tex, uv + texelSize * vec2(1.0, -1.0));
-  vec4 d = texture2D(tex, uv + texelSize * vec2(-0.5, -0.5));
-  vec4 e = texture2D(tex, uv + texelSize * vec2(0.5, -0.5));
-  vec4 f = texture2D(tex, uv + texelSize * vec2(-1.0, 0.0));
-  vec4 g = texture2D(tex, uv);
-  vec4 h = texture2D(tex, uv + texelSize * vec2(1.0, 0.0));
-  vec4 i = texture2D(tex, uv + texelSize * vec2(-0.5, 0.5));
-  vec4 j = texture2D(tex, uv + texelSize * vec2(0.5, 0.5));
-  vec4 k = texture2D(tex, uv + texelSize * vec2(-1.0, 1.0));
-  vec4 l = texture2D(tex, uv + texelSize * vec2(0.0, 1.0));
-  vec4 m = texture2D(tex, uv + texelSize * vec2(1.0, 1.0));
+  vec4 a = BLOOM_TAP(tex, uv + texelSize * vec2(-1.0, -1.0));
+  vec4 b = BLOOM_TAP(tex, uv + texelSize * vec2(0.0, -1.0));
+  vec4 c = BLOOM_TAP(tex, uv + texelSize * vec2(1.0, -1.0));
+  vec4 d = BLOOM_TAP(tex, uv + texelSize * vec2(-0.5, -0.5));
+  vec4 e = BLOOM_TAP(tex, uv + texelSize * vec2(0.5, -0.5));
+  vec4 f = BLOOM_TAP(tex, uv + texelSize * vec2(-1.0, 0.0));
+  vec4 g = BLOOM_TAP(tex, uv);
+  vec4 h = BLOOM_TAP(tex, uv + texelSize * vec2(1.0, 0.0));
+  vec4 i = BLOOM_TAP(tex, uv + texelSize * vec2(-0.5, 0.5));
+  vec4 j = BLOOM_TAP(tex, uv + texelSize * vec2(0.5, 0.5));
+  vec4 k = BLOOM_TAP(tex, uv + texelSize * vec2(-1.0, 1.0));
+  vec4 l = BLOOM_TAP(tex, uv + texelSize * vec2(0.0, 1.0));
+  vec4 m = BLOOM_TAP(tex, uv + texelSize * vec2(1.0, 1.0));
   vec4 color = (d + e + i + j) * 0.124;
   color += (a + b + f + g) * 0.0315;
   color += (b + c + g + h) * 0.0315;
@@ -35,6 +38,9 @@ uniform sampler2D _SourceTex;
 uniform vec2 _SourceTexelSize;
 uniform float _AlphaWeights;
 varying vec2 vUv;
+// the game blooms from a unorm target, so stacked additive lights cap at 1;
+// our scene target is half-float, clamp each source tap to match
+#define BLOOM_TAP(tex, uv) clamp(texture2D(tex, uv), 0.0, 1.0)
 ${DOWNSAMPLE_13_CHUNK}
 void main() {
   vec4 color = downsample13(_SourceTex, vUv, _SourceTexelSize);
@@ -91,10 +97,10 @@ uniform float _Fade;
 varying vec2 vUv;
 void main() {
   vec2 d = _SourceTexelSize * 0.5;
-  float alpha = texture2D(_SourceTex, vUv + vec2(-d.x, d.y)).a;
-  alpha += texture2D(_SourceTex, vUv + d).a;
-  alpha += texture2D(_SourceTex, vUv - d).a;
-  alpha += texture2D(_SourceTex, vUv + vec2(d.x, -d.y)).a;
+  float alpha = clamp(texture2D(_SourceTex, vUv + vec2(-d.x, d.y)).a, 0.0, 1.0);
+  alpha += clamp(texture2D(_SourceTex, vUv + d).a, 0.0, 1.0);
+  alpha += clamp(texture2D(_SourceTex, vUv - d).a, 0.0, 1.0);
+  alpha += clamp(texture2D(_SourceTex, vUv + vec2(d.x, -d.y)).a, 0.0, 1.0);
   alpha *= 0.25;
   float whiteSignal = alpha * alpha * _BaseColorBoost - _BaseColorBoostThreshold;
   float whiteBoost = min(max(whiteSignal, 0.0), 1.0);

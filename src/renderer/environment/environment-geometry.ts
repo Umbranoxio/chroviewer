@@ -1,4 +1,4 @@
-import { BufferAttribute, BufferGeometry, Group } from 'three';
+import { BufferAttribute, BufferGeometry, Group, Vector3 } from 'three';
 
 import type { EnvironmentMeshData, EnvironmentObjectData } from './types';
 
@@ -26,6 +26,27 @@ export function createGeometry(data: EnvironmentMeshData) {
   }
   geometry.computeBoundingSphere();
   return geometry;
+}
+
+const fallbackNormal = new Vector3();
+const fallbackTangent = new Vector3();
+const tangentAxis = new Vector3();
+
+export function ensureGeometryTangents(geometry: BufferGeometry) {
+  if (geometry.hasAttribute('tangent')) return;
+  if (!geometry.hasAttribute('normal') || !geometry.hasAttribute('uv') || geometry.index === null) return;
+  geometry.computeTangents();
+  const normals = geometry.getAttribute('normal');
+  const tangents = geometry.getAttribute('tangent');
+  for (let index = 0; index < tangents.count; index++) {
+    fallbackTangent.fromBufferAttribute(tangents, index);
+    if (fallbackTangent.lengthSq() > 0.000001) continue;
+    fallbackNormal.fromBufferAttribute(normals, index).normalize();
+    tangentAxis.set(Math.abs(fallbackNormal.x) < 0.9 ? 1 : 0, Math.abs(fallbackNormal.x) < 0.9 ? 0 : 1, 0);
+    fallbackTangent.copy(tangentAxis).addScaledVector(fallbackNormal, -tangentAxis.dot(fallbackNormal)).normalize();
+    tangents.setXYZW(index, fallbackTangent.x, fallbackTangent.y, fallbackTangent.z, 1);
+  }
+  tangents.needsUpdate = true;
 }
 
 export function fullscreenTriangleGeometry() {

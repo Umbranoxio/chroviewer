@@ -31,6 +31,17 @@ export function createBpmConverter(events: BpmEvent[], songBpm: number): (jsonTi
   };
 }
 
+function customEventDuration(events: readonly BpmEvent[], jsonTime: number, duration: number, songBpm: number) {
+  let low = 0;
+  let high = events.length;
+  while (low < high) {
+    const middle = (low + high) >>> 1;
+    if ((events[middle]?.jsonTime ?? Infinity) <= jsonTime) low = middle + 1;
+    else high = middle;
+  }
+  return duration * (songBpm / (events[low - 1]?.bpm ?? songBpm));
+}
+
 export function secondsToSongBpmTime(seconds: number, songBpm: number): number {
   return (songBpm / 60) * seconds;
 }
@@ -70,12 +81,43 @@ export function recomputeSongBpmTimes(difficulty: Difficulty, songBpm: number): 
   for (const njs of difficulty.njsEvents) {
     njs.songBpmTime = convert(njs.jsonTime);
   }
-  for (const group of [
-    ...difficulty.lightColorEventBoxGroups,
-    ...difficulty.lightRotationEventBoxGroups,
-    ...difficulty.lightTranslationEventBoxGroups,
-    ...difficulty.fxEventBoxGroups,
+  for (const animation of difficulty.chromaEnvironment.animations) {
+    animation.songBpmTime = convert(animation.jsonTime);
+    animation.durationSongBpmTime = customEventDuration(
+      difficulty.bpmEvents,
+      animation.jsonTime,
+      animation.duration,
+      songBpm,
+    );
+  }
+  for (const animation of difficulty.chromaEnvironment.componentAnimations) {
+    animation.songBpmTime = convert(animation.jsonTime);
+    animation.durationSongBpmTime = customEventDuration(
+      difficulty.bpmEvents,
+      animation.jsonTime,
+      animation.duration,
+      songBpm,
+    );
+  }
+  for (const event of difficulty.chromaEnvironment.fogTrackEvents) {
+    event.songBpmTime = convert(event.jsonTime);
+  }
+  for (const event of difficulty.noodle.trackEvents) {
+    event.songBpmTime = convert(event.jsonTime);
+    event.durationSongBpmTime = customEventDuration(difficulty.bpmEvents, event.jsonTime, event.duration, songBpm);
+  }
+  for (const event of difficulty.noodle.parentEvents) {
+    event.songBpmTime = convert(event.jsonTime);
+  }
+  for (const event of difficulty.noodle.playerEvents) {
+    event.songBpmTime = convert(event.jsonTime);
+  }
+  for (const groups of [
+    difficulty.lightColorEventBoxGroups,
+    difficulty.lightRotationEventBoxGroups,
+    difficulty.lightTranslationEventBoxGroups,
+    difficulty.fxEventBoxGroups,
   ]) {
-    group.songBpmTime = convert(group.jsonTime);
+    for (const group of groups) group.songBpmTime = convert(group.jsonTime);
   }
 }

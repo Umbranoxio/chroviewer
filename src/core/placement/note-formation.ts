@@ -1,8 +1,8 @@
 import { songBpmTimeToSeconds } from '../beatmap/bpm';
 import { NoteType, type Difficulty, type Note } from '../beatmap/types';
 import { beatSaberNumberSchema } from '../beatmap/value-schema';
-import { noodleCoordinates } from '../noodle';
-import { cutDirectionEuler, directionalize, objectPosition } from './grid';
+import { cutDirectionEuler, directionalize, LANE_SIZE } from './grid';
+import { HeckPlacement } from './heck-placement';
 
 const rowTolerance = 0.001;
 const noCutDirection = 9;
@@ -43,16 +43,19 @@ function collectTimeBands<T>(items: T[], timeOf: (item: T) => number) {
   return bands;
 }
 
-function applyLayerRanks(entries: FormedNote[]) {
-  const ordered = [...entries].sort(
-    (left, right) => left.note.posX - right.note.posX || left.note.posY - right.note.posY,
-  );
+function applyLayerRanks(entries: FormedNote[], heck: HeckPlacement) {
+  const ordered = [...entries].sort((left, right) => {
+    const leftPosition = heck.position(left.note);
+    const rightPosition = heck.position(right.note);
+    return leftPosition.x - rightPosition.x || leftPosition.y - rightPosition.y;
+  });
   let column = Number.NaN;
   let rank = 0;
 
   for (const entry of ordered) {
-    if (entry.note.posX !== column) {
-      column = entry.note.posX;
+    const x = heck.position(entry.note).x;
+    if (x !== column) {
+      column = x;
       rank = 0;
     }
     entry.formation.startLineLayer = rank;
@@ -71,26 +74,24 @@ function isNearSlider(time: number, endpoints: number[]) {
   return endpoints.some((endpoint) => Math.abs(endpoint - time) < rowTolerance);
 }
 
-function setCrossedStart(entry: FormedNote, counterpart: FormedNote) {
-  const xDifference = entry.note.posX - counterpart.note.posX;
-  const yDifference = entry.note.posY - counterpart.note.posY;
+function setCrossedStart(entry: FormedNote, counterpart: FormedNote, heck: HeckPlacement) {
+  const position = heck.position(entry.note);
+  const counterpartPosition = heck.position(counterpart.note);
+  const xDifference = position.x - counterpartPosition.x;
+  const yDifference = position.y - counterpartPosition.y;
   const laneSide = xDifference > 0 ? 1 : -1;
-  entry.formation.startLineIndex = counterpart.note.posX;
+  entry.formation.startLineIndex = counterpartPosition.x / LANE_SIZE + 1.5;
   entry.formation.flipYSide = xDifference * yDifference < 0 ? -laneSide : laneSide;
 }
 
 function noteRotation(note: Note, majorVersion: number) {
-  if (majorVersion === 2 && note.customData?._cutDirection !== undefined) {
+  if (majorVersion === 2 && note.customData?._cutDirection != null) {
     return beatSaberNumberSchema.parse(note.customData._cutDirection);
   }
   return directionalize(note.cutDirection, note.angleOffset);
 }
 
-function notePosition(note: Note) {
-  return objectPosition(note.posX, note.posY, noodleCoordinates(note.customData));
-}
-
-function applyWindowRotations(formedNotes: FormedNote[], majorVersion: number) {
+function applyWindowRotations(formedNotes: FormedNote[], majorVersion: number, heck: HeckPlacement) {
   for (const color of [NoteType.Red, NoteType.Blue]) {
     const colorNotes = formedNotes.filter(({ note }) => !note.customFake && note.type === color);
     for (const pair of collectTimeBands(colorNotes, (entry) => entry.note.jsonTime)) {
@@ -117,8 +118,8 @@ function applyWindowRotations(formedNotes: FormedNote[], majorVersion: number) {
       }
 
       const [guide, companion] = firstDirection === 8 ? [second, first] : [first, second];
-      const guidePosition = notePosition(guide.note);
-      const companionPosition = notePosition(companion.note);
+      const guidePosition = heck.position(guide.note);
+      const companionPosition = heck.position(companion.note);
       const lineAngle =
         (Math.atan2(guidePosition.y - companionPosition.y, guidePosition.x - companionPosition.x) * 180) / Math.PI;
       const cutAxisAngle = guide.note.cutDirection === 8 ? 90 : cutDirectionEuler(guide.note.cutDirection) - 90;
@@ -141,7 +142,7 @@ function applyWindowRotations(formedNotes: FormedNote[], majorVersion: number) {
   }
 }
 
-export function buildNoteFormation(difficulty: Difficulty, songBpm: number) {
+export function buildNoteFormation(difficulty: Difficulty, songBpm: number, heck = new HeckPlacement(difficulty)) {
   const majorVersion = Number.parseInt(difficulty.version, 10);
   const formedNotes: FormedNote[] = difficulty.notes.map((note) => ({
     note,
@@ -153,15 +154,23 @@ export function buildNoteFormation(difficulty: Difficulty, songBpm: number) {
       rotationDeg: noteRotation(note, majorVersion),
     },
   }));
-  const movementTimeline: TimelineEntry[] = formedNotes.map((formed) => ({ time: formed.time, formed }));
+  const movementTimeline: TimelineEntry[] = formedNotes.map((formed) => ({
+    time: formed.time,
+    formed,
+  }));
   for (const slider of [...difficulty.arcs, ...difficulty.chains]) {
-    movementTimeline.push({ time: songBpmTimeToSeconds(slider.songBpmTime, songBpm) });
+    movementTimeline.push({
+      time: songBpmTimeToSeconds(slider.songBpmTime, songBpm),
+    });
   }
 
   for (const band of collectTimeBands(movementTimeline, (entry) => entry.time)) {
-    applyLayerRanks(band.flatMap((entry) => (entry.formed === undefined ? [] : [entry.formed])));
+    applyLayerRanks(
+      band.flatMap((entry) => (entry.formed === undefined ? [] : [entry.formed])),
+      heck,
+    );
   }
-  applyWindowRotations(formedNotes, majorVersion);
+  applyWindowRotations(formedNotes, majorVersion, heck);
 
   const endpoints = sliderEndpointTimes(difficulty, songBpm);
   const colorNotes = formedNotes.filter(
@@ -182,9 +191,18 @@ export function buildNoteFormation(difficulty: Difficulty, songBpm: number) {
 
     const red = first.note.type === NoteType.Red ? first : second;
     const blue = first.note.type === NoteType.Blue ? first : second;
-    if (red.note.posX <= blue.note.posX) continue;
-    setCrossedStart(red, blue);
-    setCrossedStart(blue, red);
+    if (heck.position(red.note).x <= heck.position(blue.note).x) continue;
+    setCrossedStart(red, blue, heck);
+    setCrossedStart(blue, red, heck);
+  }
+
+  for (const entry of formedNotes) {
+    const flip = entry.note.customData?.[majorVersion === 2 ? '_flip' : 'flip'];
+    if (!Array.isArray(flip)) continue;
+    if (flip[0] != null) {
+      entry.formation.startLineIndex = beatSaberNumberSchema.parse(flip[0]) + 2;
+    }
+    if (flip[1] != null) entry.formation.flipYSide = beatSaberNumberSchema.parse(flip[1]);
   }
 
   return formedNotes;

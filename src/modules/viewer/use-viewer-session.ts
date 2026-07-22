@@ -223,6 +223,7 @@ export function useViewerSession({
       noteJumpSpeed: effectiveNoteJumpSpeed(row.infoDifficulty),
       noteStartBeatOffset: row.infoDifficulty.noteStartBeatOffset,
       songBpm: sources.songBpm,
+      legacyNoodleV2Semantics: row.legacyNoodleV2Semantics,
       recordedJumpDistance:
         sources.replayRef.current?.metadata.hasPlaySettings === true
           ? sources.replayRef.current.metadata.jumpDistance
@@ -233,7 +234,7 @@ export function useViewerSession({
       replayHeights: sources.replayRef.current?.heights,
       environmentRemoval: row.infoDifficulty.environmentRemoval,
     });
-    const environmentResult = await viewer.view.setEnvironment(environmentId);
+    const environmentResult = await viewer.view.setEnvironment(environmentId, data.chromaEnvironment);
     if (environmentResult.isErr()) {
       if (requestId >= selectionGenerationRef.current) reportEnvironmentError(environmentResult.error);
       return;
@@ -295,12 +296,12 @@ export function useViewerSession({
     const viewer = viewerRef.current;
     if (viewer === null) return;
     setError('');
-    const result = await viewer.view.setEnvironment(nextEnvironmentId);
+    const active = activeSelectionRef.current;
+    const result = await viewer.view.setEnvironment(nextEnvironmentId, active?.data.chromaEnvironment);
     if (result.isErr()) {
       reportEnvironmentError(result.error);
       return;
     }
-    const active = activeSelectionRef.current;
     if (active !== null) {
       active.environmentId = nextEnvironmentId;
       viewer.view.refreshMapColors(

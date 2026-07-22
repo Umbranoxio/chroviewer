@@ -1,6 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router';
 
-import { renderReplayPreview } from '../../server/replay-preview';
+import { renderReplayPreview } from '../../server/preview-image';
 
 const errorHeaders = { 'cache-control': 'no-store', 'content-type': 'text/plain; charset=utf-8' };
 

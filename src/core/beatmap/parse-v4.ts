@@ -1,9 +1,12 @@
 import { z } from 'zod';
 
+import { parseV3ChromaEnvironment } from '../chroma-environment';
+import { parseNoodleBeatmap } from '../noodle-data';
 import { loadV4Gls } from './parse-gls';
 import { createDifficulty, NoteType, sortByJsonTime, type Difficulty } from './types';
 import {
   beatSaberIntegerSchema as integerSchema,
+  beatSaberJsonObjectSchema as customDataSchema,
   beatSaberNumberSchema as numberSchema,
   beatSaberStringSchema,
 } from './value-schema';
@@ -37,6 +40,7 @@ const v4DifficultySchema = z
     chainsData: z.array(chainDataSchema).catch([]),
     njsEventData: z.array(njsEventDataSchema).catch([]),
     spawnRotationsData: z.array(rotationDataSchema).catch([]),
+    customData: customDataSchema.optional().catch(undefined),
     colorNotes: z.array(beatAndIndexSchema.extend({ r: integerSchema })).catch([]),
     bombNotes: z.array(beatAndIndexSchema.extend({ r: integerSchema })).catch([]),
     obstacles: z.array(beatAndIndexSchema.extend({ r: numberSchema })).catch([]),
@@ -84,6 +88,7 @@ const v4DifficultySchema = z
     chains: [],
     njsEvents: [],
     spawnRotations: [],
+    customData: undefined,
   });
 const v4LightshowSchema = z
   .looseObject({
@@ -173,6 +178,10 @@ export function parseV4Difficulty(input: unknown): Difficulty {
   const root = v4DifficultySchema.parse(input);
   const version = root.version;
   const difficulty = createDifficulty(version === '' ? '4.1.0' : version);
+  if (root.customData !== undefined) {
+    difficulty.chromaEnvironment = parseV3ChromaEnvironment(root.customData);
+    difficulty.noodle = parseNoodleBeatmap(root.customData, 3);
+  }
 
   const notesData = root.colorNotesData.map(readNoteData);
   const bombsData = root.bombNotesData.map((node): BombData => ({ posX: node.x, posY: node.y }));
