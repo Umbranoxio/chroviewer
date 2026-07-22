@@ -36,6 +36,7 @@ export interface ActiveSelection {
   environmentId: string;
   mapEnvironmentId: string;
   replayEnvironmentId?: string;
+  usesChromaOrNoodle: boolean;
   mapColorScheme?: InfoColorScheme;
 }
 

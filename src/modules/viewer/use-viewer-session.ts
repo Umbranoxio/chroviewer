@@ -188,7 +188,12 @@ export function useViewerSession({
         ? settings.overrideEnvironment
           ? settings.environmentOverrideId
           : 'BigMirrorEnvironment'
-        : environmentForSettings(settings, active.mapEnvironmentId, active.replayEnvironmentId),
+        : environmentForSettings(
+            settings,
+            active.mapEnvironmentId,
+            active.replayEnvironmentId,
+            active.usesChromaOrNoodle,
+          ),
     );
     if (active?.environmentId === nextEnvironmentId) return;
     void selectEnvironment(nextEnvironmentId);
@@ -211,7 +216,12 @@ export function useViewerSession({
       return;
     const mapEnvironmentId = row.environmentId;
     const environmentId = resolveEnvironmentId(
-      environmentForSettings(settings, mapEnvironmentId, row.replayEnvironmentId),
+      environmentForSettings(
+        settings,
+        mapEnvironmentId,
+        row.replayEnvironmentId,
+        row.infoDifficulty.usesChromaOrNoodle,
+      ),
     );
     setError('');
     if (sources.replayRef.current !== null && row.replayMatch !== true) {
@@ -249,6 +259,7 @@ export function useViewerSession({
       environmentId,
       mapEnvironmentId,
       replayEnvironmentId: row.replayEnvironmentId,
+      usesChromaOrNoodle: row.infoDifficulty.usesChromaOrNoodle,
       mapColorScheme: row.colorScheme,
     };
 

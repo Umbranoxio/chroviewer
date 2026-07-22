@@ -528,9 +528,11 @@ export function hexToRgb(hex: string): Rgb {
 export function environmentForSettings(
   settings: Pick<ViewerSettings, 'preferReplayEnvironment' | 'overrideEnvironment' | 'environmentOverrideId'>,
   mapEnvironmentId: string,
-  replayEnvironmentId?: string,
+  replayEnvironmentId: string | undefined,
+  usesChromaOrNoodle: boolean,
 ) {
-  if (settings.preferReplayEnvironment && replayEnvironmentId !== undefined) return replayEnvironmentId;
+  if (!usesChromaOrNoodle && settings.preferReplayEnvironment && replayEnvironmentId !== undefined)
+    return replayEnvironmentId;
   return settings.overrideEnvironment ? settings.environmentOverrideId : mapEnvironmentId;
 }
 

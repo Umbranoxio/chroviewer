@@ -15,6 +15,8 @@ const stringArraySchema = z.array(stringSchema).catch([]);
 
 const v2CustomDataSchema = z.object({
   _difficultyLabel: z.string().catch(''),
+  _requirements: stringArraySchema.optional(),
+  _suggestions: stringArraySchema.optional(),
   _colorLeft: optionalRgbSchema,
   _colorRight: optionalRgbSchema,
   _obstacleColor: optionalRgbSchema,
@@ -29,6 +31,8 @@ const v2CustomDataSchema = z.object({
 });
 const v4CustomDataSchema = z.object({
   difficultyLabel: z.string().catch(''),
+  requirements: stringArraySchema.optional(),
+  suggestions: stringArraySchema.optional(),
   colorLeft: optionalRgbSchema,
   colorRight: optionalRgbSchema,
   obstacleColor: optionalRgbSchema,
@@ -210,6 +214,7 @@ export interface InfoDifficulty {
   mappers: string[];
   lighters: string[];
   customLabel: string;
+  usesChromaOrNoodle: boolean;
   customColors?: LegacyColorOverrides;
   environmentRemoval: string[];
 }
@@ -392,6 +397,10 @@ function parseV2Info(input: unknown): MapInfo {
           mappers: [],
           lighters: [],
           customLabel: difficulty._customData?._difficultyLabel ?? '',
+          usesChromaOrNoodle: [
+            ...(difficulty._customData?._requirements ?? []),
+            ...(difficulty._customData?._suggestions ?? []),
+          ].some((mod) => mod === 'Chroma' || mod === 'Noodle Extensions'),
           customColors: customColors(difficulty._customData),
           environmentRemoval: environmentRemoval(difficulty._customData),
         }),
@@ -456,6 +465,9 @@ function parseV4Info(input: unknown): MapInfo {
       mappers: entry.beatmapAuthors.mappers,
       lighters: entry.beatmapAuthors.lighters,
       customLabel: entry.customData?.difficultyLabel ?? '',
+      usesChromaOrNoodle: [...(entry.customData?.requirements ?? []), ...(entry.customData?.suggestions ?? [])].some(
+        (mod) => mod === 'Chroma' || mod === 'Noodle Extensions',
+      ),
       customColors: customColors(entry.customData),
       environmentRemoval: environmentRemoval(entry.customData),
     };

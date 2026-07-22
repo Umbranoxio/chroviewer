@@ -1,7 +1,7 @@
 import { Euler, Quaternion, Vector3, type Object3D, type PerspectiveCamera } from 'three';
 
 import { DEFAULT_REPLAY_CAMERA_SETTINGS, type ReplayCameraSettings } from '../../core/viewer-settings';
-import { fixedCameraPosition } from '../camera';
+import { fixedCameraPosition, GAMEPLAY_CAMERA_FAR } from '../camera';
 
 const degToRad = Math.PI / 180;
 const maxPortraitFov = 120;
@@ -48,7 +48,10 @@ export class ReplayCameraController {
   private replayTime = Number.NEGATIVE_INFINITY;
   private updatedAt = performance.now();
 
-  constructor(private readonly camera: PerspectiveCamera) {}
+  constructor(private readonly camera: PerspectiveCamera) {
+    this.camera.far = GAMEPLAY_CAMERA_FAR;
+    this.camera.updateProjectionMatrix();
+  }
 
   get cameraMode() {
     return this.mode;
