@@ -98,9 +98,11 @@ export function buildEnvironment(
     applyChromaRemoval: scene.applyChromaRemoval,
     enforceChromaRemoval: scene.enforceChromaRemoval,
     applyConstraints: scene.applyConstraints,
+    syncInstancedMeshes: scene.syncInstancedMeshes,
     applyReflections: reflections.apply,
     dispose() {
       reflections.dispose();
+      scene.disposeInstancedMeshes();
       for (const geometry of scene.geometries.values()) geometry.dispose();
       for (const material of scene.materialInstances) material.dispose();
     },

@@ -35,6 +35,7 @@ export interface LoadedEnvironment {
   applyChromaRemoval: (ids: readonly string[]) => void;
   enforceChromaRemoval: () => void;
   applyConstraints: () => boolean;
+  syncInstancedMeshes: () => void;
   applyReflections: (segments: EnvironmentLightSegment[]) => void;
   dispose: () => void;
 }

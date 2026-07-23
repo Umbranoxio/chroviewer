@@ -988,8 +988,8 @@ export function buildChromaEnvironmentVariant(
   for (const [enhancementIndex, coreEnhancement] of source.enhancements.entries()) {
     const enhancement = coreEnhancement as RendererEnhancement;
     if (enhancement.geometry !== undefined) {
-      const meshName = `__chroma_geometry_${String(enhancementIndex)}`;
-      const mesh = geometryMesh(enhancement.geometry.type);
+      const meshName = `__chroma_geometry_${enhancement.geometry.type}`;
+      const mesh = data.meshes[meshName] ?? geometryMesh(enhancement.geometry.type);
       const material =
         typeof enhancement.geometry.material === 'string'
           ? source.materials[enhancement.geometry.material]

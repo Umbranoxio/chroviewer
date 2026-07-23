@@ -421,6 +421,7 @@ export class MapView implements RenderView {
     this.update(now);
     this.scene.updateMatrixWorld();
     if (this.environment?.applyConstraints() === true) this.scene.updateMatrixWorld();
+    this.environment?.syncInstancedMeshes();
     if (this.environment !== null) this.environmentLights.updateWorldLights(now);
     if (hasVisibleMirrorConsumer(this.environmentMirrorConsumers, this.camera)) {
       this.mirror.render(renderer, this.scene, this.camera, (mirrorRenderer, mirrorCamera) => {

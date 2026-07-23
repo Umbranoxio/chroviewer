@@ -26,6 +26,7 @@ attribute vec2 uv1;
 void main() {
   vec3 localPosition = position;
   vec3 localNormal = normal;
+  mat3 instanceBasis = mat3(1.0);
   #ifdef MESH_PACKING
   if (abs(uv1.y - _MeshPackingId) > 0.1) localPosition = vec3(0.0);
   #endif
@@ -43,16 +44,25 @@ void main() {
   #ifdef USE_VERTEX_COLOR
   vVertexColor = color;
   #endif
-  vec4 worldPos = modelMatrix * vec4(localPosition, 1.0);
+  vec4 localPos = vec4(localPosition, 1.0);
+  #ifdef USE_INSTANCING
+  localPos = instanceMatrix * localPos;
+  instanceBasis = mat3(instanceMatrix);
+  #endif
+  vec4 worldPos = modelMatrix * localPos;
   vec4 viewPos = viewMatrix * worldPos;
   vWorldPos = worldPos.xyz;
-  vWorldNormal = normalize(mat3(modelMatrix) * localNormal);
+  vWorldNormal = normalize(mat3(modelMatrix) * instanceBasis * localNormal);
   #ifdef USE_TANGENT
-  vWorldTangent = normalize(mat3(modelMatrix) * tangent.xyz);
+  vWorldTangent = normalize(mat3(modelMatrix) * instanceBasis * tangent.xyz);
   vWorldBitangent = normalize(cross(vWorldNormal, vWorldTangent) * tangent.w);
   #endif
   vViewPos = viewPos.xyz;
+  #ifdef USE_INSTANCING
+  vViewNormal = normalize(mat3(viewMatrix) * vWorldNormal);
+  #else
   vViewNormal = normalize(normalMatrix * localNormal);
+  #endif
   vUv = uv;
   #ifdef USE_SECONDARY_UV
   vSecondaryUv = uv1;
