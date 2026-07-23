@@ -118,6 +118,7 @@ export function ViewerShell() {
   const session = useViewerSession({
     lightshowMode,
     lightshowModeRef,
+    skipInitialMenuEnvironment: search.map !== undefined || search.scoreId !== undefined,
     setActivePanel,
     setError,
     setLightshowMode,

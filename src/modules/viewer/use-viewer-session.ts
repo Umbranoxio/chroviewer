@@ -28,6 +28,7 @@ type ViewerSources = ReturnType<typeof useViewerSources>;
 interface ViewerSessionOptions {
   lightshowMode: LightshowMode;
   lightshowModeRef: RefObject<LightshowMode>;
+  skipInitialMenuEnvironment: boolean;
   setActivePanel: Dispatch<SetStateAction<ViewerPanel>>;
   setError: (message: string) => void;
   setLightshowMode: Dispatch<SetStateAction<LightshowMode>>;
@@ -45,6 +46,7 @@ interface ViewerSessionOptions {
 export function useViewerSession({
   lightshowMode,
   lightshowModeRef,
+  skipInitialMenuEnvironment,
   setActivePanel,
   setError,
   setLightshowMode,
@@ -67,6 +69,7 @@ export function useViewerSession({
     replayRef: sources.replayRef,
     settings,
     settingsRef,
+    skipInitialMenuEnvironment,
     setError,
   });
 
@@ -183,6 +186,7 @@ export function useViewerSession({
 
   useEffect(() => {
     const active = activeSelectionRef.current;
+    if (skipInitialMenuEnvironment && active === null) return;
     const nextEnvironmentId = resolveEnvironmentId(
       active === null
         ? settings.overrideEnvironment
@@ -197,7 +201,12 @@ export function useViewerSession({
     );
     if (active?.environmentId === nextEnvironmentId) return;
     void selectEnvironment(nextEnvironmentId);
-  }, [settings.preferReplayEnvironment, settings.overrideEnvironment, settings.environmentOverrideId]);
+  }, [
+    settings.preferReplayEnvironment,
+    settings.overrideEnvironment,
+    settings.environmentOverrideId,
+    skipInitialMenuEnvironment,
+  ]);
 
   function reportEnvironmentError(error: EnvironmentLoadFailure) {
     if (EnvironmentLoadAborted.is(error)) return;
