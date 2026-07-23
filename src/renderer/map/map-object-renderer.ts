@@ -142,7 +142,7 @@ export class MapObjectRenderer {
     scale: this.scale,
   };
   private readonly noodleObjectTransform = new NoodleObjectTransform();
-  private readonly wallEdgeScale: [number, number] = [1, 1];
+  private readonly wallEdgeScale: [number, number, number] = [1, 1, 1];
   private readonly noteLookStates = new Map<NoteInstance, NoteLookState>();
 
   private data: MapRenderData | null = null;
@@ -635,10 +635,11 @@ export class MapObjectRenderer {
         wall.worldRotation,
         preJumpPosition,
       );
-      let obstacleEdgeScale: readonly [number, number] | undefined;
+      let obstacleEdgeScale: Rgb | undefined;
       if (data.legacyNoodleV2Semantics) {
         this.wallEdgeScale[0] = Math.abs(this.scale.x);
         this.wallEdgeScale[1] = Math.abs(this.scale.y);
+        this.wallEdgeScale[2] = Math.abs(this.scale.z);
         obstacleEdgeScale = this.wallEdgeScale;
       }
       this.wallRootMatrix.copy(this.matrix);

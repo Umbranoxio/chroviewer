@@ -416,12 +416,12 @@ void main() {
 
 export const OBSTACLE_OUTLINE_VERT = /* glsl */ `
 attribute float instanceColorAlpha;
-attribute vec2 instanceObstacleEdgeScale;
+attribute vec3 instanceObstacleEdgeScale;
 varying vec3 vWorldPos;
 varying vec3 vCutoutPos;
 varying vec3 vLocalNormal;
 varying vec3 vInstanceScale;
-varying vec2 vObstacleEdgeScale;
+varying vec3 vObstacleEdgeScale;
 varying vec2 vUv;
 varying float vColorAlpha;
 varying vec4 vScreenPos;
@@ -441,7 +441,7 @@ void main() {
   vec3 cutoutOffset = vec3(0.0);
   vColorAlpha = 1.0;
   vInstanceScale = vec3(1.0);
-  vObstacleEdgeScale = vec2(1.0);
+  vObstacleEdgeScale = vec3(1.0);
   #ifdef USE_INSTANCING
   vInstanceScale = vec3(
     length(instanceMatrix[0].xyz),
@@ -474,7 +474,7 @@ uniform float _FogScale;
 varying vec3 vWorldPos;
 varying vec3 vLocalNormal;
 varying vec3 vInstanceScale;
-varying vec2 vObstacleEdgeScale;
+varying vec3 vObstacleEdgeScale;
 varying vec2 vUv;
 varying float vColorAlpha;
 varying vec4 vScreenPos;
@@ -487,13 +487,13 @@ void main() {
   vec2 edgeScale;
   if (vLocalNormal.x != 0.0) {
     uvScalar = vInstanceScale.zy;
-    edgeScale = vec2(1.0, vObstacleEdgeScale.y);
+    edgeScale = vObstacleEdgeScale.zy;
   } else if (vLocalNormal.y != 0.0) {
     uvScalar = vInstanceScale.xz;
-    edgeScale = vec2(vObstacleEdgeScale.x, 1.0);
+    edgeScale = vObstacleEdgeScale.xz;
   } else {
     uvScalar = vInstanceScale.xy;
-    edgeScale = vec2(1.0);
+    edgeScale = vObstacleEdgeScale.xy;
   }
 
   vec2 halfUv = 0.5 - abs(0.5 - vUv);
@@ -518,12 +518,12 @@ void main() {
 
 export const OBSTACLE_FAKE_GLOW_VERT = /* glsl */ `
 attribute float instanceColorAlpha;
-attribute vec2 instanceObstacleEdgeScale;
+attribute vec3 instanceObstacleEdgeScale;
 varying vec3 vWorldPos;
 varying vec3 vCutoutPos;
 varying vec3 vLocalNormal;
 varying vec3 vInstanceScale;
-varying vec2 vObstacleEdgeScale;
+varying vec3 vObstacleEdgeScale;
 varying vec2 vUv;
 varying float vColorAlpha;
 varying float vViewAngle;
@@ -544,7 +544,7 @@ void main() {
   vec3 cutoutPos = position;
   vec3 cutoutOffset = vec3(0.0);
   vInstanceScale = vec3(1.0);
-  vObstacleEdgeScale = vec2(1.0);
+  vObstacleEdgeScale = vec3(1.0);
   #ifdef USE_INSTANCING
   vInstanceScale = vec3(
     length(instanceMatrix[0].xyz),
@@ -580,7 +580,7 @@ uniform float _FogScale;
 varying vec3 vWorldPos;
 varying vec3 vLocalNormal;
 varying vec3 vInstanceScale;
-varying vec2 vObstacleEdgeScale;
+varying vec3 vObstacleEdgeScale;
 varying vec2 vUv;
 varying float vColorAlpha;
 varying float vViewAngle;
@@ -593,13 +593,13 @@ void main() {
   vec2 edgeScale;
   if (vLocalNormal.x != 0.0) {
     uvScalar = vInstanceScale.zy;
-    edgeScale = vec2(1.0, vObstacleEdgeScale.y);
+    edgeScale = vObstacleEdgeScale.zy;
   } else if (vLocalNormal.y != 0.0) {
     uvScalar = vInstanceScale.xz;
-    edgeScale = vec2(vObstacleEdgeScale.x, 1.0);
+    edgeScale = vObstacleEdgeScale.xz;
   } else {
     uvScalar = vInstanceScale.xy;
-    edgeScale = vec2(1.0);
+    edgeScale = vObstacleEdgeScale.xy;
   }
 
   // legacy noodle scaled the prefab glow together with the obstacle root

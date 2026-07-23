@@ -12,7 +12,7 @@ import type { Rgb } from '../../core/colors';
 
 type InstanceColor = readonly [number, number, number, number?];
 const unitScale: Rgb = [1, 1, 1];
-const unitObstacleEdgeScale: readonly [number, number] = [1, 1];
+const unitObstacleEdgeScale: Rgb = unitScale;
 
 export class InstancedGroup {
   readonly mesh: InstancedMesh;
@@ -55,7 +55,7 @@ export class InstancedGroup {
     this.instanceUvScales.setUsage(DynamicDrawUsage);
     this.mesh.geometry.setAttribute('instanceUvScale', this.instanceUvScales);
     if (hasObstacleFrameData) {
-      this.instanceObstacleEdgeScales = new InstancedBufferAttribute(new Float32Array(this.capacity * 2).fill(1), 2);
+      this.instanceObstacleEdgeScales = new InstancedBufferAttribute(new Float32Array(this.capacity * 3).fill(1), 3);
       this.instanceObstacleEdgeScales.setUsage(DynamicDrawUsage);
       this.mesh.geometry.setAttribute('instanceObstacleEdgeScale', this.instanceObstacleEdgeScales);
     }
@@ -73,7 +73,7 @@ export class InstancedGroup {
     dissolve = 1,
     cutoutSeed = 1,
     uvScale: Rgb = unitScale,
-    obstacleEdgeScale: readonly [number, number] = unitObstacleEdgeScale,
+    obstacleEdgeScale: Rgb = unitObstacleEdgeScale,
   ) {
     if (this.cursor >= this.capacity) return;
     this.mesh.setMatrixAt(this.cursor, matrix);
@@ -114,7 +114,12 @@ export class InstancedGroup {
       this.instanceUvScales.setXYZ(this.cursor, uvScaleX, uvScaleY, uvScaleZ);
       this.uvScalesDirty = true;
     }
-    this.instanceObstacleEdgeScales?.setXY(this.cursor, obstacleEdgeScale[0], obstacleEdgeScale[1]);
+    this.instanceObstacleEdgeScales?.setXYZ(
+      this.cursor,
+      obstacleEdgeScale[0],
+      obstacleEdgeScale[1],
+      obstacleEdgeScale[2],
+    );
     this.cursor++;
   }
 
@@ -139,7 +144,7 @@ export class InstancedGroup {
       this.instanceCutoutSeeds.needsUpdate = true;
       if (this.instanceObstacleEdgeScales !== undefined) {
         this.instanceObstacleEdgeScales.clearUpdateRanges();
-        this.instanceObstacleEdgeScales.addUpdateRange(0, this.cursor * 2);
+        this.instanceObstacleEdgeScales.addUpdateRange(0, this.cursor * 3);
         this.instanceObstacleEdgeScales.needsUpdate = true;
       }
       if (this.colorAlphasDirty) {
