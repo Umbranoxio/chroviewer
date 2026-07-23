@@ -116,6 +116,7 @@
       "hitNotes": "Hit notes",
       "hitNotesDescription": "Remove notes when they reach the hit plane",
       "interface": "Interface",
+      "keepMapInfoVisible": "Keep map info visible when controls are hidden",
       "mapCache": "Map cache",
       "mapCacheBlocked": "Map caching is unavailable. Check your browser's site permissions and try again.",
       "mapCacheUnavailable": "Unavailable",
