@@ -520,6 +520,7 @@ function parentObjectMatrix(
   context: PointSampleContext | undefined,
   leftHanded: boolean,
   visiting: Set<NoodleParentEvent>,
+  preserveWorldTransform: boolean,
 ): Matrix4 {
   if (visiting.has(event)) return new Matrix4();
   visiting.add(event);
@@ -532,6 +533,7 @@ function parentObjectMatrix(
     event.songBpmTime,
     visiting,
     event,
+    preserveWorldTransform,
   );
   const track = event.parentTrack;
   const trackPosition = persistentStaticProperty(data, track, positionProperty, beat, context);
@@ -607,14 +609,15 @@ function parentMatrixForTracks(
   objectAddedBeat = Number.NEGATIVE_INFINITY,
   visiting?: Set<NoodleParentEvent>,
   ignored?: NoodleParentEvent,
+  preserveWorldTransform = true,
 ): Matrix4 | undefined {
   const event = latestParentEvent(data, tracks, beat, ignored);
   if (event === undefined) return undefined;
   const activeEvents = visiting ?? new Set<NoodleParentEvent>();
-  const current = parentObjectMatrix(data, event, beat, context, leftHanded, activeEvents);
-  if (!event.worldPositionStays) return current;
+  const current = parentObjectMatrix(data, event, beat, context, leftHanded, activeEvents, preserveWorldTransform);
+  if (!event.worldPositionStays || !preserveWorldTransform) return current;
   const attachedBeat = Math.max(event.songBpmTime, objectAddedBeat);
-  const initial = parentObjectMatrix(data, event, attachedBeat, context, leftHanded, new Set(activeEvents));
+  const initial = parentObjectMatrix(data, event, attachedBeat, context, leftHanded, new Set(activeEvents), true);
   return current.multiply(initial.invert());
 }
 
@@ -623,15 +626,11 @@ export function sampleNoodleParent(
   tracks: readonly string[],
   beat: number,
   context?: PointSampleContext,
-  leftHanded = false,
-  objectAddedBeat = Number.NEGATIVE_INFINITY,
 ) {
   const event = latestParentEvent(data, tracks, beat);
   if (event === undefined) return undefined;
-  const matrix = parentMatrixForTracks(data, tracks, beat, context, leftHanded, objectAddedBeat);
-  if (matrix === undefined) return undefined;
   return {
-    matrix: matrix.toArray(),
+    matrix: parentObjectMatrix(data, event, beat, context, false, new Set(), false).toArray(),
     worldPositionStays: event.worldPositionStays,
   };
 }

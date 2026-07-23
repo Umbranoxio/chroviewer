@@ -150,6 +150,55 @@ function matcherFor(enhancement: RendererEnhancement) {
   }
 }
 
+function addRuntimeRingLookups(data: EnvironmentData, lookups: LookupEntry[]) {
+  const ringRoots = [
+    ...new Set(
+      data.objects.flatMap((object) =>
+        (object.components?.TrackLaneRingsManager ?? []).flatMap((manager) =>
+          manager.SpawnAsChildren === 0 ? manager.Rings.map((ring) => ring.obj) : [],
+        ),
+      ),
+    ),
+  ];
+  if (ringRoots.length === 0) return;
+
+  ringRoots.sort((left, right) => {
+    const leftId = lookups.find((lookup) => lookup.index === left)?.id;
+    const rightId = lookups.find((lookup) => lookup.index === right)?.id;
+    const leftOrder = Number(/^.*\.\[(\d+)]/.exec(leftId ?? '')?.[1] ?? Number.MAX_SAFE_INTEGER);
+    const rightOrder = Number(/^.*\.\[(\d+)]/.exec(rightId ?? '')?.[1] ?? Number.MAX_SAFE_INTEGER);
+    return leftOrder - rightOrder || left - right;
+  });
+  const environmentRootCount =
+    Math.max(
+      -1,
+      ...lookups.flatMap((lookup) => {
+        if (data.objects[lookup.index]?.parent !== -1) return [];
+        const match = new RegExp(`^${data.id}\\.\\[(\\d+)]`).exec(lookup.id);
+        return match?.[1] === undefined ? [] : [Number(match[1])];
+      }),
+    ) + 1;
+  const sourceLookups = [...lookups];
+  const known = new Set(lookups.map((lookup) => `${lookup.index}:${lookup.id}`));
+
+  ringRoots.forEach((root, ringIndex) => {
+    const object = data.objects[root];
+    const originalRootId = sourceLookups.find((lookup) => lookup.index === root)?.id;
+    if (object === undefined || originalRootId === undefined) return;
+    const runtimeRootId = `${data.id}.[${String(environmentRootCount + ringIndex)}]${object.name}`;
+    for (const index of subtreeIndices(data.objects, root)) {
+      for (const lookup of sourceLookups.filter((entry) => entry.index === index)) {
+        if (!lookup.id.startsWith(originalRootId)) continue;
+        const id = `${runtimeRootId}${lookup.id.slice(originalRootId.length)}`;
+        const key = `${index}:${id}`;
+        if (known.has(key)) continue;
+        known.add(key);
+        lookups.push({ id, index });
+      }
+    }
+  });
+}
+
 function subtreeIndices(objects: EnvironmentObjectData[], root: number) {
   const descendants = new Set([root]);
   for (let index = 0; index < objects.length; index++) {
@@ -924,6 +973,7 @@ export function buildChromaEnvironmentVariant(
       marker.enabled ? [{ id: marker.ChromaID, index }] : [],
     ),
   );
+  addRuntimeRingLookups(data, lookups);
 
   function addComponentTracks(enhancement: RendererEnhancement, indices: readonly number[]) {
     for (const track of enhancementTracks(enhancement)) {
