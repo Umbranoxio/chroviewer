@@ -47,6 +47,7 @@ interface EventLimit {
 
 interface AnimationProperty<T, P> {
   key: keyof NoodleAnimationProperties;
+  legacyPathInitial: T;
   points(animation: NoodleAnimationProperties): P[] | null | undefined;
   sample(points: readonly P[], time: number, context?: PointSampleContext, songBpmTime?: number): T | undefined;
   combine(left: T | undefined, right: T | undefined): T | undefined;
@@ -93,21 +94,28 @@ function vectorProperty(
   points: AnimationProperty<Vector3Tuple, VectorPoint>['points'],
   combine: AnimationProperty<Vector3Tuple, VectorPoint>['combine'] = add,
 ): AnimationProperty<Vector3Tuple, VectorPoint> {
-  return { key, points, sample: sampleVector, combine, blend: blendVector };
+  return { key, legacyPathInitial: zero, points, sample: sampleVector, combine, blend: blendVector };
 }
 
 function rotationProperty(
   key: keyof NoodleAnimationProperties,
   points: AnimationProperty<QuaternionTuple, RotationPoint>['points'],
 ): AnimationProperty<QuaternionTuple, RotationPoint> {
-  return { key, points, sample: sampleRotation, combine: multiplyQuaternions, blend: blendRotation };
+  return {
+    key,
+    legacyPathInitial: identityRotation,
+    points,
+    sample: sampleRotation,
+    combine: multiplyQuaternions,
+    blend: blendRotation,
+  };
 }
 
 function numberProperty(
   key: keyof NoodleAnimationProperties,
   points: AnimationProperty<number, NumberPoint>['points'],
 ): AnimationProperty<number, NumberPoint> {
-  return { key, points, sample: sampleNumber, combine: multiplyNumber, blend: blendNumber };
+  return { key, legacyPathInitial: 0, points, sample: sampleNumber, combine: multiplyNumber, blend: blendNumber };
 }
 
 const positionProperty = vectorProperty('position', (animation) => animation.position);
@@ -127,6 +135,7 @@ const interactableProperty = numberProperty('interactable', (animation) => anima
 const timeProperty = numberProperty('time', (animation) => animation.time);
 const colorProperty: AnimationProperty<Vector4Tuple, Vector4Point> = {
   key: 'color',
+  legacyPathInitial: [0, 0, 0, 0],
   points: (animation) => animation.color,
   sample: sampleVector4,
   combine: multiplyVector4,
@@ -390,10 +399,17 @@ function pathProperty<T, P>(
   if (targetPoints === null || targetPoints === undefined) return undefined;
   const target = property.sample(targetPoints, objectTime, context, beat);
   const previousPoints = previous === undefined ? undefined : property.points(previous.animation);
-  if (previousPoints === null || previousPoints === undefined || latest.durationSongBpmTime <= 0) return target;
+  if (latest.durationSongBpmTime <= 0) return target;
+  const previousValue =
+    previousPoints === null || previousPoints === undefined
+      ? data.version === 2
+        ? property.legacyPathInitial
+        : undefined
+      : property.sample(previousPoints, objectTime, context, beat);
+  if (previousValue === undefined) return target;
   const progress = eventProgress(beat, latest.songBpmTime, latest.durationSongBpmTime, 0, latest.easing);
   if (progress >= 1) return target;
-  return property.blend(property.sample(previousPoints, objectTime, context, beat), target, progress);
+  return property.blend(previousValue, target, progress);
 }
 
 function animationProperty<T, P>(
