@@ -313,7 +313,7 @@ export function createObstacleDisplacementMaterial(
       _CutoutSize: { value: 1.2 },
       _CutoutEdgeWidth: { value: 0 },
     },
-    depthWrite: false,
+    depthWrite: true,
     side: DoubleSide,
     transparent: true,
     blending: CustomBlending,
