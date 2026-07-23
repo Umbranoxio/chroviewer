@@ -542,6 +542,7 @@ export interface EnvironmentObjectData {
   parent: number;
   active: boolean;
   customEnvironmentOnly?: boolean;
+  chromaGenerated?: boolean;
   layer?: number;
   position: [number, number, number];
   rotation: [number, number, number, number];

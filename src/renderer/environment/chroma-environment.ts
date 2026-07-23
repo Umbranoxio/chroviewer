@@ -387,6 +387,7 @@ function duplicateSubtree(data: EnvironmentData, lookups: LookupEntry[], root: n
     const source = data.objects[index];
     if (source === undefined) continue;
     const clone = cloneWithRemappedReferences(source, remap);
+    clone.chromaGenerated = true;
     if (index === root) {
       clone.name = `${clone.name}(Clone)`;
       // in-game clones are siblings of the original; hop out of track wrappers and bake their transform in
@@ -1009,6 +1010,7 @@ export function buildChromaEnvironmentVariant(
         name: objectName,
         parent: -1,
         active: enhancement.active ?? true,
+        chromaGenerated: true,
         position: [0, 0, 0],
         rotation: [...identityRotation],
         scale: [...identityScale],

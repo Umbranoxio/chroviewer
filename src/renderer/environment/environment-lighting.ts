@@ -224,7 +224,8 @@ function addParametricLights(
             if (mesh !== undefined) mesh.frustumCulled = false;
           });
         }
-        const initialVisible = lightNode.visible;
+        const renderer = scene.rendererMeshes.get(lightNode);
+        const initialRendererVisible = renderer?.visible ?? true;
         const opaque = targetMaterials.some((material) => !material.transparent && material.depthWrite);
         let currentAlpha = 1;
         let currentLength = controller.Length;
@@ -234,10 +235,14 @@ function addParametricLights(
         function applyAlpha(alpha: number) {
           currentAlpha = alpha;
           const renderedAlpha = Math.max(Math.abs(alpha * intensityMultiplier), controller.MinAlpha);
-          lightNode.visible =
-            initialVisible &&
-            (controller.DisableRenderersOnZeroAlpha === 0 || alpha > 0.01) &&
-            (!opaque || renderedAlpha * renderedAlpha > OPAQUE_LIGHT_MIN_EMISSION);
+          if (renderer !== undefined) {
+            renderer.visible =
+              initialRendererVisible &&
+              (controller.DisableRenderersOnZeroAlpha === 0 || alpha > 0.01) &&
+              (data.objects[target.obj]?.chromaGenerated === true ||
+                !opaque ||
+                renderedAlpha * renderedAlpha > OPAQUE_LIGHT_MIN_EMISSION);
+          }
           const lengthFactor =
             controller.MultiplyLengthByAlpha === 0 ? 1 : evaluateAnimationCurve(controller.AlphaToLengthCurve, alpha);
           let widthFactor = 1;
