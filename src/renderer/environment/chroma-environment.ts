@@ -729,7 +729,7 @@ function geometryMesh(type: string) {
       geometry = new BufferGeometry();
       geometry.setAttribute('position', new Float32BufferAttribute([-0.5, -0.5, 0, 0.5, -0.5, 0, 0, 0.5, 0], 3));
       geometry.setAttribute('uv', new Float32BufferAttribute([0, 0, 1, 0, 0.5, 1], 2));
-      geometry.setIndex([0, 1, 2]);
+      geometry.setIndex([0, 2, 1]);
       geometry.computeVertexNormals();
       break;
     default:
