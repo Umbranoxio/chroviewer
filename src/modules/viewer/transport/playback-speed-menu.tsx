@@ -1,5 +1,5 @@
 import { Gauge } from 'lucide-react';
-import { useFormatter, useTranslations } from 'use-intl';
+import { useTranslations } from 'use-intl';
 
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -13,27 +13,18 @@ interface PlaybackSpeedMenuProps {
 }
 
 export function PlaybackSpeedMenu({ open, playbackRate, onOpenChange, onPlaybackRateChange }: PlaybackSpeedMenuProps) {
-  const format = useFormatter();
   const t = useTranslations('viewer.transport');
 
   return (
     <Popover open={open} onOpenChange={onOpenChange}>
       <PopoverTrigger asChild>
-        <Button
-          className="max-sm:hidden"
-          variant="ghost"
-          size="icon"
-          aria-label={t('playbackSpeed')}
-          title={t('playbackSpeed')}
-        >
+        <Button className="max-sm:hidden" variant="ghost" size="icon" aria-label={t('playbackSpeed')} title={t('playbackSpeed')}>
           <Gauge />
         </Button>
       </PopoverTrigger>
       <PopoverContent side="top" align="center" sideOffset={12} className="w-56 p-3">
         <div className="flex flex-col gap-2">
-          <span className="text-muted-foreground text-center text-xs font-medium">
-            {t('speedValue', { speed: format.number(playbackRate) })}
-          </span>
+          <span className="text-muted-foreground text-center text-xs font-medium tabular-nums">{t('speedValue', { speed: playbackRate.toFixed(2) })}</span>
           <Slider
             variant="notched"
             orientation="horizontal"
