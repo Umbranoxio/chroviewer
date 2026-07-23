@@ -920,6 +920,12 @@ function disableTrackedBoxLightTransforms(data: EnvironmentData, indices: readon
   }
 }
 
+function refreshDuplicatedBoxLightTransforms(data: EnvironmentData, indices: readonly number[]) {
+  for (const index of indices) {
+    for (const light of data.objects[index]?.components?.ParametricBoxLight ?? []) light.UpdateTransform = 1;
+  }
+}
+
 function wrapTrackedObject(
   data: EnvironmentData,
   tracks: Map<string, number[]>,
@@ -1056,6 +1062,7 @@ export function buildChromaEnvironmentVariant(
         if (object === undefined) continue;
         if (enhancement.active !== undefined) object.active = enhancement.active;
         if (enhancementTracks(enhancement).length > 0) disableTrackedBoxLightTransforms(data, target.indices);
+        if (enhancement.duplicate !== undefined) refreshDuplicatedBoxLightTransforms(data, target.indices);
         if (enhancement.duplicate === undefined) applyComponents(data, target.indices, enhancement, source.version);
         else {
           const light = enhancement.components?.ILightWithId;

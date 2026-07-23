@@ -217,6 +217,11 @@ function addParametricLights(
         const sprite =
           kind === 'sprite' ? childComponents?.ParametricSpriteLight?.[target.componentIndex ?? 0] : undefined;
         const lightNode = targetNode;
+        const targetObjectIndex = target.obj;
+        let lightTransform: Object3D = lightNode;
+        while (lightTransform.parent?.name.startsWith('__chroma_track_') === true) {
+          lightTransform = lightTransform.parent;
+        }
         const controllerNode = node;
         if (sprite !== undefined) {
           lightNode.traverse((child) => {
@@ -231,7 +236,7 @@ function addParametricLights(
         let currentLength = controller.Length;
         let currentCollisionLength = Number.POSITIVE_INFINITY;
         let currentStartAlpha = controller.StartAlpha;
-        if (box !== undefined && box.UpdateTransform !== 0) bindingTarget.matrixTargets.push(lightNode);
+        if (box !== undefined && box.UpdateTransform !== 0) bindingTarget.matrixTargets.push(lightTransform);
         function applyAlpha(alpha: number) {
           currentAlpha = alpha;
           const renderedAlpha = Math.max(Math.abs(alpha * intensityMultiplier), controller.MinAlpha);
@@ -239,7 +244,7 @@ function addParametricLights(
             renderer.visible =
               initialRendererVisible &&
               (controller.DisableRenderersOnZeroAlpha === 0 || alpha > 0.01) &&
-              (data.objects[target.obj]?.chromaGenerated === true ||
+              (data.objects[targetObjectIndex]?.chromaGenerated === true ||
                 !opaque ||
                 renderedAlpha * renderedAlpha > OPAQUE_LIGHT_MIN_EMISSION);
           }
@@ -263,9 +268,9 @@ function addParametricLights(
                 : (currentLength + (controller.AddWidthToLength === 0 ? 0 : controller.Width)) * lengthFactor;
             const height = Math.min(fullHeight, currentCollisionLength);
             if (box.UpdateTransform !== 0) {
-              lightNode.scale.set(width * 0.5, height * 0.5, width * 0.5);
-              lightNode.position.set(0, (0.5 - controller.Center) * height, 0);
-              lightNode.updateMatrix();
+              lightTransform.scale.set(width * 0.5, height * 0.5, width * 0.5);
+              lightTransform.position.set(0, (0.5 - controller.Center) * height, 0);
+              lightTransform.updateMatrix();
             }
             const alphaStart = controller.OverrideChildrenAlpha === 0 ? box.AlphaStart : currentStartAlpha;
             const alphaEnd = controller.OverrideChildrenAlpha === 0 ? box.AlphaEnd : controller.EndAlpha;

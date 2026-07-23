@@ -219,7 +219,7 @@ export class MapView implements RenderView {
         chromaEnvironment.animations.length > 0 ||
         chromaEnvironment.componentAnimations.length > 0 ||
         chromaEnvironment.fogTrackEvents.length > 0);
-    this.pipeline.setBackgroundGradient(hasCustomEnvironment ? environment.backgroundGradient : null);
+    this.pipeline.setBackgroundGradient(hasCustomEnvironment ? null : environment.backgroundGradient);
     this.onEnvironmentLoadSettled();
     return Result.ok(undefined);
   }

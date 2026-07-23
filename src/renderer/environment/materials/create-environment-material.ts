@@ -257,7 +257,8 @@ export function createEnvironmentMaterial(
     }
   }
   const isParametricSliceBillboard = data.shader === 'ChroMapper/Parametric Slice Billboard';
-  if (isParametricSliceBillboard) {
+  const isTransparentLight = data.family === 'lightTubeTransparent';
+  if (isParametricSliceBillboard || isTransparentLight) {
     material.side = DoubleSide;
   } else {
     const cullMode = data.floats._CullMode ?? data.floats._Cull;
@@ -268,7 +269,11 @@ export function createEnvironmentMaterial(
   const disableDepthWrite = environmentId === 'WeaveEnvironment' && isParametricSliceBillboard;
   material.depthWrite =
     data.family === 'depthOnly' ||
-    (!disableDepthWrite && data.family !== 'stencil' && data.family !== 'rain' && data.floats._ZWrite !== 0);
+    (!disableDepthWrite &&
+      !isTransparentLight &&
+      data.family !== 'stencil' &&
+      data.family !== 'rain' &&
+      data.floats._ZWrite !== 0);
   const stencilComp = data.floats._StencilComp ?? 8;
   const stencilPass = data.floats._StencilPass ?? 0;
   if (stencilComp !== 8 || stencilPass !== 0) {
