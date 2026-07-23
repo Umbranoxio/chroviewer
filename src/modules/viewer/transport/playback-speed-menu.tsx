@@ -33,6 +33,7 @@ export function PlaybackSpeedMenu({ open, playbackRate, onOpenChange, onPlayback
             min={0}
             max={2}
             step={0.05}
+            snapDistance={3}
             value={[playbackRate]}
             onValueChange={([rate]) => {
               onPlaybackRateChange(rate ?? 1);

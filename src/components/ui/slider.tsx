@@ -10,10 +10,11 @@ interface SliderProps extends ComponentProps<typeof SliderPrimitive.Root> {
   variant?: 'default' | 'transport' | 'notched';
   notchDivisor?: number;
   explicitMin?: number;
+  snapDistance?: number;
   onValueChange: (value: number[]) => void;
 }
 
-function Slider({ className, value, defaultValue, min = 0, explicitMin = min, max = 100, step = 1, variant = 'default', orientation = 'horizontal', notchDivisor = 1, onValueChange, ...props }: SliderProps) {
+function Slider({ className, value, defaultValue, min = 0, explicitMin = min, max = 100, step = 1, variant = 'default', orientation = 'horizontal', notchDivisor = 1, onValueChange, snapDistance = 0, ...props }: SliderProps) {
   const mappedValue = value?.map((v) => (v === explicitMin ? min : v));
   const mappedDefaultValue = defaultValue?.map((v) => (v === explicitMin ? min : v));
 
@@ -26,7 +27,7 @@ function Slider({ className, value, defaultValue, min = 0, explicitMin = min, ma
         return (
           bigboys.find((m) => {
             const targetMin = m === explicitMin ? min : m;
-            return Math.abs(v - targetMin) <= step * 2;
+            return Math.abs(v - targetMin) <= step * snapDistance;
           }) ?? v
         );
       }),
@@ -56,8 +57,8 @@ function Slider({ className, value, defaultValue, min = 0, explicitMin = min, ma
         )}
       >
         {variant === 'notched' && (
-          <div className="pointer-events-none absolute inset-x-2 top-1/2 flex -translate-y-1/2 items-center justify-between data-[orientation=vertical]:inset-x-auto data-[orientation=vertical]:inset-y-2 data-[orientation=vertical]:left-1/2 data-[orientation=vertical]:-translate-x-1/2 data-[orientation=vertical]:flex-col">
-            <Notches orientation={orientation} min={min} max={max} step={step} divisor={notchDivisor} value={mappedValue}></Notches>
+          <div className={cn('pointer-events-none absolute flex items-center justify-between', orientation === 'vertical' ? 'inset-x-auto inset-y-2 left-1/2 -translate-x-1/2 flex-col' : 'inset-x-2 top-1/2 -translate-y-1/2')}>
+            <Notches orientation={orientation} min={min} max={max} step={step} divisor={notchDivisor} value={mappedValue} />
           </div>
         )}
 
