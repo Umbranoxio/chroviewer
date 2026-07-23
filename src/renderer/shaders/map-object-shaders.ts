@@ -297,11 +297,12 @@ void main() {
 `;
 
 export const LEGACY_SOLID_OBSTACLE_FRAG = /* glsl */ `
+varying float vColorAlpha;
 ${BASE_COLOR_CHUNK}
 ${NOODLE_DISSOLVE_CHUNK}
 void main() {
   applyNoodleDissolve();
-  gl_FragColor = vec4(clamp(baseColor(), 0.0, 1.0), 1.0);
+  gl_FragColor = vec4(clamp(baseColor(), 0.0, 1.0), vColorAlpha);
   #include <colorspace_fragment>
 }
 `;

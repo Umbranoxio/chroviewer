@@ -106,6 +106,10 @@ varying vec4 vVertexColor;
 #ifdef USE_INSTANCING_COLOR
 varying vec3 vInstanceColor;
 #endif
+#ifdef INSTANCED_COLOR_ALPHA
+attribute float instanceColorAlpha;
+varying float vColorAlpha;
+#endif
 varying float vDissolve;
 #ifdef REFLECTIVE_SURFACE
 varying vec3 vReflectionDirection;
@@ -138,6 +142,9 @@ vec3 chroTransformNormal(mat3 basis, vec3 normal) {
 
 void main() {
   vDissolve = 1.0;
+  #ifdef INSTANCED_COLOR_ALPHA
+  vColorAlpha = 1.0;
+  #endif
   vec4 localPos = vec4(position, 1.0);
   mat3 instanceBasis = mat3(1.0);
   vec3 cutoutPos = position;
@@ -148,6 +155,9 @@ void main() {
   cutoutPos = instanceBasis * cutoutPos;
   cutoutOffset = noodleCutoutOffset(instanceCutoutSeed);
   vDissolve = instanceDissolve;
+  #ifdef INSTANCED_COLOR_ALPHA
+  vColorAlpha = instanceColorAlpha;
+  #endif
   #endif
   #ifdef USE_INSTANCING_COLOR
   vInstanceColor = instanceColor;

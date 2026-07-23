@@ -271,7 +271,7 @@ export function createObstacleMaterial(fog: FogUniforms, color: Rgb) {
 
 export function createLegacySolidObstacleMaterial(color: Rgb) {
   return new ShaderMaterial({
-    defines: { INSTANCED_COLOR: '' },
+    defines: { INSTANCED_COLOR: '', INSTANCED_COLOR_ALPHA: '' },
     vertexShader: OBJECT_VERT,
     fragmentShader: LEGACY_SOLID_OBSTACLE_FRAG,
     uniforms: {
