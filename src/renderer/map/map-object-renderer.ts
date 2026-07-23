@@ -636,7 +636,7 @@ export class MapObjectRenderer {
         preJumpPosition,
       );
       let obstacleEdgeScale: Rgb | undefined;
-      if (data.legacyNoodleV2Semantics) {
+      if (wall.legacyPrefabScaling === true) {
         this.wallEdgeScale[0] = Math.abs(this.scale.x);
         this.wallEdgeScale[1] = Math.abs(this.scale.y);
         this.wallEdgeScale[2] = Math.abs(this.scale.z);

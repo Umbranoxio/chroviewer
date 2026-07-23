@@ -62,6 +62,7 @@ export interface WallInstance extends ObjectMotion {
   worldRotation?: NoodleWorldRotation;
   noodle?: NoodleObjectData;
   customColor?: ChromaColor;
+  legacyPrefabScaling?: boolean;
   legacySolidCore?: boolean;
 }
 
@@ -429,6 +430,7 @@ export function buildMapRenderData(difficulty: Difficulty, options: MapRenderOpt
       worldRotation,
       noodle,
       customColor,
+      legacyPrefabScaling: majorVersion === 2 && noodle !== undefined,
       legacySolidCore: usesLegacySolidObstacleCore(customColor, options.legacyNoodleV2Semantics),
     });
   }
