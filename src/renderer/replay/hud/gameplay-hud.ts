@@ -24,6 +24,7 @@ const scoreStackCenterX = -3.2;
 export class ReplayGameplayHud {
   readonly root = new Group();
 
+  private readonly scoreHud = new Group();
   private readonly comboPanel = new Group();
   private readonly combo = hudText('0', 0.46, [0, -0.165, 0]);
   private readonly comboLabel = hudText('COMBO', 0.33, [0, 0.165, 0]);
@@ -74,7 +75,7 @@ export class ReplayGameplayHud {
       this.songTime,
       this.songDuration,
     ];
-    this.root.add(
+    this.scoreHud.add(
       this.comboPanel,
       this.score,
       this.rank,
@@ -83,8 +84,8 @@ export class ReplayGameplayHud {
       this.multiplierX,
       this.songTime,
       this.songDuration,
-      this.flyingScores.root,
     );
+    this.root.add(this.scoreHud, this.flyingScores.root);
 
     this.comboTopLine = hudShape(new PlaneGeometry(1, 0.04));
     this.comboTopLine.position.set(-3.2, 2.18, -7);
@@ -118,7 +119,7 @@ export class ReplayGameplayHud {
     const songTimeSeparator = hudShape(new PlaneGeometry(0.02, 0.18), 0.5);
     songTimeSeparator.position.set(3.2, 0.76, -6.99);
 
-    this.root.add(
+    this.scoreHud.add(
       this.comboTopLine,
       this.comboBottomLine,
       energyBackground,
@@ -155,6 +156,7 @@ export class ReplayGameplayHud {
           : buildReplayTimeline(replay, hitScoreVisualizer);
     this.comboBreakTime = replay === null ? null : firstComboBreakTime(replay);
     this.root.visible = replay !== null;
+    this.scoreHud.visible = replay !== null && replay.scores.length > 0;
     this.flyingScores.clear();
     this.updateComboBreak(0);
     if (this.timeline !== null) {
