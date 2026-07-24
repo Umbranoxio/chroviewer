@@ -1,3 +1,4 @@
+import { Result } from 'better-result';
 import { Trash2 } from 'lucide-react';
 import { useFormatter, useTranslations } from 'use-intl';
 
@@ -135,8 +136,10 @@ export function GeneralSettings({ active, settings, isMapPreview, onChange }: Ge
                     onChange={(e) => {
                       const file = e.target.files?.[0];
                       if (file) {
-                        void saveCustomHitsound('good', file).then(() => {
-                          update('customGoodHitsound', file.name);
+                        void Result.tryPromise(() => saveCustomHitsound('good', file)).then((result) => {
+                          if (result.isOk()) {
+                            update('customGoodHitsound', file.name);
+                          }
                         });
                       }
                     }}
@@ -165,8 +168,10 @@ export function GeneralSettings({ active, settings, isMapPreview, onChange }: Ge
                     onChange={(e) => {
                       const file = e.target.files?.[0];
                       if (file) {
-                        void saveCustomHitsound('bad', file).then(() => {
-                          update('customBadHitsound', file.name);
+                        void Result.tryPromise(() => saveCustomHitsound('bad', file)).then((result) => {
+                          if (result.isOk()) {
+                            update('customBadHitsound', file.name);
+                          }
                         });
                       }
                     }}
