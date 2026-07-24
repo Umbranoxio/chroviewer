@@ -30,14 +30,14 @@ function Slider({
   ...props
 }: SliderProps) {
   const mappedValue = value.map((v) => (v === explicitMin ? min : v));
-  const interaction = useRef<'pointer' | 'keyboard'>('pointer');
+  const isKeyboard = useRef<boolean>(false);
 
   const handleValueChange = (newValues: number[]) => {
     onValueChange(
       newValues.map((v, i) => {
-        if (interaction.current === 'keyboard') {
-          const visual = mappedValue[i] ?? min;
-          const actuall = value[i] ?? explicitMin;
+        if (isKeyboard.current) {
+          const visual = mappedValue[i] ?? explicitMin;
+          const actuall = value[i] ?? min;
 
           const diff = v - visual;
           if (diff === 0) return visual;
@@ -66,10 +66,10 @@ function Slider({
       step={step}
       orientation={orientation}
       onPointerDown={() => {
-        interaction.current = 'pointer';
+        isKeyboard.current = false;
       }}
       onKeyDown={() => {
-        interaction.current = 'keyboard';
+        isKeyboard.current = true;
       }}
       onValueChange={(newValues) => {
         handleValueChange(newValues);
