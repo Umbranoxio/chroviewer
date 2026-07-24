@@ -2,8 +2,9 @@ import { useEffect, useRef, useState, type RefObject } from 'react';
 
 import { firstHitsoundAfter, HitsoundPlayer, type HitsoundEvent } from '../../core/clock/hitsounds';
 import type { SongClock } from '../../core/clock/song-clock';
+import { loadCustomHitsound } from '../../core/hitsound-storage';
 import { isForcedLightshowMode, type LightshowMode } from '../../core/lighting/basic-light';
-import type { ViewerSettings } from '../../core/viewer-settings';
+import type { HitsoundPreset, ViewerSettings } from '../../core/viewer-settings';
 
 interface HitsoundPlaybackOptions {
   audioOffset: number;
@@ -11,6 +12,9 @@ interface HitsoundPlaybackOptions {
   lightshowModeRef: RefObject<LightshowMode>;
   settingsRef: RefObject<ViewerSettings>;
   volume: number;
+  hitsoundPreset: HitsoundPreset;
+  customGoodHitsound: string | null;
+  customBadHitsound: string | null;
 }
 
 export function useHitsoundPlayback({
@@ -19,6 +23,9 @@ export function useHitsoundPlayback({
   lightshowModeRef,
   settingsRef,
   volume,
+  hitsoundPreset,
+  customGoodHitsound,
+  customBadHitsound,
 }: HitsoundPlaybackOptions) {
   const [player] = useState(() => new HitsoundPlayer());
   const eventsRef = useRef<HitsoundEvent[]>([]);
@@ -28,6 +35,40 @@ export function useHitsoundPlayback({
   useEffect(() => {
     player.setVolume(volume);
   }, [player, volume]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function updateBuffers() {
+      if (hitsoundPreset === 'default') {
+        await player.setBuffers(null, null);
+        return;
+      }
+
+      let goodCutBuffer: ArrayBuffer | null = null;
+      let badCutBuffer: ArrayBuffer | null = null;
+
+      if (hitsoundPreset === 'custom') {
+        [goodCutBuffer, badCutBuffer] = await Promise.all([loadCustomHitsound('good'), loadCustomHitsound('bad')]);
+      } else {
+        try {
+          const res = await fetch(`/hitsounds/${hitsoundPreset}.wav`);
+          if (res.ok) goodCutBuffer = await res.arrayBuffer();
+        } catch (e) {
+          console.warn('Failed to load hitsound preset', e);
+        }
+      }
+
+      if (!cancelled) {
+        await player.setBuffers(goodCutBuffer, badCutBuffer);
+      }
+    }
+
+    void updateBuffers();
+    return () => {
+      cancelled = true;
+    };
+  }, [player, hitsoundPreset, customGoodHitsound, customBadHitsound]);
 
   useEffect(() => {
     player.stop();
@@ -55,8 +96,11 @@ export function useHitsoundPlayback({
           const events = eventsRef.current;
           let index = indexRef.current;
           if (currentTime > timeRef.current) {
-            timeRef.current = currentTime - 1e-6;
-            index = firstHitsoundAfter(events, timeRef.current - scaledAudioOffset);
+            const nextTime = currentTime - 1e-6;
+            if (nextTime > timeRef.current) {
+              timeRef.current = nextTime;
+              index = firstHitsoundAfter(events, timeRef.current - scaledAudioOffset);
+            }
           }
           while (index < events.length) {
             const event = events[index];
