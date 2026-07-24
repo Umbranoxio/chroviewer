@@ -11,6 +11,7 @@ interface HeadsetSurface {
   metallic: number;
   smoothness: number;
   specularIntensity: number;
+  ambientMinimalValue?: number;
 }
 
 export interface ReplayDirectionalLights {
@@ -64,8 +65,9 @@ const HEADSET_SURFACES: Record<string, HeadsetSurface> = {
 export const SABER_METAL_SURFACE: HeadsetSurface = {
   color: [0.05, 0.055, 0.065],
   metallic: 0.65,
-  smoothness: 0.72,
-  specularIntensity: 0.5,
+  smoothness: 0.45,
+  specularIntensity: 0.32,
+  ambientMinimalValue: 0.01,
 };
 
 export const SABER_GRIP_SURFACE: HeadsetSurface = {
@@ -73,6 +75,7 @@ export const SABER_GRIP_SURFACE: HeadsetSurface = {
   metallic: 0.05,
   smoothness: 0.2,
   specularIntensity: 0.12,
+  ambientMinimalValue: 0.01,
 };
 
 export function createReplaySurfaceMaterial(
@@ -90,7 +93,7 @@ export function createReplaySurfaceMaterial(
       radii: { value: directionalLights.radii },
     },
     {
-      ambientMinimalValue: 0.16,
+      ambientMinimalValue: surface.ambientMinimalValue ?? 0.16,
       emissionFogSuppression: 0,
       nominalDiffuseLevel: [0.3, 0.3, 0.3],
       ambientMultiplier: 0.5,

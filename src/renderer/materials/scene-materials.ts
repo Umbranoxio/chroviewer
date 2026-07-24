@@ -1,4 +1,4 @@
-import { ShaderMaterial, Vector2, Vector4, type Texture } from 'three';
+import { DoubleSide, ShaderMaterial, Vector2, Vector4, type Texture } from 'three';
 
 import type { Rgb } from '../../core/colors';
 import type { FogUniforms } from '../bloomfog/pipeline';
@@ -22,9 +22,14 @@ export function createMirrorMaterial(
     scale: [number, number];
     offset: [number, number];
     intensity: number;
+    scrolling?: [number, number];
+    detailScrolling?: [number, number];
+    detailScale?: number;
+    detailIntensity?: number;
   },
 ) {
-  return new ShaderMaterial({
+  const elapsed = { value: 0 };
+  const material = new ShaderMaterial({
     vertexShader: OBJECT_VERT,
     fragmentShader: MIRROR_FRAG,
     uniforms: {
@@ -39,13 +44,25 @@ export function createMirrorMaterial(
       _NormalTex: { value: normal?.texture ?? null },
       _NormalScale: { value: new Vector2(...(normal?.scale ?? [1, 1])) },
       _NormalOffset: { value: new Vector2(...(normal?.offset ?? [0, 0])) },
+      _TextureScrolling: { value: new Vector2(...(normal?.scrolling ?? [0, 0])) },
+      _DetailNormalTexScrolling: { value: new Vector2(...(normal?.detailScrolling ?? [0, 0])) },
+      _DetailNormalTextureScale: { value: normal?.detailScale ?? 1 },
+      _DetailNormalIntensity: { value: normal?.detailIntensity ?? 0 },
       _BumpIntensity: { value: normal?.intensity ?? 0 },
+      _TimeSeconds: elapsed,
     },
     defines: {
       ...(dirt === undefined ? {} : { DIRT: 1 }),
       ...(normal === undefined ? {} : { NORMAL_TEXTURE: 1 }),
+      ...(normal?.detailIntensity === undefined || normal.detailIntensity === 0 ? {} : { DETAIL_NORMAL_MAP: 1 }),
     },
   });
+  if (normal !== undefined) {
+    material.onBeforeRender = () => {
+      elapsed.value = performance.now() * 0.001;
+    };
+  }
+  return material;
 }
 
 export function createSkyboxMaterial(fog: FogUniforms) {
@@ -57,6 +74,7 @@ export function createSkyboxMaterial(fog: FogUniforms) {
       _CustomFogTextureToScreenRatio: fog._CustomFogTextureToScreenRatio,
     },
     depthWrite: false,
+    side: DoubleSide,
   });
 }
 
@@ -88,5 +106,6 @@ export function createBackgroundGradientMaterial(
     },
     depthTest: false,
     depthWrite: false,
+    side: DoubleSide,
   });
 }

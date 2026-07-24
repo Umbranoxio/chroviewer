@@ -1,12 +1,13 @@
 import { Euler, Quaternion, Vector3, type Object3D, type PerspectiveCamera } from 'three';
 
 import { DEFAULT_REPLAY_CAMERA_SETTINGS, type ReplayCameraSettings } from '../../core/viewer-settings';
-import { fixedCameraPosition } from '../camera';
+import { fixedCameraPosition, GAMEPLAY_CAMERA_FAR } from '../camera';
 
 const degToRad = Math.PI / 180;
 const maxPortraitFov = 120;
 const maxPortraitFovIncrease = 10;
 const maxPortraitPullback = 1.5;
+const maxSmoothingDistance = 10;
 const uprightPitch = degToRad;
 const uprightPitchInfluence = 1;
 
@@ -47,7 +48,10 @@ export class ReplayCameraController {
   private replayTime = Number.NEGATIVE_INFINITY;
   private updatedAt = performance.now();
 
-  constructor(private readonly camera: PerspectiveCamera) {}
+  constructor(private readonly camera: PerspectiveCamera) {
+    this.camera.far = GAMEPLAY_CAMERA_FAR;
+    this.camera.updateProjectionMatrix();
+  }
 
   get cameraMode() {
     return this.mode;
@@ -117,8 +121,9 @@ export class ReplayCameraController {
     if (this.mode === 'first-person') {
       this.updateFirstPerson(head, time);
     } else if (this.mode === 'follow') {
-      this.camera.position.copy(head.position).add(this.offset.set(0, 0.4, 2.5));
-      this.camera.lookAt(this.position.copy(head.position).add(this.offset.set(0, 0, -2)));
+      head.getWorldPosition(this.position);
+      this.camera.position.copy(this.position).add(this.offset.set(0, 0.4, 2.5));
+      this.camera.lookAt(this.position.add(this.offset.set(0, 0, -2)));
       this.camera.position.add(this.offset.set(0, 0, this.responsivePullback).applyQuaternion(this.camera.quaternion));
     }
   }
@@ -132,22 +137,23 @@ export class ReplayCameraController {
       : 1;
     this.replayTime = time;
     this.updatedAt = now;
-    this.position
-      .copy(head.position)
-      .add(
-        this.offset.set(settings.replayCameraXOffset, settings.replayCameraYOffset, -settings.replayCameraDepthOffset),
-      );
+    head.getWorldPosition(this.position);
+    this.position.add(
+      this.offset.set(settings.replayCameraXOffset, settings.replayCameraYOffset, -settings.replayCameraDepthOffset),
+    );
     this.euler.set(
       -settings.replayCameraXRotation * degToRad,
       -settings.replayCameraYRotation * degToRad,
       settings.replayCameraZRotation * degToRad,
       'YXZ',
     );
-    this.quaternion.copy(head.quaternion);
+    head.getWorldQuaternion(this.quaternion);
     if (settings.replayCameraForceUpright) forceUprightQuaternion(this.quaternion, this.headEuler);
     this.quaternion.multiply(this.rotationQuaternion.setFromEuler(this.euler));
     this.position.add(this.offset.set(0, 0, this.responsivePullback).applyQuaternion(this.quaternion));
-    const amount = this.poseReady && !discontinuous ? smoothing : 1;
+    const teleported =
+      this.poseReady && this.camera.position.distanceToSquared(this.position) > maxSmoothingDistance ** 2;
+    const amount = this.poseReady && !discontinuous && !teleported ? smoothing : 1;
     this.camera.position.lerp(this.position, amount);
     this.camera.quaternion.slerp(this.quaternion, amount);
     this.poseReady = true;

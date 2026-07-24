@@ -25,6 +25,7 @@ interface ViewerRendererOptions {
   replayRef: RefObject<Replay | null>;
   settings: ViewerSettings;
   settingsRef: RefObject<ViewerSettings>;
+  skipInitialMenuEnvironment: boolean;
   setError: (message: string) => void;
 }
 
@@ -39,6 +40,7 @@ export function useViewerRenderer({
   replayRef,
   settings,
   settingsRef,
+  skipInitialMenuEnvironment,
   setError,
 }: ViewerRendererOptions) {
   const t = useTranslations('viewer');
@@ -87,6 +89,10 @@ export function useViewerRenderer({
       };
 
       const initialLoad = !initialEnvironmentLoadedRef.current;
+      if (initialLoad && skipInitialMenuEnvironment && active === null) {
+        finishInitialEnvironmentLoad();
+        return;
+      }
       if (initialLoad) setEnvironmentLoading(true);
       const environmentResult = await view.setEnvironment(
         active?.environmentId ??
@@ -95,6 +101,7 @@ export function useViewerRenderer({
               ? settingsRef.current.environmentOverrideId
               : 'BigMirrorEnvironment',
           ),
+        active?.data.chromaEnvironment,
       );
       if (!isCurrentViewer(viewerRef, view)) return;
       if (environmentResult.isErr() && !EnvironmentLoadAborted.is(environmentResult.error)) {

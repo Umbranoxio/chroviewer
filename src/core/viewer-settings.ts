@@ -88,6 +88,8 @@ export interface ViewerSettings {
   replayCameraZRotation: number;
   replayCameraForceUpright: boolean;
   autoHide: boolean;
+  liveChatCollapsed: boolean;
+  keepMapInfoVisible: boolean;
 }
 
 export const MIN_AUDIO_OFFSET_MS = -1000;
@@ -252,6 +254,8 @@ export const DEFAULT_VIEWER_SETTINGS: ViewerSettings = {
   reverseTimelineScroll: false,
   ...DEFAULT_REPLAY_CAMERA_SETTINGS,
   autoHide: true,
+  liveChatCollapsed: false,
+  keepMapInfoVisible: false,
 };
 
 const storageKey = 'chroviewer.settings.v7';
@@ -374,6 +378,8 @@ const viewerSettingsObjectSchema = z.object({
   replayCameraZRotation: numberSetting(DEFAULT_VIEWER_SETTINGS.replayCameraZRotation, -180, 180),
   replayCameraForceUpright: z.catch(z.boolean(), DEFAULT_VIEWER_SETTINGS.replayCameraForceUpright),
   autoHide: z.catch(z.boolean(), DEFAULT_VIEWER_SETTINGS.autoHide),
+  liveChatCollapsed: z.catch(z.boolean(), DEFAULT_VIEWER_SETTINGS.liveChatCollapsed),
+  keepMapInfoVisible: z.catch(z.boolean(), DEFAULT_VIEWER_SETTINGS.keepMapInfoVisible),
 });
 
 const viewerSettingsSchema = z.catch(viewerSettingsObjectSchema, DEFAULT_VIEWER_SETTINGS);
@@ -528,9 +534,11 @@ export function hexToRgb(hex: string): Rgb {
 export function environmentForSettings(
   settings: Pick<ViewerSettings, 'preferReplayEnvironment' | 'overrideEnvironment' | 'environmentOverrideId'>,
   mapEnvironmentId: string,
-  replayEnvironmentId?: string,
+  replayEnvironmentId: string | undefined,
+  usesChromaOrNoodle: boolean,
 ) {
-  if (settings.preferReplayEnvironment && replayEnvironmentId !== undefined) return replayEnvironmentId;
+  if (!usesChromaOrNoodle && settings.preferReplayEnvironment && replayEnvironmentId !== undefined)
+    return replayEnvironmentId;
   return settings.overrideEnvironment ? settings.environmentOverrideId : mapEnvironmentId;
 }
 

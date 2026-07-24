@@ -7,11 +7,17 @@ import satori, { type SatoriOptions } from 'satori';
 
 import { fetchScoreSaberPlayer } from '../sources/scoresaber/provider';
 import type { ScoreSaberReplayPlayer } from '../sources/source-types';
+import { MapPreviewCard } from './map-preview-card';
+import { fetchMapPreviewData } from './map-preview-data.server';
+import { PartyPreviewCard } from './party-preview-card';
+import { fetchPartyPreviewPlayer } from './party-preview-data.server';
+import { Divider, previewSize, Stat, type PreviewImages } from './preview-card';
 import { fetchReplayPreviewScore, type ReplayPreviewScore } from './replay-preview-data.server';
 
-const previewSize = { width: 1200, height: 630 };
-
 const previewTtlMs = 10 * 60 * 1000;
+const partyPreviewTtlMs = 24 * 60 * 60 * 1000;
+const partyFallbackTtlMs = 60 * 1000;
+const partyAssetTimeoutMs = 1_200;
 const previewCacheLimit = 64;
 const backgroundCacheLimit = 16;
 const fallbackTtlMs = 6 * 60 * 60 * 1000;
@@ -49,8 +55,13 @@ function cacheSet<T>(cache: Map<string, CacheEntry<T>>, key: string, value: T, l
   }
 }
 
-const previewCache = new Map<string, CacheEntry<ArrayBuffer>>();
+const replayPreviewCache = new Map<string, CacheEntry<ArrayBuffer>>();
+const mapPreviewCache = new Map<string, CacheEntry<ArrayBuffer>>();
+const partyPreviewCache = new Map<string, CacheEntry<PartyPreviewImage>>();
+const partyPreviewRequests = new Map<string, Promise<Result<PartyPreviewImage, PreviewError>>>();
 const backgroundCache = new Map<string, CacheEntry<string>>();
+
+const fallbackBackground = `data:image/svg+xml;base64,${Buffer.from('<svg width="600" height="315" xmlns="http://www.w3.org/2000/svg"><rect width="600" height="315" fill="#05060a"/></svg>').toString('base64')}`;
 
 let fontsPromise: Promise<SatoriOptions['fonts']> | null = null;
 
@@ -197,12 +208,12 @@ function sniffImageType(data: Buffer) {
   return null;
 }
 
-async function fetchImageDataUrl(url: string, origin?: string) {
+async function fetchImageDataUrl(url: string, origin?: string, timeoutMs = 10_000) {
   try {
     const target = new URL(url, origin);
     if (target.protocol !== 'https:' && target.origin !== origin) return null;
     const response = await fetch(target, {
-      signal: AbortSignal.timeout(10_000),
+      signal: AbortSignal.timeout(timeoutMs),
     });
     if (!response.ok) return null;
     const data = Buffer.from(await response.arrayBuffer());
@@ -276,19 +287,6 @@ function StarIcon({ size, color }: { size: number; color: string }) {
   );
 }
 
-function Divider() {
-  return (
-    <div
-      style={{
-        display: 'flex',
-        height: 1,
-        background:
-          'linear-gradient(90deg, rgba(255,255,255,0), rgba(255,255,255,0.22) 12%, rgba(255,255,255,0.22) 70%, rgba(255,255,255,0))',
-      }}
-    />
-  );
-}
-
 function Chip({
   background,
   border,
@@ -319,45 +317,6 @@ function Chip({
       {children}
     </div>
   );
-}
-
-function Stat({ label, value, color }: { label: string; value: string; color: string }) {
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-      <div
-        style={{
-          display: 'flex',
-          color: 'rgba(238,240,246,0.52)',
-          fontSize: 19,
-          fontWeight: 600,
-          letterSpacing: 2.6,
-          lineHeight: 1,
-        }}
-      >
-        {label}
-      </div>
-      <div
-        style={{
-          display: 'flex',
-          color,
-          fontSize: 51,
-          fontWeight: 900,
-          lineHeight: 1,
-          textShadow: '0 2px 12px rgba(0,0,0,0.45)',
-        }}
-      >
-        {value}
-      </div>
-    </div>
-  );
-}
-
-interface PreviewImages {
-  background: string;
-  cover: string | null;
-  avatar: string | null;
-  flag: string | null;
-  logo: string | null;
 }
 
 function ReplayPreviewCard({
@@ -675,24 +634,199 @@ function ReplayPreviewCard({
   );
 }
 
-async function fetchPreviewScore(scoreId: string) {
-  const result = await fetchReplayPreviewScore(scoreId);
-  if (result.isOk()) return result;
-  return Result.err(
-    new PreviewError({
-      message: result.error.message,
-      status: result.error.status === 404 ? 404 : 502,
-      cause: result.error,
-    }),
-  );
-}
-
-export async function renderReplayPreview(scoreId: string, origin: string): Promise<Result<ArrayBuffer, PreviewError>> {
-  const cached = cacheGet(previewCache, scoreId);
+export async function renderMapPreview(mapKey: string, origin: string): Promise<Result<ArrayBuffer, PreviewError>> {
+  const cached = cacheGet(mapPreviewCache, mapKey);
   if (cached !== undefined) return Result.ok(cached);
 
   const fontsPending = loadFonts(origin);
-  const scoreResult = await fetchPreviewScore(scoreId);
+  const mapResult = (await fetchMapPreviewData(mapKey)).mapError(
+    (error) =>
+      new PreviewError({
+        message: error.message,
+        status: error.status === 404 ? 404 : 502,
+        cause: error,
+      }),
+  );
+  if (mapResult.isErr()) return Result.err(mapResult.error);
+  const data = mapResult.value;
+  const coverUrl = data.versions[0].coverURL;
+  const [cover, logo] = await Promise.all([
+    fetchImageDataUrl(coverUrl),
+    publicImageDataUrl('beatsaver.svg', 'image/svg+xml', origin),
+  ]);
+
+  return Result.gen(async function* () {
+    const fonts = yield* Result.await(
+      Result.tryPromise({
+        try: () => fontsPending,
+        catch: (cause) =>
+          new PreviewError({
+            message: 'preview fonts unavailable',
+            status: 500,
+            cause,
+          }),
+      }),
+    );
+    const rendered = yield* Result.await(
+      Result.tryPromise({
+        try: async () => {
+          const background = cover === null ? fallbackBackground : blurredBackground(coverUrl, cover);
+          const images: PreviewImages = {
+            background,
+            cover,
+            avatar: null,
+            flag: null,
+            logo,
+          };
+          const svg = await satori(<MapPreviewCard data={data} images={images} />, {
+            ...previewSize,
+            fonts,
+            loadAdditionalAsset: loadFallbackAsset,
+          });
+          return Uint8Array.from(new Resvg(svg, { font: { loadSystemFonts: false } }).render().asPng()).buffer;
+        },
+        catch: (cause) =>
+          new PreviewError({
+            message: 'preview rendering failed',
+            status: 500,
+            cause,
+          }),
+      }),
+    );
+    cacheSet(mapPreviewCache, mapKey, rendered, previewCacheLimit, previewTtlMs);
+    return Result.ok(rendered);
+  });
+}
+
+interface PartyPreviewHints {
+  playerName: string | null;
+  avatarUrl: string | null;
+}
+
+interface PartyPreviewImage {
+  data: ArrayBuffer;
+  degraded: boolean;
+}
+
+async function renderUncachedPartyPreview(
+  playerId: string,
+  origin: string,
+  hints: PartyPreviewHints,
+  cacheKey: string,
+) {
+  const fontsPending = loadFonts(origin);
+  const logoPending = publicImageDataUrl('scoresaber.svg', 'image/svg+xml', origin);
+  let playerName = hints.playerName;
+  let avatarUrl = hints.avatarUrl;
+  if (playerName === null) {
+    const playerResult = await fetchPartyPreviewPlayer(playerId);
+    if (playerResult.isErr() && playerResult.error.status === 404) {
+      return Result.err(
+        new PreviewError({
+          message: playerResult.error.message,
+          status: 404,
+          cause: playerResult.error,
+        }),
+      );
+    }
+    if (playerResult.isOk()) {
+      playerName = playerResult.value.name;
+      avatarUrl = playerResult.value.avatar;
+    }
+  }
+  const [avatar, logo] = await Promise.all([
+    avatarUrl === null || avatarUrl === ''
+      ? Promise.resolve(null)
+      : fetchImageDataUrl(avatarUrl, undefined, partyAssetTimeoutMs),
+    logoPending,
+  ]);
+
+  return Result.gen(async function* () {
+    const fonts = yield* Result.await(
+      Result.tryPromise({
+        try: () => fontsPending,
+        catch: (cause) =>
+          new PreviewError({
+            message: 'preview fonts unavailable',
+            status: 500,
+            cause,
+          }),
+      }),
+    );
+    const rendered = yield* Result.await(
+      Result.tryPromise({
+        try: async () => {
+          const images: PreviewImages = {
+            background: avatar ?? fallbackBackground,
+            cover: null,
+            avatar,
+            flag: null,
+            logo,
+          };
+          const svg = await satori(<PartyPreviewCard playerName={playerName} images={images} />, {
+            ...previewSize,
+            fonts,
+            loadAdditionalAsset: loadFallbackAsset,
+          });
+          return Uint8Array.from(new Resvg(svg, { font: { loadSystemFonts: false } }).render().asPng()).buffer;
+        },
+        catch: (cause) =>
+          new PreviewError({
+            message: 'preview rendering failed',
+            status: 500,
+            cause,
+          }),
+      }),
+    );
+    const degraded = playerName === null || (avatarUrl !== null && avatarUrl !== '' && avatar === null);
+    const preview = { data: rendered, degraded };
+    cacheSet(
+      partyPreviewCache,
+      cacheKey,
+      preview,
+      previewCacheLimit,
+      degraded ? partyFallbackTtlMs : partyPreviewTtlMs,
+    );
+    return Result.ok(preview);
+  });
+}
+
+export function renderPartyPreview(
+  playerId: string,
+  origin: string,
+  hints: PartyPreviewHints = { playerName: null, avatarUrl: null },
+): Promise<Result<PartyPreviewImage, PreviewError>> {
+  const cacheKey = JSON.stringify([playerId, hints.playerName, hints.avatarUrl]);
+  const cached = cacheGet(partyPreviewCache, cacheKey);
+  if (cached !== undefined) return Promise.resolve(Result.ok(cached));
+  const pending = partyPreviewRequests.get(cacheKey);
+  if (pending !== undefined) return pending;
+  const request = renderUncachedPartyPreview(playerId, origin, hints, cacheKey);
+  partyPreviewRequests.set(cacheKey, request);
+  void request.then(
+    () => {
+      partyPreviewRequests.delete(cacheKey);
+    },
+    () => {
+      partyPreviewRequests.delete(cacheKey);
+    },
+  );
+  return request;
+}
+
+export async function renderReplayPreview(scoreId: string, origin: string): Promise<Result<ArrayBuffer, PreviewError>> {
+  const cached = cacheGet(replayPreviewCache, scoreId);
+  if (cached !== undefined) return Result.ok(cached);
+
+  const fontsPending = loadFonts(origin);
+  const scoreResult = (await fetchReplayPreviewScore(scoreId)).mapError(
+    (error) =>
+      new PreviewError({
+        message: error.message,
+        status: error.status === 404 ? 404 : 502,
+        cause: error,
+      }),
+  );
   if (scoreResult.isErr()) return Result.err(scoreResult.error);
   const data = scoreResult.value;
 
@@ -721,9 +855,7 @@ export async function renderReplayPreview(scoreId: string, origin: string): Prom
       Result.tryPromise({
         try: async () => {
           const background =
-            cover === null
-              ? `data:image/svg+xml;base64,${Buffer.from('<svg width="600" height="315" xmlns="http://www.w3.org/2000/svg"><rect width="600" height="315" fill="#05060a"/></svg>').toString('base64')}`
-              : blurredBackground(data.leaderboard.map.coverUrl, cover);
+            cover === null ? fallbackBackground : blurredBackground(data.leaderboard.map.coverUrl, cover);
           const images: PreviewImages = {
             background,
             cover,
@@ -745,7 +877,7 @@ export async function renderReplayPreview(scoreId: string, origin: string): Prom
           }),
       }),
     );
-    cacheSet(previewCache, scoreId, rendered, previewCacheLimit, previewTtlMs);
+    cacheSet(replayPreviewCache, scoreId, rendered, previewCacheLimit, previewTtlMs);
     return Result.ok(rendered);
   });
 }

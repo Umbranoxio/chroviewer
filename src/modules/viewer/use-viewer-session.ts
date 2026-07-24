@@ -28,6 +28,7 @@ type ViewerSources = ReturnType<typeof useViewerSources>;
 interface ViewerSessionOptions {
   lightshowMode: LightshowMode;
   lightshowModeRef: RefObject<LightshowMode>;
+  skipInitialMenuEnvironment: boolean;
   setActivePanel: Dispatch<SetStateAction<ViewerPanel>>;
   setError: (message: string) => void;
   setLightshowMode: Dispatch<SetStateAction<LightshowMode>>;
@@ -45,6 +46,7 @@ interface ViewerSessionOptions {
 export function useViewerSession({
   lightshowMode,
   lightshowModeRef,
+  skipInitialMenuEnvironment,
   setActivePanel,
   setError,
   setLightshowMode,
@@ -67,6 +69,7 @@ export function useViewerSession({
     replayRef: sources.replayRef,
     settings,
     settingsRef,
+    skipInitialMenuEnvironment,
     setError,
   });
 
@@ -183,16 +186,27 @@ export function useViewerSession({
 
   useEffect(() => {
     const active = activeSelectionRef.current;
+    if (skipInitialMenuEnvironment && active === null) return;
     const nextEnvironmentId = resolveEnvironmentId(
       active === null
         ? settings.overrideEnvironment
           ? settings.environmentOverrideId
           : 'BigMirrorEnvironment'
-        : environmentForSettings(settings, active.mapEnvironmentId, active.replayEnvironmentId),
+        : environmentForSettings(
+            settings,
+            active.mapEnvironmentId,
+            active.replayEnvironmentId,
+            active.usesChromaOrNoodle,
+          ),
     );
     if (active?.environmentId === nextEnvironmentId) return;
     void selectEnvironment(nextEnvironmentId);
-  }, [settings.preferReplayEnvironment, settings.overrideEnvironment, settings.environmentOverrideId]);
+  }, [
+    settings.preferReplayEnvironment,
+    settings.overrideEnvironment,
+    settings.environmentOverrideId,
+    skipInitialMenuEnvironment,
+  ]);
 
   function reportEnvironmentError(error: EnvironmentLoadFailure) {
     if (EnvironmentLoadAborted.is(error)) return;
@@ -211,7 +225,12 @@ export function useViewerSession({
       return;
     const mapEnvironmentId = row.environmentId;
     const environmentId = resolveEnvironmentId(
-      environmentForSettings(settings, mapEnvironmentId, row.replayEnvironmentId),
+      environmentForSettings(
+        settings,
+        mapEnvironmentId,
+        row.replayEnvironmentId,
+        row.infoDifficulty.usesChromaOrNoodle,
+      ),
     );
     setError('');
     if (sources.replayRef.current !== null && row.replayMatch !== true) {
@@ -223,6 +242,7 @@ export function useViewerSession({
       noteJumpSpeed: effectiveNoteJumpSpeed(row.infoDifficulty),
       noteStartBeatOffset: row.infoDifficulty.noteStartBeatOffset,
       songBpm: sources.songBpm,
+      legacyNoodleV2Semantics: row.legacyNoodleV2Semantics,
       recordedJumpDistance:
         sources.replayRef.current?.metadata.hasPlaySettings === true
           ? sources.replayRef.current.metadata.jumpDistance
@@ -233,7 +253,7 @@ export function useViewerSession({
       replayHeights: sources.replayRef.current?.heights,
       environmentRemoval: row.infoDifficulty.environmentRemoval,
     });
-    const environmentResult = await viewer.view.setEnvironment(environmentId);
+    const environmentResult = await viewer.view.setEnvironment(environmentId, data.chromaEnvironment);
     if (environmentResult.isErr()) {
       if (requestId >= selectionGenerationRef.current) reportEnvironmentError(environmentResult.error);
       return;
@@ -248,6 +268,7 @@ export function useViewerSession({
       environmentId,
       mapEnvironmentId,
       replayEnvironmentId: row.replayEnvironmentId,
+      usesChromaOrNoodle: row.infoDifficulty.usesChromaOrNoodle,
       mapColorScheme: row.colorScheme,
     };
 
@@ -295,12 +316,12 @@ export function useViewerSession({
     const viewer = viewerRef.current;
     if (viewer === null) return;
     setError('');
-    const result = await viewer.view.setEnvironment(nextEnvironmentId);
+    const active = activeSelectionRef.current;
+    const result = await viewer.view.setEnvironment(nextEnvironmentId, active?.data.chromaEnvironment);
     if (result.isErr()) {
       reportEnvironmentError(result.error);
       return;
     }
-    const active = activeSelectionRef.current;
     if (active !== null) {
       active.environmentId = nextEnvironmentId;
       viewer.view.refreshMapColors(

@@ -1,5 +1,8 @@
 import {
+  DynamicDrawUsage,
   Group,
+  InstancedMesh,
+  Matrix4,
   Mesh,
   Vector3,
   Vector4,
@@ -12,7 +15,8 @@ import {
 import { MAIN_ONLY_LAYER } from '../mirror/planar-mirror';
 import { referenceKey, rendererObjectsForMpbController } from './environment-component-utils';
 import { createPositionConstraintApplicator } from './environment-constraints';
-import { createGeometry, nodeFor } from './environment-geometry';
+import { createGeometry, ensureGeometryTangents, nodeFor } from './environment-geometry';
+import { buildEnvironmentParticleSystems } from './environment-particle-systems';
 import type { EnvironmentBoostSwitch, EnvironmentEventSwitch } from './environment-runtime';
 import { createEnvironmentMaterial, type EnvironmentMaterialInstance } from './materials/create-environment-material';
 import type { EnvironmentMaterialContext } from './materials/material-context';
@@ -32,6 +36,26 @@ export interface EnvironmentSceneBuild {
   applyChromaRemoval: (ids: readonly string[]) => void;
   enforceChromaRemoval: () => void;
   applyConstraints: () => boolean;
+  syncInstancedMeshes: () => void;
+  disposeInstancedMeshes: () => void;
+}
+
+interface InstancedSource {
+  node: Group;
+  rendererEnabled: boolean;
+}
+
+interface InstancedBatch {
+  sources: InstancedSource[];
+  regular: InstancedMesh;
+  mirrored: InstancedMesh;
+}
+
+function visibleInHierarchy(node: Object3D) {
+  for (let current: Object3D | null = node; current !== null; current = current.parent) {
+    if (!current.visible) return false;
+  }
+  return true;
 }
 
 function controlledRendererObjects(data: EnvironmentData) {
@@ -51,8 +75,11 @@ function controlledRendererObjects(data: EnvironmentData) {
     for (const controller of object.components?.MaterialLightController ?? []) {
       if (controller.enabled && controller.Renderer !== null) controlledObjects.add(controller.Renderer.obj);
     }
+    for (const controller of object.components?.MaterialLightsController ?? []) {
+      if (controller.enabled) controlledObjects.add(controller.MeshRenderer?.obj ?? index);
+    }
     for (const controller of object.components?.SpriteLightController ?? []) {
-      if (controller.enabled && controller.Renderer !== null) controlledObjects.add(controller.Renderer.obj);
+      if (controller.enabled) controlledObjects.add(controller.Renderer?.obj ?? index);
     }
     for (const controller of object.components?.MaterialPropertyBlockController ?? []) {
       if (!controller.enabled) continue;
@@ -115,7 +142,11 @@ function buildSwitches(data: EnvironmentData, nodes: Group[]) {
         }
       }
       apply(component.DefaultValue);
-      eventSwitches.push({ eventType, defaultValue: component.DefaultValue, apply });
+      eventSwitches.push({
+        eventType,
+        defaultValue: component.DefaultValue,
+        apply,
+      });
     }
     for (const component of object.components?.GameObjectSwitch ?? []) {
       if (!component.enabled || component.Effect.component !== 'ColorBoostEffect') continue;
@@ -138,6 +169,7 @@ function buildSwitches(data: EnvironmentData, nodes: Group[]) {
 export function buildEnvironmentScene(
   data: EnvironmentData,
   materialContext: EnvironmentMaterialContext,
+  customEnvironment: boolean,
 ): EnvironmentSceneBuild {
   const root = new Group();
   root.name = data.id;
@@ -152,13 +184,27 @@ export function buildEnvironmentScene(
   const materialInstances = new Set([...materials.values()].map((instance) => instance.material));
   const rendererMeshes = new Map<Object3D, Mesh>();
   const objectShaderMaterials: ShaderMaterial[][] = data.objects.map(() => []);
-  const nodes = data.objects.map(nodeFor);
+  const nodes = data.objects.map((object) => {
+    const node = nodeFor(object);
+    if (object.customEnvironmentOnly === true && !customEnvironment) node.visible = false;
+    return node;
+  });
   const chromaMarkers = data.objects.flatMap((object, index) => {
     const marker = object.components?.ChromaIDMarker?.[0];
     const node = nodes[index];
     return marker?.enabled === true && node !== undefined ? [{ id: marker.ChromaID, node }] : [];
   });
   let removedNodes = new Set<Group>();
+  const batchSources = new Map<
+    string,
+    {
+      name: string;
+      geometry: BufferGeometry;
+      material: Material;
+      layer: number | undefined;
+      sources: InstancedSource[];
+    }
+  >();
 
   nodes.forEach((node, index) => {
     const object = data.objects[index];
@@ -180,9 +226,44 @@ export function buildEnvironmentScene(
     const rendererMaterials = rendererInstances.map((instance) => instance.material);
     objectShaderMaterials[index] = rendererInstances.flatMap((instance) => instance.shader ?? []);
     if (geometry === undefined || rendererMaterials.length === 0) return;
+    if (object.materials?.some((name) => name !== null && data.materials[name]?.shader === 'ChroMapper/Water Lit')) {
+      ensureGeometryTangents(geometry);
+    }
+    const materialName = object.materials?.length === 1 ? object.materials[0] : undefined;
+    const materialData = materialName === null || materialName === undefined ? undefined : data.materials[materialName];
+    const rendererMaterial = rendererMaterials.length === 1 ? rendererMaterials[0] : undefined;
+    if (
+      object.mesh?.startsWith('__chroma_geometry_') === true &&
+      materialData?.shader === 'ChroMapper/Lit' &&
+      rendererMaterial !== undefined &&
+      !controlledObjects.has(index) &&
+      !rendererMaterial.transparent &&
+      rendererMaterial.depthWrite &&
+      !rendererMaterial.stencilWrite &&
+      geometry.groups.length === 0 &&
+      object.components?.PlanarReflection === undefined
+    ) {
+      const layer = object.layer;
+      const key = `${object.mesh}:${materialName}:${String(layer)}`;
+      const batch = batchSources.get(key);
+      const source = { node, rendererEnabled: object.rendererEnabled !== false };
+      if (batch === undefined) {
+        batchSources.set(key, {
+          name: object.name,
+          geometry,
+          material: rendererMaterial,
+          layer,
+          sources: [source],
+        });
+      } else {
+        batch.sources.push(source);
+      }
+      return;
+    }
     const mesh = new Mesh(geometry, rendererMaterials.length === 1 ? rendererMaterials[0] : rendererMaterials);
     rendererMeshes.set(node, mesh);
     mesh.name = `${object.name}:renderer`;
+    mesh.userData.environmentLayer = object.layer;
     mesh.visible = object.rendererEnabled !== false;
     const materialFamilies = object.materials?.flatMap((name) => (name === null ? [] : [data.materials[name]?.family]));
     if (materialFamilies?.includes('clouds')) {
@@ -201,6 +282,71 @@ export function buildEnvironmentScene(
     if (object.components?.PlanarReflection !== undefined) mesh.layers.set(MAIN_ONLY_LAYER);
     node.add(mesh);
   });
+
+  const instancedBatches: InstancedBatch[] = [];
+  for (const batch of batchSources.values()) {
+    if (batch.sources.length === 1) {
+      for (const source of batch.sources) {
+        const mesh = new Mesh(batch.geometry, batch.material);
+        mesh.name = `${batch.name}:renderer`;
+        mesh.userData.environmentLayer = batch.layer;
+        mesh.visible = source.rendererEnabled;
+        rendererMeshes.set(source.node, mesh);
+        source.node.add(mesh);
+      }
+      continue;
+    }
+    function createInstancedMesh(mirrored: boolean) {
+      const mesh = new InstancedMesh(batch.geometry, batch.material, batch.sources.length);
+      mesh.name = `${batch.name}:instances${mirrored ? ':mirrored' : ''}`;
+      mesh.userData.environmentLayer = batch.layer;
+      mesh.frustumCulled = false;
+      mesh.count = 0;
+      mesh.instanceMatrix.setUsage(DynamicDrawUsage);
+      if (mirrored) mesh.scale.x = -1;
+      root.add(mesh);
+      return mesh;
+    }
+    instancedBatches.push({
+      sources: batch.sources,
+      regular: createInstancedMesh(false),
+      mirrored: createInstancedMesh(true),
+    });
+  }
+  const rootInverse = new Matrix4();
+  const relativeMatrix = new Matrix4();
+  const mirroredMatrix = new Matrix4();
+  const mirrorX = new Matrix4().makeScale(-1, 1, 1);
+  function syncInstancedMeshes() {
+    if (instancedBatches.length === 0) return;
+    rootInverse.copy(root.matrixWorld).invert();
+    for (const batch of instancedBatches) {
+      let regularCount = 0;
+      let mirroredCount = 0;
+      for (const source of batch.sources) {
+        if (!source.rendererEnabled || !visibleInHierarchy(source.node)) continue;
+        relativeMatrix.multiplyMatrices(rootInverse, source.node.matrixWorld);
+        if (relativeMatrix.determinant() < 0) {
+          mirroredMatrix.multiplyMatrices(mirrorX, relativeMatrix);
+          batch.mirrored.setMatrixAt(mirroredCount++, mirroredMatrix);
+        } else {
+          batch.regular.setMatrixAt(regularCount++, relativeMatrix);
+        }
+      }
+      batch.regular.count = regularCount;
+      batch.mirrored.count = mirroredCount;
+      if (regularCount > 0) batch.regular.instanceMatrix.needsUpdate = true;
+      if (mirroredCount > 0) batch.mirrored.instanceMatrix.needsUpdate = true;
+    }
+  }
+  function disposeInstancedMeshes() {
+    for (const batch of instancedBatches) {
+      batch.regular.dispose();
+      batch.mirrored.dispose();
+    }
+  }
+
+  buildEnvironmentParticleSystems(data.particleSystems ?? [], materialContext, root, geometries, materialInstances);
 
   for (const object of data.objects) {
     for (const setter of object.components?.MaterialPropertyBlockFloatSetter ?? []) {
@@ -222,6 +368,7 @@ export function buildEnvironmentScene(
   const applyConstraints = createPositionConstraintApplicator(data, nodes);
   applyConstraints();
   root.updateMatrixWorld(true);
+  syncInstancedMeshes();
 
   for (const object of data.objects) {
     for (const animator of object.components?.MaterialPropertyBlockPositionAnimator ?? []) {
@@ -275,5 +422,7 @@ export function buildEnvironmentScene(
     applyChromaRemoval,
     enforceChromaRemoval,
     applyConstraints,
+    syncInstancedMeshes,
+    disposeInstancedMeshes,
   };
 }

@@ -1,4 +1,4 @@
-import { BoxGeometry, BufferAttribute, BufferGeometry } from 'three';
+import { BoxGeometry, BufferAttribute, BufferGeometry, PlaneGeometry } from 'three';
 
 import type { ArcPathPoint, Vec3 } from '../core/placement/arc-spline';
 import { arrowMesh, bombMesh, chainLinkMesh, dotMesh, noteBodyMesh, unpackGeometry } from './note-mesh-data';
@@ -8,7 +8,15 @@ export function noteBodyGeometry(): BufferGeometry {
 }
 
 export function arrowGeometry(): BufferGeometry {
-  return unpackGeometry(arrowMesh).translate(0, 0.11, 0.25);
+  return unpackGeometry(arrowMesh).translate(0, 0.108, 0.2535);
+}
+
+export function arrowGlowGeometry(): BufferGeometry {
+  return new PlaneGeometry(0.56, 0.28).translate(0, 0.1036, 0.2532);
+}
+
+export function circleGlowGeometry(): BufferGeometry {
+  return new PlaneGeometry(0.5, 0.5).translate(0, 0, 0.2532);
 }
 
 export function dotGeometry(): BufferGeometry {

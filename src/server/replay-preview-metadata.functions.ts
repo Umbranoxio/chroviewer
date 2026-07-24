@@ -12,5 +12,6 @@ export const getReplayPreviewTitle = createServerFn({ method: 'GET' })
     const { score, leaderboard } = result.value;
     const map = leaderboard.map;
     const songTitle = map.songSubName === '' ? map.songName : `${map.songName} ${map.songSubName}`;
-    return `Replay - ${score.player.name} (${(score.accuracy * 100).toFixed(2)}% / ${score.pp.toFixed(2)}pp) [${songTitle}]`;
+    const pp = score.pp > 0 ? ` / ${score.pp.toFixed(2)}pp` : '';
+    return `Replay - ${score.player.name} (${(score.accuracy * 100).toFixed(2)}%${pp}) [${songTitle}]`;
   });

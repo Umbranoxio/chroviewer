@@ -28,11 +28,16 @@ const collapseEasingId = (id: number) => (id >= 4 && id <= 18 ? 0 : id);
 
 const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
 
-function calculateHalfJumpDuration(noteJumpSpeed: number, startBeatOffset: number, bpm: number) {
+function calculateHalfJumpDuration(
+  noteJumpSpeed: number,
+  startBeatOffset: number,
+  bpm: number,
+  minimumHalfJumpDurationInBeats: number,
+) {
   let halfJumpDuration = 4;
   const secondsPerBeat = 60 / bpm;
   while (noteJumpSpeed * secondsPerBeat * halfJumpDuration > 17.999) halfJumpDuration /= 2;
-  return Math.max(halfJumpDuration + startBeatOffset, 0.25);
+  return Math.max(halfJumpDuration + startBeatOffset, minimumHalfJumpDurationInBeats);
 }
 
 export function createSpawnProvider(
@@ -41,12 +46,13 @@ export function createSpawnProvider(
   noteStartBeatOffset: number,
   songBpm: number,
   recordedJumpDistance?: number,
+  minimumHalfJumpDurationInBeats = 0.25,
 ): SpawnProvider {
   const oneBeatDuration = 60 / songBpm;
   const baseHalfJumpDurationInBeats =
     recordedJumpDistance !== undefined && recordedJumpDistance > 0 && baseNoteJumpSpeed > 0
       ? recordedJumpDistance / baseNoteJumpSpeed / 2 / oneBeatDuration
-      : calculateHalfJumpDuration(baseNoteJumpSpeed, noteStartBeatOffset, songBpm);
+      : calculateHalfJumpDuration(baseNoteJumpSpeed, noteStartBeatOffset, songBpm, minimumHalfJumpDurationInBeats);
 
   const events: NjsEvent[] = [
     { jsonTime: 0, songBpmTime: 0, usePrevious: 0, easing: 0, relativeNjs: 0 },

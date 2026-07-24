@@ -15,6 +15,8 @@ const stringArraySchema = z.array(stringSchema).catch([]);
 
 const v2CustomDataSchema = z.object({
   _difficultyLabel: z.string().catch(''),
+  _requirements: stringArraySchema.optional(),
+  _suggestions: stringArraySchema.optional(),
   _colorLeft: optionalRgbSchema,
   _colorRight: optionalRgbSchema,
   _obstacleColor: optionalRgbSchema,
@@ -29,6 +31,8 @@ const v2CustomDataSchema = z.object({
 });
 const v4CustomDataSchema = z.object({
   difficultyLabel: z.string().catch(''),
+  requirements: stringArraySchema.optional(),
+  suggestions: stringArraySchema.optional(),
   colorLeft: optionalRgbSchema,
   colorRight: optionalRgbSchema,
   obstacleColor: optionalRgbSchema,
@@ -122,6 +126,18 @@ const v2InfoSchema = z
     _allDirectionsEnvironmentName: stringSchema,
     _environmentNames: stringArraySchema,
     _colorSchemes: z.array(v2ColorSchemeSchema).catch([]),
+    _customData: z
+      .object({
+        _editors: z
+          .object({
+            _lastEditedBy: stringSchema.optional(),
+            ChroMapper: z.object({ version: stringSchema }).optional().catch(undefined),
+          })
+          .optional()
+          .catch(undefined),
+      })
+      .optional()
+      .catch(undefined),
     _difficultyBeatmapSets: z
       .array(
         z.object({
@@ -146,6 +162,7 @@ const v2InfoSchema = z
     _allDirectionsEnvironmentName: '',
     _environmentNames: [],
     _colorSchemes: [],
+    _customData: undefined,
     _difficultyBeatmapSets: [],
   });
 const v4InfoSchema = z
@@ -197,6 +214,7 @@ export interface InfoDifficulty {
   mappers: string[];
   lighters: string[];
   customLabel: string;
+  usesChromaOrNoodle: boolean;
   customColors?: LegacyColorOverrides;
   environmentRemoval: string[];
 }
@@ -223,6 +241,8 @@ export interface MapInfo {
   environmentNames: string[];
   colorSchemes: InfoColorScheme[];
   difficultySets: InfoDifficultySet[];
+  lastEditedBy?: string;
+  chroMapperVersion?: string;
 }
 
 export interface InfoColorScheme {
@@ -270,6 +290,17 @@ export function effectiveNoteJumpSpeed(difficulty: InfoDifficulty): number {
     default:
       return 10;
   }
+}
+
+export function usesLegacyNoodleV2Semantics(info: MapInfo) {
+  if (
+    Number.parseInt(info.version, 10) !== 2 ||
+    info.lastEditedBy !== 'ChroMapper' ||
+    info.chroMapperVersion === undefined
+  )
+    return false;
+  const [major, minor] = info.chroMapperVersion.split('.').map((part) => Number.parseInt(part, 10));
+  return major === 0 && minor !== undefined && minor <= 7;
 }
 
 export function environmentNameForDifficulty(info: MapInfo, difficulty: InfoDifficulty): string {
@@ -366,6 +397,10 @@ function parseV2Info(input: unknown): MapInfo {
           mappers: [],
           lighters: [],
           customLabel: difficulty._customData?._difficultyLabel ?? '',
+          usesChromaOrNoodle: [
+            ...(difficulty._customData?._requirements ?? []),
+            ...(difficulty._customData?._suggestions ?? []),
+          ].some((mod) => mod === 'Chroma' || mod === 'Noodle Extensions'),
           customColors: customColors(difficulty._customData),
           environmentRemoval: environmentRemoval(difficulty._customData),
         }),
@@ -404,6 +439,12 @@ function parseV2Info(input: unknown): MapInfo {
       environmentWhiteBoost: color.environmentColorWBoost,
     })),
     difficultySets,
+    ...(root._customData?._editors?._lastEditedBy === undefined
+      ? {}
+      : { lastEditedBy: root._customData._editors._lastEditedBy }),
+    ...(root._customData?._editors?.ChroMapper?.version === undefined
+      ? {}
+      : { chroMapperVersion: root._customData._editors.ChroMapper.version }),
   };
 }
 
@@ -424,6 +465,9 @@ function parseV4Info(input: unknown): MapInfo {
       mappers: entry.beatmapAuthors.mappers,
       lighters: entry.beatmapAuthors.lighters,
       customLabel: entry.customData?.difficultyLabel ?? '',
+      usesChromaOrNoodle: [...(entry.customData?.requirements ?? []), ...(entry.customData?.suggestions ?? [])].some(
+        (mod) => mod === 'Chroma' || mod === 'Noodle Extensions',
+      ),
       customColors: customColors(entry.customData),
       environmentRemoval: environmentRemoval(entry.customData),
     };

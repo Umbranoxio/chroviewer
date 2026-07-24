@@ -1,14 +1,18 @@
-import { songBpmTimeToSeconds } from '../beatmap/bpm';
+import { secondsToSongBpmTime, songBpmTimeToSeconds } from '../beatmap/bpm';
 import type { Difficulty } from '../beatmap/types';
 import { NoteType } from '../beatmap/types';
-import { chromaColor } from '../chroma';
+import { chromaColor, type ChromaColor } from '../chroma';
 import type { Rgb } from '../colors';
-import { noodleCoordinates, noodleWorldRotation, type NoodleWorldRotation } from '../noodle';
+import type { NoodleWorldRotation } from '../noodle';
+import type { NoodleObjectData } from '../noodle-data';
+import { noodleTrackControlsTime, sampleNoodleObject } from '../noodle-runtime';
 import type { ReplayHeightEvent, ReplayNoteEvent, ReplayNoteEventType } from '../replay/types';
+import { legacyNoodleTimingObjects } from '../spawn/legacy-noodle-jump';
 import { createSpawnProvider, type SpawnState } from '../spawn/variable-njs';
 import { arcPath, type ArcPathPoint } from './arc-spline';
 import { chainLinks } from './chain-links';
-import { gridPosition, NOTE_Y_OFFSET, objectPosition, obstacleBounds, obstaclePlacement, Y_OFFSET } from './grid';
+import { gridPosition, NOTE_Y_OFFSET, obstacleBounds, obstaclePlacement, Y_OFFSET } from './grid';
+import { HeckPlacement } from './heck-placement';
 import { maxConcurrent, preJumpTravelBeats, wallTailGraceBeats, type ObjectMotion } from './jump-path';
 import { buildNoteFormation } from './note-formation';
 
@@ -26,6 +30,7 @@ export interface NoteInstance extends ObjectMotion {
   interactable: boolean;
   tracksPlayerHeight: boolean;
   worldRotation?: NoodleWorldRotation;
+  noodle?: NoodleObjectData;
   customColor?: Rgb;
   replayEndTime?: number;
   replayEventType?: ReplayNoteEventType;
@@ -39,6 +44,7 @@ export interface BombInstance extends ObjectMotion {
   startY: number;
   tracksPlayerHeight: boolean;
   worldRotation?: NoodleWorldRotation;
+  noodle?: NoodleObjectData;
   customColor?: Rgb;
   replayEndTime?: number;
   replayIdentity?: BombReplayIdentity;
@@ -51,9 +57,13 @@ export interface WallInstance extends ObjectMotion {
   width: number;
   height: number;
   lengthUnits: number;
+  durationBeats?: number;
   pullBeat: number;
   worldRotation?: NoodleWorldRotation;
-  customColor?: Rgb;
+  noodle?: NoodleObjectData;
+  customColor?: ChromaColor;
+  legacyPrefabScaling?: boolean;
+  legacySolidCore?: boolean;
 }
 
 export interface ChainLinkInstance extends ObjectMotion {
@@ -63,6 +73,7 @@ export interface ChainLinkInstance extends ObjectMotion {
   colorIndex: number;
   interactable: boolean;
   worldRotation?: NoodleWorldRotation;
+  noodle?: NoodleObjectData;
   customColor?: Rgb;
   replayEndTime?: number;
   replayEventType?: ReplayNoteEventType;
@@ -102,6 +113,7 @@ export interface ArcInstance {
   random: number;
   colorIndex: number;
   worldRotation?: NoodleWorldRotation;
+  noodle?: NoodleObjectData;
   customColor?: Rgb;
   points: ArcPathPoint[];
 }
@@ -122,15 +134,23 @@ export interface MapRenderData {
   lightTranslationEventBoxGroups: Difficulty['lightTranslationEventBoxGroups'];
   fxEventBoxGroups: Difficulty['fxEventBoxGroups'];
   environmentRemoval: string[];
+  chromaEnvironment?: Difficulty['chromaEnvironment'];
+  noodle: Difficulty['noodle'];
+  leftHanded: boolean;
   tracksPlayerZ: boolean;
   initialPlayerHeight: number;
   replayHeights: ReplayHeightEvent[];
+  legacyNoodleV2Semantics?: boolean;
+  noteJumpSpeed?: number;
+  noteStartBeatOffset?: number;
+  movementStateAt?: (beat: number) => SpawnState;
 }
 
 export interface MapRenderOptions {
   noteJumpSpeed: number;
   noteStartBeatOffset: number;
   songBpm: number;
+  legacyNoodleV2Semantics?: boolean;
   recordedJumpDistance?: number;
   leftHanded?: boolean;
   replayNotes?: ReplayNoteEvent[];
@@ -142,6 +162,12 @@ export interface MapRenderOptions {
 const anyCutDirection = 8;
 const chainLinkScoringTypes = new Set([5, 8]);
 const defaultPlayerHeight = 1.8;
+
+function usesLegacySolidObstacleCore(color: ChromaColor | undefined, legacyPrefabScaling: boolean | undefined) {
+  return (
+    legacyPrefabScaling === true && color !== undefined && Math.max(color[0], color[1], color[2]) > 1 && color[3] < 0
+  );
+}
 
 function jumpOffsetYForPlayerHeight(playerHeight: number) {
   return Math.min(Math.max((playerHeight - defaultPlayerHeight) * 0.5, -0.2), 0.6);
@@ -183,6 +209,10 @@ function approximately(left: number, right: number) {
   return Math.abs(left - right) < Math.max(1e-6 * Math.max(Math.abs(left), Math.abs(right)), Number.EPSILON * 8);
 }
 
+function samePosition(left: { x: number; y: number }, right: { x: number; y: number }) {
+  return approximately(left.x, right.x) && approximately(left.y, right.y);
+}
+
 function objectColor(customData: Difficulty['notes'][number]['customData']): Rgb | undefined {
   const color = chromaColor(customData);
   return color === undefined ? undefined : [color[0], color[1], color[2]];
@@ -198,6 +228,12 @@ function mirrorCutDirection(cutDirection: number) {
   return cutDirection;
 }
 
+function replayCutDirection(note: Difficulty['notes'][number], majorVersion: number) {
+  return majorVersion === 2 && note.cutDirection !== anyCutDirection && note.customData?._cutDirection != null
+    ? 1
+    : note.cutDirection;
+}
+
 function motionFor(state: SpawnState, beat: number, leadInBeats: number, despawnBeat?: number): ObjectMotion {
   const spawnBeat = beat - state.halfJumpDurationInBeats;
   return {
@@ -210,13 +246,8 @@ function motionFor(state: SpawnState, beat: number, leadInBeats: number, despawn
   };
 }
 
-function objectWorldRotation(customData: Difficulty['notes'][number]['customData'], leftHanded: boolean | undefined) {
-  const rotation = noodleWorldRotation(customData);
-  if (leftHanded !== true || rotation === undefined) return rotation;
-  return [rotation[0], -rotation[1], -rotation[2]] as const;
-}
-
 export function buildMapRenderData(difficulty: Difficulty, options: MapRenderOptions): MapRenderData {
+  const heck = new HeckPlacement(difficulty, options.leftHanded === true);
   const provider = createSpawnProvider(
     difficulty.njsEvents,
     options.noteJumpSpeed,
@@ -224,12 +255,38 @@ export function buildMapRenderData(difficulty: Difficulty, options: MapRenderOpt
     options.songBpm,
     options.recordedJumpDistance,
   );
-  const majorVersion = Number.parseInt(difficulty.version, 10);
+  const majorVersion = heck.majorVersion;
   const leadInBeats = preJumpTravelBeats(options.songBpm);
-  const formedNotes = buildNoteFormation(difficulty, options.songBpm);
+  const formedNotes = buildNoteFormation(difficulty, options.songBpm, heck);
   const replayNotes = [...(options.replayNotes ?? [])];
   const initialPlayerHeight = options.initialPlayerHeight ?? defaultPlayerHeight;
   const replayHeights = [...(options.replayHeights ?? [])];
+  const objectProviders = new Map<string, ReturnType<typeof createSpawnProvider>>();
+  const legacyTiming = legacyNoodleTimingObjects(difficulty, {
+    noteJumpSpeed: options.noteJumpSpeed,
+    noteStartBeatOffset: options.noteStartBeatOffset,
+    songBpm: options.songBpm,
+    oldMap: options.legacyNoodleV2Semantics === true,
+  });
+  function stateAt(beat: number, noodle: NoodleObjectData | undefined, legacyJumpDuration = false) {
+    if (noodle?.noteJumpSpeed === undefined && noodle?.noteSpawnOffset === undefined) return provider.stateAt(beat);
+    const speed = noodle.noteJumpSpeed ?? options.noteJumpSpeed;
+    const offset = noodle.noteSpawnOffset ?? options.noteStartBeatOffset;
+    const key = `${String(speed)}:${String(offset)}:${String(legacyJumpDuration)}`;
+    let objectProvider = objectProviders.get(key);
+    if (objectProvider === undefined) {
+      objectProvider = createSpawnProvider(
+        noodle.noteJumpSpeed === undefined ? difficulty.njsEvents : [],
+        speed,
+        offset,
+        options.songBpm,
+        undefined,
+        legacyJumpDuration ? 1 : undefined,
+      );
+      objectProviders.set(key, objectProvider);
+    }
+    return objectProvider.stateAt(beat);
+  }
   function takeReplayEvent(matches: (event: ReplayNoteEvent) => boolean) {
     const index = replayNotes.findIndex(matches);
     if (index < 0) return undefined;
@@ -238,16 +295,23 @@ export function buildMapRenderData(difficulty: Difficulty, options: MapRenderOpt
 
   const notes: NoteInstance[] = [];
   const bombs: BombInstance[] = [];
-  const chainHeads = new Set(
-    difficulty.chains.map(
-      (chain) => `${String(chain.songBpmTime)}:${String(chain.posX)}:${String(chain.posY)}:${String(chain.color)}`,
-    ),
-  );
+  function isChainHead(note: Difficulty['notes'][number]) {
+    const notePosition = heck.position(note);
+    return difficulty.chains.some(
+      (chain) =>
+        chain.color === note.type &&
+        approximately(chain.songBpmTime, note.songBpmTime) &&
+        samePosition(heck.position(chain), notePosition),
+    );
+  }
   for (const { note, formation } of formedNotes) {
-    const state = provider.stateAt(note.songBpmTime);
+    const extension = heck.resolve(note);
+    const { noodle, coordinates, worldRotation } = extension;
+    const interactable = !note.customFake && noodle?.uninteractable !== true;
+    const replayable = !note.customFake && heck.canBecomeInteractable(note);
+    const state = stateAt(note.songBpmTime, noodle, legacyTiming.notes.has(note));
     const motion = motionFor(state, note.songBpmTime, leadInBeats);
-    const coordinates = noodleCoordinates(note.customData);
-    const grid = objectPosition(note.posX, note.posY, coordinates);
+    const grid = heck.position(note);
     const x = options.leftHanded === true ? -grid.x : grid.x;
     const startGrid = gridPosition(formation.startLineIndex, formation.startLineLayer);
     const startPositionX = formation.flipYSide === 0 && coordinates !== undefined ? grid.x : startGrid.x;
@@ -255,14 +319,13 @@ export function buildMapRenderData(difficulty: Difficulty, options: MapRenderOpt
     const startY = startGrid.y + Y_OFFSET;
     const noteTime = songBpmTimeToSeconds(note.songBpmTime, options.songBpm);
     const customColor = objectColor(note.customData);
-    const worldRotation = objectWorldRotation(note.customData, options.leftHanded);
     const y =
-      coordinates === undefined
+      coordinates?.[1] === undefined
         ? objectJumpY({ ...motion, lineLayer: note.posY }, options.songBpm, initialPlayerHeight, replayHeights)
         : grid.y + NOTE_Y_OFFSET;
     if (note.type === NoteType.Bomb) {
       const lineIndex = options.leftHanded === true ? 3 - note.posX : note.posX;
-      const replayEvent = note.customFake
+      const replayEvent = !replayable
         ? undefined
         : takeReplayEvent(
             (event) =>
@@ -277,17 +340,19 @@ export function buildMapRenderData(difficulty: Difficulty, options: MapRenderOpt
         y,
         lineLayer: note.posY,
         startY,
-        tracksPlayerHeight: coordinates === undefined,
+        tracksPlayerHeight: coordinates?.[1] === undefined,
         worldRotation,
+        noodle,
         customColor,
         replayEndTime: replayEvent?.time,
-        replayIdentity: note.customFake ? undefined : { time: noteTime, lineIndex, lineLayer: note.posY },
+        replayIdentity: replayable ? { time: noteTime, lineIndex, lineLayer: note.posY } : undefined,
       });
     } else {
       const lineIndex = options.leftHanded === true ? 3 - note.posX : note.posX;
       const colorType = options.leftHanded === true ? 1 - note.type : note.type;
-      const cutDirection = options.leftHanded === true ? mirrorCutDirection(note.cutDirection) : note.cutDirection;
-      const replayEvent = note.customFake
+      const sourceCutDirection = replayCutDirection(note, majorVersion);
+      const cutDirection = options.leftHanded === true ? mirrorCutDirection(sourceCutDirection) : sourceCutDirection;
+      const replayEvent = !replayable
         ? undefined
         : takeReplayEvent(
             (event) =>
@@ -313,18 +378,15 @@ export function buildMapRenderData(difficulty: Difficulty, options: MapRenderOpt
           options.leftHanded === true ? (note.type === NoteType.Blue ? 0 : 1) : note.type === NoteType.Blue ? 1 : 0,
         dot: note.cutDirection === anyCutDirection,
         lookAtPlayer:
-          replayEvent?.noteId.gameplayType === undefined
-            ? !chainHeads.has(
-                `${String(note.songBpmTime)}:${String(note.posX)}:${String(note.posY)}:${String(note.type)}`,
-              )
-            : replayEvent.noteId.gameplayType === 0,
-        interactable: !note.customFake,
-        tracksPlayerHeight: coordinates === undefined,
+          replayEvent?.noteId.gameplayType === undefined ? !isChainHead(note) : replayEvent.noteId.gameplayType === 0,
+        interactable,
+        tracksPlayerHeight: coordinates?.[1] === undefined,
         worldRotation,
+        noodle,
         customColor,
         replayEndTime: replayEvent?.time,
         replayEventType: replayEvent?.eventType,
-        replayIdentity: note.customFake
+        replayIdentity: !replayable
           ? undefined
           : {
               time: noteTime,
@@ -339,7 +401,9 @@ export function buildMapRenderData(difficulty: Difficulty, options: MapRenderOpt
 
   const walls: WallInstance[] = [];
   for (const obstacle of difficulty.obstacles) {
-    const state = provider.stateAt(obstacle.songBpmTime);
+    const extension = heck.resolve(obstacle);
+    const { noodle, worldRotation } = extension;
+    const state = stateAt(obstacle.songBpmTime, noodle, legacyTiming.obstacles.has(obstacle));
     const unitsPerBeat = state.halfJumpDistance / state.halfJumpDurationInBeats;
     const motion = motionFor(
       state,
@@ -347,9 +411,9 @@ export function buildMapRenderData(difficulty: Difficulty, options: MapRenderOpt
       leadInBeats,
       obstacle.songBpmTime + obstacle.durationSongBpmTime + state.halfJumpDurationInBeats,
     );
-    const coordinates = noodleCoordinates(obstacle.customData);
-    const placement = obstaclePlacement(obstacleBounds(obstacle, majorVersion, coordinates));
-    const worldRotation = objectWorldRotation(obstacle.customData, options.leftHanded);
+    const bounds = heck.obstacleBounds(obstacle, obstacleBounds(obstacle, majorVersion));
+    const placement = obstaclePlacement(bounds);
+    const customColor = chromaColor(obstacle.customData);
     walls.push({
       ...motion,
       x: options.leftHanded === true ? -placement.x : placement.x,
@@ -357,26 +421,37 @@ export function buildMapRenderData(difficulty: Difficulty, options: MapRenderOpt
       rotationDeg: worldRotation === undefined ? obstacle.rotation * (options.leftHanded === true ? -1 : 1) : 0,
       width: placement.width,
       height: placement.height,
-      lengthUnits: obstacle.durationSongBpmTime * unitsPerBeat,
+      lengthUnits:
+        noodle?.obstacleSize?.[2] === undefined
+          ? obstacle.durationSongBpmTime * unitsPerBeat
+          : noodle.obstacleSize[2] * 0.6,
+      durationBeats: obstacle.durationSongBpmTime,
       pullBeat: obstacle.songBpmTime + obstacle.durationSongBpmTime + wallTailGraceBeats(options.songBpm),
       worldRotation,
-      customColor: objectColor(obstacle.customData),
+      noodle,
+      customColor,
+      legacyPrefabScaling: majorVersion === 2 && noodle !== undefined,
+      legacySolidCore: usesLegacySolidObstacleCore(customColor, options.legacyNoodleV2Semantics),
     });
   }
 
   const links: ChainLinkInstance[] = [];
   for (const chain of difficulty.chains) {
-    const state = provider.stateAt(chain.songBpmTime);
+    const extension = heck.resolve(chain);
+    const { noodle, worldRotation } = extension;
+    const interactable = !chain.customFake && noodle?.uninteractable !== true;
+    const replayable = !chain.customFake && heck.canBecomeInteractable(chain);
+    const state = stateAt(chain.songBpmTime, noodle);
     const hjdBeats = state.halfJumpDurationInBeats;
     const unitsPerBeat = state.halfJumpDistance / hjdBeats;
-    const head = objectPosition(chain.posX, chain.posY, noodleCoordinates(chain.customData));
-    const worldRotation = objectWorldRotation(chain.customData, options.leftHanded);
+    const head = heck.position(chain);
+    const tail = heck.tailPosition(chain);
     const colorIndex = chain.color === 1 ? 1 : 0;
-    for (const link of chainLinks(chain)) {
+    for (const link of chainLinks(chain, { head, tail })) {
       const beat = chain.songBpmTime + (chain.tailSongBpmTime - chain.songBpmTime) * link.t;
       const noteTime = songBpmTimeToSeconds(beat, options.songBpm);
       const replayColorType = options.leftHanded === true ? 1 - chain.color : chain.color;
-      const replayEvent = chain.customFake
+      const replayEvent = !replayable
         ? undefined
         : takeReplayEvent(
             (event) =>
@@ -397,30 +472,40 @@ export function buildMapRenderData(difficulty: Difficulty, options: MapRenderOpt
         y: head.y + NOTE_Y_OFFSET + link.y,
         rotationDeg: link.rotationDeg * (options.leftHanded === true ? -1 : 1),
         colorIndex: options.leftHanded === true ? 1 - colorIndex : colorIndex,
-        interactable: !chain.customFake,
+        interactable,
         worldRotation,
+        noodle,
         customColor: objectColor(chain.customData),
         replayEndTime: replayEvent?.time,
         replayEventType: replayEvent?.eventType,
-        replayIdentity: chain.customFake ? undefined : { time: noteTime, colorType: replayColorType },
+        replayIdentity: replayable ? { time: noteTime, colorType: replayColorType } : undefined,
       });
     }
   }
 
   const arcs: ArcInstance[] = [];
   for (const [index, arc] of difficulty.arcs.entries()) {
-    const state = provider.stateAt(arc.songBpmTime);
+    const extension = heck.resolve(arc);
+    const { noodle, worldRotation } = extension;
+    const state = stateAt(arc.songBpmTime, noodle);
     const unitsPerBeat = state.halfJumpDistance / state.halfJumpDurationInBeats;
     const zDistance = (arc.tailSongBpmTime - arc.songBpmTime) * unitsPerBeat;
-    function hasNote(beat: number, posX: number, posY: number) {
+    const head = heck.position(arc);
+    const tail = heck.tailPosition(arc);
+    function hasNote(beat: number, position: { x: number; y: number }) {
       return difficulty.notes.some(
         (note) =>
-          note.type === arc.color && approximately(note.songBpmTime, beat) && note.posX === posX && note.posY === posY,
+          note.type === arc.color &&
+          approximately(note.songBpmTime, beat) &&
+          samePosition(position, heck.position(note)),
       );
     }
-    const hasHeadNote = hasNote(arc.songBpmTime, arc.posX, arc.posY);
-    const hasTailNote = hasNote(arc.tailSongBpmTime, arc.tailPosX, arc.tailPosY);
-    const path = arcPath(arc, zDistance, hasHeadNote, hasTailNote);
+    const hasHeadNote = hasNote(arc.songBpmTime, head);
+    const hasTailNote = hasNote(arc.tailSongBpmTime, tail);
+    const path = arcPath(arc, zDistance, hasHeadNote, hasTailNote, {
+      head,
+      tail,
+    });
     const points =
       options.leftHanded === true
         ? path.points.map((point) => ({
@@ -443,7 +528,8 @@ export function buildMapRenderData(difficulty: Difficulty, options: MapRenderOpt
       tailFadeLength: hasTailNote ? 0.4 : 1,
       random: (index * 0.61803398875) % 1,
       colorIndex: options.leftHanded === true ? (arc.color === 1 ? 0 : 1) : arc.color === 1 ? 1 : 0,
-      worldRotation: objectWorldRotation(arc.customData, options.leftHanded),
+      worldRotation,
+      noodle,
       customColor: objectColor(arc.customData),
       points,
     });
@@ -455,6 +541,8 @@ export function buildMapRenderData(difficulty: Difficulty, options: MapRenderOpt
   }
   for (const arc of arcs) endBeat = Math.max(endBeat, arc.despawnBeat);
 
+  propagateInitialLinkedCuts(notes, bombs, options.songBpm, difficulty.noodle);
+
   return {
     notes,
     bombs,
@@ -462,10 +550,18 @@ export function buildMapRenderData(difficulty: Difficulty, options: MapRenderOpt
     chainLinks: links,
     arcs,
     capacity: {
-      notes: maxConcurrent(notes),
-      bombs: maxConcurrent(bombs),
-      walls: maxConcurrent(walls),
-      chainLinks: maxConcurrent(links),
+      notes: notes.some((note) => noodleTrackControlsTime(note.noodle, difficulty.noodle))
+        ? notes.length
+        : maxConcurrent(notes),
+      bombs: bombs.some((bomb) => noodleTrackControlsTime(bomb.noodle, difficulty.noodle))
+        ? bombs.length
+        : maxConcurrent(bombs),
+      walls: walls.some((wall) => noodleTrackControlsTime(wall.noodle, difficulty.noodle))
+        ? walls.length
+        : maxConcurrent(walls),
+      chainLinks: links.some((link) => noodleTrackControlsTime(link.noodle, difficulty.noodle))
+        ? links.length
+        : maxConcurrent(links),
     },
     endBeat,
     songBpm: options.songBpm,
@@ -476,9 +572,16 @@ export function buildMapRenderData(difficulty: Difficulty, options: MapRenderOpt
     lightTranslationEventBoxGroups: difficulty.lightTranslationEventBoxGroups,
     fxEventBoxGroups: difficulty.fxEventBoxGroups,
     environmentRemoval: options.environmentRemoval ?? [],
+    chromaEnvironment: difficulty.chromaEnvironment,
+    noodle: difficulty.noodle,
+    leftHanded: options.leftHanded === true,
     tracksPlayerZ: difficulty.rotationEvents.length === 0,
     initialPlayerHeight,
     replayHeights,
+    legacyNoodleV2Semantics: options.legacyNoodleV2Semantics === true,
+    noteJumpSpeed: options.noteJumpSpeed,
+    noteStartBeatOffset: options.noteStartBeatOffset,
+    movementStateAt: (beat) => provider.stateAt(beat),
   };
 }
 
@@ -493,6 +596,12 @@ export function applyReplayHeightEvents(data: MapRenderData, events: ReplayHeigh
 }
 
 export function applyReplayNoteEvents(data: MapRenderData, events: ReplayNoteEvent[]) {
+  let linkedObjects: Map<string, (NoteInstance | BombInstance)[]> | undefined;
+  const propagate = (source: NoteInstance | BombInstance, time: number, eventType: ReplayNoteEventType | undefined) => {
+    if (source.noodle?.link === undefined) return;
+    linkedObjects ??= indexLinkedObjects(data.notes, data.bombs);
+    propagateLinkedCut(linkedObjects, source, time, eventType, data.songBpm, data.noodle);
+  };
   for (const event of events) {
     const identity = event.noteId;
     if (event.eventType === 4) {
@@ -506,7 +615,10 @@ export function applyReplayNoteEvents(data: MapRenderData, events: ReplayNoteEve
           target.lineLayer === identity.lineLayer
         );
       });
-      if (bomb !== undefined) bomb.replayEndTime = event.time;
+      if (bomb !== undefined) {
+        bomb.replayEndTime = event.time;
+        propagate(bomb, event.time, undefined);
+      }
       continue;
     }
     if (event.eventType < 1 || event.eventType > 3) continue;
@@ -543,6 +655,88 @@ export function applyReplayNoteEvents(data: MapRenderData, events: ReplayNoteEve
     if (note === undefined) continue;
     note.replayEndTime = event.time;
     note.replayEventType = event.eventType;
+    propagate(note, event.time, event.eventType);
     if (identity.gameplayType !== undefined) note.lookAtPlayer = identity.gameplayType === 0;
+  }
+}
+
+function propagateInitialLinkedCuts(
+  notes: NoteInstance[],
+  bombs: BombInstance[],
+  songBpm: number,
+  noodle: Difficulty['noodle'],
+) {
+  const cuts = [
+    ...notes.flatMap((object) =>
+      object.replayEndTime === undefined
+        ? []
+        : [
+            {
+              object,
+              time: object.replayEndTime,
+              eventType: object.replayEventType,
+            },
+          ],
+    ),
+    ...bombs.flatMap((object) =>
+      object.replayEndTime === undefined ? [] : [{ object, time: object.replayEndTime, eventType: undefined }],
+    ),
+  ].sort((left, right) => left.time - right.time);
+  let linkedObjects: Map<string, (NoteInstance | BombInstance)[]> | undefined;
+  for (const cut of cuts) {
+    if (cut.object.noodle?.link === undefined) continue;
+    linkedObjects ??= indexLinkedObjects(notes, bombs);
+    propagateLinkedCut(linkedObjects, cut.object, cut.time, cut.eventType, songBpm, noodle);
+  }
+}
+
+function indexLinkedObjects(notes: NoteInstance[], bombs: BombInstance[]) {
+  const linked = new Map<string, (NoteInstance | BombInstance)[]>();
+  for (const objects of [notes, bombs]) {
+    for (const object of objects) {
+      const link = object.noodle?.link;
+      if (link === undefined) continue;
+      const group = linked.get(link);
+      if (group === undefined) linked.set(link, [object]);
+      else group.push(object);
+    }
+  }
+  return linked;
+}
+
+function linkedObjectIsActive(
+  object: NoteInstance | BombInstance,
+  time: number,
+  songBpm: number,
+  noodle: Difficulty['noodle'],
+) {
+  const beat = secondsToSongBpmTime(time, songBpm);
+  if (beat < object.enterBeat) return false;
+  const duration = object.hjdBeats * 2;
+  const pathTime = (beat - object.spawnBeat) / duration;
+  const override = sampleNoodleObject(object.noodle, noodle, beat, pathTime).time;
+  const movementBeat = override === undefined ? beat : object.spawnBeat + override * duration;
+  return movementBeat <= object.despawnBeat;
+}
+
+function propagateLinkedCut(
+  linkedObjects: ReadonlyMap<string, (NoteInstance | BombInstance)[]>,
+  source: NoteInstance | BombInstance,
+  time: number,
+  eventType: ReplayNoteEventType | undefined,
+  songBpm: number,
+  noodle: Difficulty['noodle'],
+) {
+  const link = source.noodle?.link;
+  if (link === undefined) return;
+  for (const object of linkedObjects.get(link) ?? []) {
+    if (
+      !linkedObjectIsActive(object, time, songBpm, noodle) ||
+      (object.replayEndTime !== undefined && object.replayEndTime <= time)
+    ) {
+      continue;
+    }
+    object.replayEndTime = time;
+    if ('replayEventType' in object) object.replayEventType = eventType;
   }
 }

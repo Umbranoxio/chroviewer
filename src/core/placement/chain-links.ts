@@ -1,6 +1,5 @@
 import type { Chain } from '../beatmap/types';
-import { noodleCoordinates, noodleTailCoordinates } from '../noodle';
-import { cutDirectionEuler, objectPosition } from './grid';
+import { cutDirectionEuler, gridPosition, type GridPosition } from './grid';
 
 export interface ChainLink {
   x: number;
@@ -14,9 +13,19 @@ const radToDeg = 180 / Math.PI;
 
 const signedAngleFromDown = (x: number, y: number) => Math.atan2(x, -y) * radToDeg;
 
-export function chainLinks(chain: Chain): ChainLink[] {
-  const head = objectPosition(chain.posX, chain.posY, noodleCoordinates(chain.customData));
-  const tail = objectPosition(chain.tailPosX, chain.tailPosY, noodleTailCoordinates(chain.customData));
+export interface ChainEndpoints {
+  head: GridPosition;
+  tail: GridPosition;
+}
+
+export function chainLinks(
+  chain: Chain,
+  endpoints: ChainEndpoints = {
+    head: gridPosition(chain.posX, chain.posY),
+    tail: gridPosition(chain.tailPosX, chain.tailPosY),
+  },
+): ChainLink[] {
+  const { head, tail } = endpoints;
   const tailRel = { x: tail.x - head.x, y: tail.y - head.y };
 
   const headEuler = cutDirectionEuler(chain.cutDirection);
@@ -24,7 +33,10 @@ export function chainLinks(chain: Chain): ChainLink[] {
   const headDirection = { x: Math.sin(zRads), y: -Math.cos(zRads) };
 
   const interMult = Math.hypot(tailRel.x, tailRel.y) / 2;
-  const interPoint = { x: headDirection.x * interMult, y: headDirection.y * interMult };
+  const interPoint = {
+    x: headDirection.x * interMult,
+    y: headDirection.y * interMult,
+  };
 
   const path = { x: tailRel.x + 1.5, y: tailRel.y };
   const headPointsToTail = Math.abs(signedAngleFromDown(path.x, path.y) - headEuler) < 0.01;
@@ -38,7 +50,12 @@ export function chainLinks(chain: Chain): ChainLink[] {
     const tSquish = t * gameSquish;
 
     if (headPointsToTail) {
-      links.push({ x: tailRel.x * tSquish, y: tailRel.y * tSquish, t, rotationDeg: headEuler });
+      links.push({
+        x: tailRel.x * tSquish,
+        y: tailRel.y * tSquish,
+        t,
+        rotationDeg: headEuler,
+      });
     } else {
       const u = 1 - tSquish;
       const x = 2 * u * tSquish * interPoint.x + tSquish * tSquish * tailRel.x;

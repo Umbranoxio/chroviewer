@@ -1,3 +1,6 @@
+import { EMPTY_CHROMA_ENVIRONMENT, type ChromaEnvironmentData } from '../chroma-environment';
+import { EMPTY_NOODLE_BEATMAP, type NoodleBeatmapData } from '../noodle-data';
+
 export type BeatmapCustomDataValue = string | number | boolean | null | BeatmapCustomDataValue[] | BeatmapCustomData;
 
 export interface BeatmapCustomData {
@@ -209,6 +212,8 @@ export interface Chain {
 
 export interface Difficulty {
   version: string;
+  chromaEnvironment: ChromaEnvironmentData;
+  noodle: NoodleBeatmapData;
   bookmarks: Bookmark[];
   bpmEvents: BpmEvent[];
   notes: Note[];
@@ -229,8 +234,12 @@ export function sortByJsonTime<T extends { jsonTime: number }>(items: T[]): T[] 
 }
 
 export function createDifficulty(version: string): Difficulty {
+  const chromaEnvironment = structuredClone(EMPTY_CHROMA_ENVIRONMENT);
+  chromaEnvironment.version = version.startsWith('2') ? 2 : 3;
   return {
     version,
+    chromaEnvironment,
+    noodle: structuredClone(EMPTY_NOODLE_BEATMAP),
     bookmarks: [],
     bpmEvents: [],
     notes: [],

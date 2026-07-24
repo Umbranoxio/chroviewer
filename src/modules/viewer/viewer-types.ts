@@ -18,6 +18,7 @@ export interface DifficultyRow {
   replayEnvironmentId?: string;
   colorScheme?: InfoColorScheme;
   replayMatch?: boolean;
+  legacyNoodleV2Semantics?: boolean;
 }
 
 export interface MapIdentity {
@@ -35,6 +36,7 @@ export interface ActiveSelection {
   environmentId: string;
   mapEnvironmentId: string;
   replayEnvironmentId?: string;
+  usesChromaOrNoodle: boolean;
   mapColorScheme?: InfoColorScheme;
 }
 

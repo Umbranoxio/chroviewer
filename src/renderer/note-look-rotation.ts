@@ -31,8 +31,15 @@ export class NoteLookRotation {
   private readonly forward = new Vector3();
   private readonly right = new Vector3();
   private readonly localZ = new Vector3();
+  private readonly adjustedHead = new Vector3();
+  private readonly correctedPosition = new Vector3();
+  private readonly correctedHead = new Vector3();
+  private readonly correctionUp = new Vector3();
   private readonly matrix = new Matrix4();
   private readonly look = new Quaternion();
+  private readonly base = new Quaternion();
+  private readonly jump = new Quaternion();
+  private readonly inverseCorrection = new Quaternion();
   private readonly identity = new Quaternion();
   private readonly middle = new Quaternion();
   private readonly end = new Quaternion();
@@ -71,12 +78,14 @@ export class NoteLookRotation {
   apply(
     rotation: Quaternion,
     previousRotation: Quaternion,
+    baseRotation: Quaternion,
     endRotationDeg: number,
     noteTime: number,
     noteEndX: number,
     notePosition: Vector3,
     noteEndY: number,
     headPosition: Vector3,
+    worldCorrection: Quaternion,
     jumpProgress: number,
   ) {
     if (jumpProgress >= 0.5) {
@@ -85,13 +94,23 @@ export class NoteLookRotation {
     }
 
     this.up.set(0, 1, 0).applyQuaternion(previousRotation);
-    this.setJumpRotation(rotation, endRotationDeg, noteTime, noteEndX, noteEndY, jumpProgress);
+    this.base.copy(baseRotation);
+    this.setJumpRotation(this.jump, endRotationDeg, noteTime, noteEndX, noteEndY, jumpProgress);
+    rotation.copy(this.base).multiply(this.jump);
     const blend = clamp01(jumpProgress * 2);
     if (blend === 0) return;
 
+    this.correctedPosition.copy(notePosition).applyQuaternion(worldCorrection);
+    this.correctedHead.copy(headPosition).applyQuaternion(worldCorrection);
+    const verticalOffset = (this.correctedPosition.y - this.correctedHead.y) * 0.8;
+    this.correctionUp.set(0, 1, 0).applyQuaternion(this.inverseCorrection.copy(worldCorrection).invert());
+    this.adjustedHead.copy(headPosition).addScaledVector(this.correctionUp, verticalOffset);
     this.forward
-      .set(notePosition.x - headPosition.x, (notePosition.y - headPosition.y) * 0.2, notePosition.z - headPosition.z)
-      .normalize();
+      .copy(notePosition)
+      .sub(this.adjustedHead)
+      .normalize()
+      .applyQuaternion(worldCorrection)
+      .applyQuaternion(this.base);
     this.localZ.copy(this.forward).negate();
     this.right.crossVectors(this.up, this.localZ);
     if (this.right.lengthSq() < 1e-8) return;

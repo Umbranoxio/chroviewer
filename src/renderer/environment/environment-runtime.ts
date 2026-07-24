@@ -1,14 +1,21 @@
-import type { Group, Object3D, ShaderMaterial } from 'three';
+import type { CubeTexture, Group, Object3D, ShaderMaterial, Vector3, Vector4 } from 'three';
 
+import type { ChromaEnvironmentData } from '../../core/chroma-environment';
 import type { Rgb } from '../../core/colors';
 import type { RingPositionConfig, RingRotationConfig } from '../../core/lighting/ring-motion';
 import type { LightSegment } from '../bloomfog/light-quads';
 import type { BloomFogControllerData, EnvironmentData } from './types';
 
+export interface EnvironmentBackgroundGradient {
+  ramp: Uint8Array;
+  tint: [number, number, number, number];
+}
+
 export interface LoadedEnvironment {
   root: Group;
   lightSegments: EnvironmentLightSegment[];
   materialLights: EnvironmentMaterialLight[];
+  backgroundGradient: EnvironmentBackgroundGradient | null;
   rotations: EnvironmentRotation[];
   ringGroups: EnvironmentRingGroup[];
   glsColorGroups: EnvironmentGlsColorGroup[];
@@ -18,12 +25,33 @@ export interface LoadedEnvironment {
   eventSwitches: EnvironmentEventSwitch[];
   boostSwitches: EnvironmentBoostSwitch[];
   directionalLights: EnvironmentDirectionalLight[];
+  bakedReflectionProbe?: EnvironmentBakedReflectionProbe;
   data: EnvironmentData;
+  chromaEnvironment?: ChromaEnvironmentData;
+  chromaTracks?: Map<string, Object3D[]>;
+  chromaMaterialTracks?: Map<string, ShaderMaterial[]>;
+  chromaFogTracks?: Set<string>;
+  chromaTubeTracks?: Map<string, EnvironmentChromaTubeTarget[]>;
   applyChromaRemoval: (ids: readonly string[]) => void;
   enforceChromaRemoval: () => void;
   applyConstraints: () => boolean;
+  syncInstancedMeshes: () => void;
   applyReflections: (segments: EnvironmentLightSegment[]) => void;
   dispose: () => void;
+}
+
+export interface EnvironmentBakedReflectionProbe {
+  textures: [CubeTexture, CubeTexture];
+  position: Vector3;
+  boxMin: Vector3;
+  boxMax: Vector3;
+  lightColors: Vector4[];
+  lights: NonNullable<EnvironmentData['bakedReflectionProbe']>['lights'];
+}
+
+export interface EnvironmentChromaTubeTarget {
+  segments: EnvironmentLightSegment[];
+  materialLights: EnvironmentMaterialLight[];
 }
 
 export interface EnvironmentDirectionalLight {
@@ -119,6 +147,17 @@ export interface EnvironmentMaterialLight {
   materials: ShaderMaterial[];
   bindings: EnvironmentLightBinding[];
   intensityMultiplier: number;
+  initialVisible?: boolean;
+  combined?: {
+    inputs: { bindings: EnvironmentLightBinding[]; intensity: number }[];
+    intensity: number;
+    maxIntensity: number;
+    multiplyColorByAlpha: boolean;
+    mixType: number;
+    setAlphaOnly: boolean;
+    alphaIntoColor: boolean;
+    setColorOnly: boolean;
+  };
   minimumAlpha?: number;
   applyAlpha?: (alpha: number) => void;
   node?: Object3D;

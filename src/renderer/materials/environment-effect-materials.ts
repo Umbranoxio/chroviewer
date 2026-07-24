@@ -10,8 +10,8 @@ import {
   CUSTOM_PARTICLES_VERT,
   LIGHTNING_FRAG,
   LIGHTNING_VERT,
-  TRANSPARENT_CLOUDS_FRAG,
-  TRANSPARENT_CLOUDS_VERT,
+  RAIN_FRAG,
+  RAIN_VERT,
 } from '../shaders/environment-effect-shaders';
 import {
   FAKE_GLOW_FRAG,
@@ -35,6 +35,11 @@ export interface CustomParticlesSettings {
   vertexRedIsAlpha: boolean;
   vertexSquareAlpha: boolean;
   vertexChannelsAlpha: boolean;
+  spatialDisplacement: boolean;
+  displacementStrength: number;
+  displacementAxes: Rgb;
+  displacementPanning: Rgb;
+  displacementPanningSpeed: number;
   textureColor: boolean;
   alphaChannelRed: boolean;
   squareAlpha: boolean;
@@ -56,7 +61,7 @@ export interface CustomParticlesSettings {
   whiteBoostStart: number;
   bloomType: number;
   bloomMultiplier: number;
-  bloomWhiteMultiplier: number;
+  bloomWhite: number;
   fogType: 'none' | 'lerp' | 'alpha';
   fog: MaterialFogSettings;
   maskRedIsAlpha: boolean;
@@ -185,6 +190,7 @@ export function createCustomParticlesMaterial(
     main?: MaterialTexture;
     mask?: MaterialTexture;
     mask2?: MaterialTexture;
+    displacement?: MaterialTexture;
     colorGradient?: MaterialTexture;
   },
   settings: CustomParticlesSettings,
@@ -194,6 +200,12 @@ export function createCustomParticlesMaterial(
     ...(settings.vertexRedIsAlpha ? { VERTEX_RED_IS_ALPHA: 1 } : {}),
     ...(settings.vertexSquareAlpha ? { VERTEX_SQUARE_ALPHA: 1 } : {}),
     ...(settings.vertexChannelsAlpha ? { VERTEX_CHANNELS_A: 1 } : {}),
+    ...(textures.displacement === undefined
+      ? {}
+      : {
+          VERTEX_DISPLACEMENT: 1,
+          ...(settings.spatialDisplacement ? { SPATIAL_DISPLACEMENT: 1 } : {}),
+        }),
     ...(settings.textureColor ? { TEXTURE_COLOR: 1 } : {}),
     ...(settings.alphaChannelRed ? { ALPHA_CHANNEL_RED: 1 } : {}),
     ...(settings.squareAlpha ? { SQUARE_ALPHA: 1 } : {}),
@@ -236,6 +248,7 @@ export function createCustomParticlesMaterial(
       ...textureUniforms('_MainTex', textures.main),
       ...textureUniforms('_MaskTex', textures.mask),
       ...textureUniforms('_Mask2Tex', textures.mask2),
+      ...textureUniforms('_DisplacementTex', textures.displacement),
       ...textureUniforms('_ColorGradient', textures.colorGradient),
       _BillboardScale: { value: settings.billboardScale },
       _TimeSeconds: elapsed,
@@ -249,13 +262,19 @@ export function createCustomParticlesMaterial(
       _UvPanning: { value: new Vector2(settings.uvPanning[0], settings.uvPanning[1]) },
       _MaskPanning: { value: new Vector2(settings.maskPanning[0], settings.maskPanning[1]) },
       _Mask2Panning: { value: new Vector2(settings.mask2Panning[0], settings.mask2Panning[1]) },
+      _DisplacementStrength: { value: settings.displacementStrength },
+      _DisplacementAxes: { value: new Vector3(...settings.displacementAxes) },
+      _DisplacementPanning: {
+        value: new Vector2(settings.displacementPanning[0], settings.displacementPanning[1]),
+      },
+      _DisplacementPanningSpeed: { value: settings.displacementPanningSpeed },
       _BaseLayer: { value: settings.baseLayer },
       _Intensity: { value: settings.intensity },
       _AlphaMultiplier: { value: settings.alphaMultiplier },
       _WhiteBoostStart: { value: settings.whiteBoostStart },
       _BloomType: { value: settings.bloomType },
       _BloomMultiplier: { value: settings.bloomMultiplier },
-      _BloomWhiteMultiplier: { value: settings.bloomWhiteMultiplier },
+      _BloomWhite: { value: settings.bloomWhite },
       _MaskStrength: { value: settings.maskStrength },
       _Mask2Strength: { value: settings.mask2Strength },
     },
@@ -265,6 +284,48 @@ export function createCustomParticlesMaterial(
       elapsed.value = performance.now() * 0.001;
     };
   }
+  return material;
+}
+
+export function createRainMaterial(
+  fog: FogUniforms,
+  color: Rgb,
+  colorMultiplier: number,
+  settings: {
+    height: number;
+    speed: number;
+    bottomFadeScale: number;
+    topFadeScale: number;
+    bottomEnd: number;
+    topEnd: number;
+    intensity: number;
+    alphaMultiplier: number;
+    alphaFromFog: number;
+  },
+) {
+  const time = { value: 0 };
+  const material = new ShaderMaterial({
+    vertexShader: RAIN_VERT,
+    fragmentShader: RAIN_FRAG,
+    uniforms: {
+      ...materialFogUniforms(fog),
+      _Color: { value: linearColor(color) },
+      _ColorMultiplier: { value: colorMultiplier },
+      _TimeSeconds: time,
+      _Height: { value: settings.height },
+      _Speed: { value: settings.speed },
+      _BottomFadeScale: { value: settings.bottomFadeScale },
+      _TopFadeScale: { value: settings.topFadeScale },
+      _BottomEnd: { value: settings.bottomEnd },
+      _TopEnd: { value: settings.topEnd },
+      _Intensity: { value: settings.intensity },
+      _AlphaMultiplier: { value: settings.alphaMultiplier },
+      _AlphaFromFog: { value: settings.alphaFromFog },
+    },
+  });
+  material.onBeforeRender = () => {
+    time.value = performance.now() * 0.001;
+  };
   return material;
 }
 
@@ -296,59 +357,6 @@ export function createLightningMaterial(
       _Speed: { value: settings.speed },
       _TimeSeconds: time,
       ...textureUniforms('_MainTex', mainTexture),
-    },
-  });
-  material.onBeforeRender = () => {
-    time.value = performance.now() * 0.001;
-  };
-  return material;
-}
-
-export function createTransparentCloudMaterial(
-  lights: DirectionalLightUniforms,
-  color: Rgb,
-  colorAlpha: number,
-  diffuseTexture: MaterialTexture | undefined,
-  distortTexture: MaterialTexture | undefined,
-  settings: {
-    vertexWaveFrequency: number;
-    vertexWaveAmplitude: number;
-    rotateLayerSpeeds: Rgb;
-    backLightingBoost: number;
-    fadeBottomMin: number;
-    fadeBottomMax: number;
-    runwayFadeOffset: number;
-    runwayFadeScale: number;
-    distortTextureSpeed: [number, number];
-    distortAmount: number;
-  },
-) {
-  const time = { value: 0 };
-  const material = new ShaderMaterial({
-    defines: {
-      ...(diffuseTexture === undefined ? {} : { DIFFUSE_TEXTURE: 1 }),
-      ...(distortTexture === undefined ? {} : { DISTORT_TEXTURE: 1 }),
-    },
-    vertexShader: TRANSPARENT_CLOUDS_VERT,
-    fragmentShader: TRANSPARENT_CLOUDS_FRAG,
-    uniforms: {
-      ...textureUniforms('_DiffuseTexture', diffuseTexture),
-      ...textureUniforms('_DistortTex', distortTexture),
-      _Color: { value: linearColor(color) },
-      _ColorAlpha: { value: colorAlpha },
-      _TimeSeconds: time,
-      _VertexWaveFrequency: { value: settings.vertexWaveFrequency },
-      _VertexWaveAmplitude: { value: settings.vertexWaveAmplitude },
-      _RotateLayerSpeeds: { value: new Vector3(...settings.rotateLayerSpeeds) },
-      _DirectionalLightDirections: lights.directions,
-      _DirectionalLightColors: lights.colors,
-      _BackLightingBoost: { value: settings.backLightingBoost },
-      _FadeBottomMin: { value: settings.fadeBottomMin },
-      _FadeBottomMax: { value: settings.fadeBottomMax },
-      _RunwayFadeOffset: { value: settings.runwayFadeOffset },
-      _RunwayFadeScale: { value: settings.runwayFadeScale },
-      _DistortTexSpeed: { value: new Vector2(...settings.distortTextureSpeed) },
-      _DistortAmount: { value: settings.distortAmount },
     },
   });
   material.onBeforeRender = () => {

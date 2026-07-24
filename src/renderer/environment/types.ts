@@ -8,6 +8,7 @@ export type MaterialFamily =
   | 'lightTubeTransparent'
   | 'fakeGlow'
   | 'customParticles'
+  | 'rain'
   | 'lightning'
   | 'depthOnly'
   | 'clouds'
@@ -166,6 +167,7 @@ export interface ParametricBoxLightData {
   AlphaEnd: number;
   WidthStart: number;
   WidthEnd: number;
+  UpdateTransform?: number;
   enabled: boolean;
 }
 
@@ -362,6 +364,17 @@ export interface BackgroundGradientControllerData {
   enabled: boolean;
 }
 
+export interface BackgroundGradientData {
+  ExecutionTime: number;
+  TintColor: [number, number, number, number];
+  Elements: {
+    color: [number, number, number, number];
+    startT: number;
+    exp: number;
+  }[];
+  enabled: boolean;
+}
+
 export interface GroupLightControllerData {
   ID: number;
   Intensity?: number;
@@ -384,6 +397,20 @@ export interface DirectionalLightsControllerData {
   Light: ObjectReference;
   SetIntensityOnly: number;
   DefaultColor: [number, number, number, number];
+  enabled: boolean;
+}
+
+export interface MaterialLightsControllerData {
+  LightIntensityData: ObjectReference[];
+  Intensity: number;
+  MaxIntensity: number;
+  MultiplyColorByAlpha: number;
+  MixType: number;
+  MeshRenderer: ObjectReference | null;
+  SetAlphaOnly: number;
+  AlphaIntoColor: number;
+  SetColorOnly: number;
+  ColorProperty: string;
   enabled: boolean;
 }
 
@@ -514,6 +541,9 @@ export interface EnvironmentObjectData {
   name: string;
   parent: number;
   active: boolean;
+  customEnvironmentOnly?: boolean;
+  chromaGenerated?: boolean;
+  layer?: number;
   position: [number, number, number];
   rotation: [number, number, number, number];
   scale: [number, number, number];
@@ -553,6 +583,7 @@ export interface EnvironmentObjectData {
     LightIntensityController?: GroupLightControllerData[];
     DirectionalLight?: DirectionalLightData[];
     DirectionalLightsController?: DirectionalLightsControllerData[];
+    MaterialLightsController?: MaterialLightsControllerData[];
     LightSink?: GroupLightControllerData[];
     MaterialPropertyBlockController?: MaterialPropertyBlockControllerData[];
     MaterialPropertyBlockFloatSetter?: MaterialPropertyBlockFloatSetterData[];
@@ -570,6 +601,7 @@ export interface EnvironmentObjectData {
     ParametricSliceEndWidthFx?: ParametricSliceEndWidthFxData[];
     VertexDisplacementFx?: VertexDisplacementFxData[];
     BackgroundGradientController?: BackgroundGradientControllerData[];
+    BackgroundGradient?: BackgroundGradientData[];
     PositionConstraint?: PositionConstraintData[];
     ColliderFx?: ColliderFxData[];
     BoxCollider?: BoxColliderData[];
@@ -588,6 +620,22 @@ export interface EnvironmentData {
   meshes: Record<string, EnvironmentMeshData>;
   materials: Record<string, EnvironmentMaterialData>;
   reflectionProbe?: [string, string, string, string, string, string];
+  bakedReflectionProbe?: {
+    textures: [[string, string, string, string, string, string], [string, string, string, string, string, string]];
+    position: [number, number, number];
+    size: [number, number, number];
+    lights: {
+      bakeId: number;
+      intensity: number;
+      probeIntensity: number;
+      mixType: number;
+      inputs: {
+        lightId: number;
+        intensity: number;
+        probeHighlightsIntensityMultiplier: number;
+      }[];
+    }[];
+  };
   particleSystems?: EnvironmentParticleSystemData[];
   objects: EnvironmentObjectData[];
 }

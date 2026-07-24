@@ -29,7 +29,7 @@ import {
 import {
   createLightningMaterial,
   createOpaqueCloudMaterial,
-  createTransparentCloudMaterial,
+  createRainMaterial,
 } from '../../materials/environment-effect-materials';
 import { createMirrorMaterial } from '../../materials/scene-materials';
 import type { EnvironmentMaterialData } from '../types';
@@ -106,6 +106,16 @@ export function createEnvironmentMaterial(
   switch (data.family) {
     case 'lit':
       material = shader = createLitEnvironmentMaterial(data, context, color);
+      if (data.shader === 'ChroMapper/Water Lit' && data.keywords.includes('Z_FADE')) {
+        material.transparent = true;
+        material.blending = CustomBlending;
+        material.blendEquation = AddEquation;
+        material.blendSrc = unityBlendSrcFactor(data.floats._BlendModeSrc);
+        material.blendDst = unityBlendDstFactor(data.floats._BlendModeDst);
+        material.blendEquationAlpha = AddEquation;
+        material.blendSrcAlpha = unityBlendSrcFactor(data.floats._BlendModeSrcA);
+        material.blendDstAlpha = unityBlendDstFactor(data.floats._BlendModeDstA);
+      }
       break;
     case 'lightTubeOpaque':
     case 'lightTubeTransparent':
@@ -114,6 +124,28 @@ export function createEnvironmentMaterial(
       break;
     case 'customParticles':
       material = shader = createParticleEnvironmentMaterial(data, context, color);
+      break;
+    case 'rain':
+      material = shader = createRainMaterial(context.fog, color, data.colors._Color?.[3] ?? 1, {
+        height: data.floats._Height ?? 10,
+        speed: data.floats._Speed ?? 1,
+        bottomFadeScale: data.floats._BottomFadeScale ?? 1,
+        topFadeScale: data.floats._TopFadeScale ?? 1,
+        bottomEnd: data.floats._BottomEnd ?? 1,
+        topEnd: data.floats._TopEnd ?? 1,
+        intensity: data.floats._Intensity ?? 1,
+        alphaMultiplier: data.floats._AlphaMultiplier ?? 1,
+        alphaFromFog: data.floats._AlphaFromFog ?? 0.5,
+      });
+      material.transparent = true;
+      material.depthTest = false;
+      material.blending = CustomBlending;
+      material.blendEquation = AddEquation;
+      material.blendSrc = unityBlendSrcFactor(data.floats._BlendSrcFactor);
+      material.blendDst = unityBlendDstFactor(data.floats._BlendDstFactor);
+      material.blendEquationAlpha = AddEquation;
+      material.blendSrcAlpha = unityBlendSrcFactor(data.floats._BlendSrcFactorA);
+      material.blendDstAlpha = unityBlendDstFactor(data.floats._BlendDstFactorA);
       break;
     case 'lightning': {
       material = shader = createLightningMaterial(
@@ -149,37 +181,6 @@ export function createEnvironmentMaterial(
       });
       break;
     case 'clouds': {
-      if (data.shader === 'Custom/CloudsLitTransparent') {
-        const rotateLayerSpeeds = data.colors._RotateLayerSpeeds ?? [16, 6, 2, 32];
-        material = shader = createTransparentCloudMaterial(
-          context.directionalLights,
-          color,
-          data.colors._Color?.[3] ?? 1,
-          materialTexture(data, context, '_DiffuseTexture'),
-          materialTexture(data, context, '_DistortTex'),
-          {
-            vertexWaveFrequency: data.floats._VertexWaveFrequency ?? 4,
-            vertexWaveAmplitude: data.floats._VertexWaveAmplitude ?? 0.03,
-            rotateLayerSpeeds: [rotateLayerSpeeds[0], rotateLayerSpeeds[1], rotateLayerSpeeds[2]],
-            backLightingBoost: data.floats._BackLightingBoost ?? 2,
-            fadeBottomMin: data.floats._FadeBottomMin ?? -4,
-            fadeBottomMax: data.floats._FadeBottomMax ?? 4,
-            runwayFadeOffset: data.floats._RunwayFadeOffset ?? -1,
-            runwayFadeScale: data.floats._RunwayFadeScale ?? 10,
-            distortTextureSpeed: [data.colors._DistortTexSpeed?.[0] ?? 0, data.colors._DistortTexSpeed?.[1] ?? 0],
-            distortAmount: data.floats._DistortAmount ?? 0,
-          },
-        );
-        material.transparent = true;
-        material.blending = CustomBlending;
-        material.blendEquation = AddEquation;
-        material.blendSrc = unityBlendSrcFactor(data.floats._BlendSrcFactor);
-        material.blendDst = unityBlendDstFactor(data.floats._BlendDstFactor);
-        material.blendEquationAlpha = AddEquation;
-        material.blendSrcAlpha = unityBlendSrcFactor(data.floats._BlendSrcFactorA);
-        material.blendDstAlpha = unityBlendDstFactor(data.floats._BlendDstFactorA);
-        break;
-      }
       const scrolling = data.colors._WorldNoiseScrolling ?? [0, 0, 0, 1];
       material = shader = createOpaqueCloudMaterial(
         context.fog,
@@ -191,7 +192,13 @@ export function createEnvironmentMaterial(
           noiseIntensityOffset: data.floats._WorldNoiseIntensityOffset ?? 0,
           noiseIntensityScale: data.floats._WorldNoiseIntensityScale ?? 0,
           noiseScrolling: [scrolling[0], scrolling[1]],
-          fog: materialFog(data, true),
+          // game clouds always height-fog with the live globals plus this material offset
+          fog: {
+            ...materialFog(data, true),
+            heightEnabled: true,
+            heightOffset: data.floats._HeightFogOffset ?? 0,
+            heightScale: 1,
+          },
         },
       );
       break;
@@ -201,6 +208,8 @@ export function createEnvironmentMaterial(
       const dirtTexture = dirtData === undefined ? undefined : context.textures?.get(dirtData.asset);
       const normalData = data.textures?._NormalTex;
       const normalTexture = normalData === undefined ? undefined : context.textures?.get(normalData.asset);
+      const textureScrolling = data.colors._TextureScrolling ?? [0, 0, 0, 0];
+      const detailNormalScrolling = data.colors._DetailNormalTexScrolling ?? [0, 0, 0, 0];
       material = shader = createMirrorMaterial(
         context.fog,
         context.reflectionTexture,
@@ -221,6 +230,12 @@ export function createEnvironmentMaterial(
               scale: normalData.scale,
               offset: normalData.offset,
               intensity: data.floats._BumpIntensity ?? 0.1,
+              scrolling: [textureScrolling[0], textureScrolling[1]],
+              detailScrolling: [detailNormalScrolling[0], detailNormalScrolling[1]],
+              detailScale: data.floats._DetailNormalTextureScale ?? 1,
+              detailIntensity: data.keywords.includes('DETAIL_NORMAL_MAP')
+                ? (data.floats._DetailNormalIntensity ?? 0)
+                : 0,
             },
       );
       break;
@@ -242,7 +257,8 @@ export function createEnvironmentMaterial(
     }
   }
   const isParametricSliceBillboard = data.shader === 'ChroMapper/Parametric Slice Billboard';
-  if (isParametricSliceBillboard) {
+  const isTransparentLight = data.family === 'lightTubeTransparent';
+  if (isParametricSliceBillboard || isTransparentLight) {
     material.side = DoubleSide;
   } else {
     const cullMode = data.floats._CullMode ?? data.floats._Cull;
@@ -251,7 +267,13 @@ export function createEnvironmentMaterial(
     if (cullMode === 2) material.side = FrontSide;
   }
   const disableDepthWrite = environmentId === 'WeaveEnvironment' && isParametricSliceBillboard;
-  material.depthWrite = !disableDepthWrite && data.family !== 'stencil' && data.floats._ZWrite !== 0;
+  material.depthWrite =
+    data.family === 'depthOnly' ||
+    (!disableDepthWrite &&
+      !isTransparentLight &&
+      data.family !== 'stencil' &&
+      data.family !== 'rain' &&
+      data.floats._ZWrite !== 0);
   const stencilComp = data.floats._StencilComp ?? 8;
   const stencilPass = data.floats._StencilPass ?? 0;
   if (stencilComp !== 8 || stencilPass !== 0) {

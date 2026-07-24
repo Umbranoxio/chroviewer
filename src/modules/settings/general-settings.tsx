@@ -93,6 +93,14 @@ export function GeneralSettings({ active, settings, isMapPreview, onChange }: Ge
               }}
             />
           </SettingRow>
+          <SettingRow label={t('keepMapInfoVisible')}>
+            <Switch
+              checked={settings.keepMapInfoVisible}
+              onCheckedChange={(checked) => {
+                update('keepMapInfoVisible', checked);
+              }}
+            />
+          </SettingRow>
         </SettingSection>
         <Separator />
         <SettingSection title={t('advanced')}>
