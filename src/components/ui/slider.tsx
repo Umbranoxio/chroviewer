@@ -31,13 +31,16 @@ function Slider({
 }: SliderProps) {
   const mappedValue = value.map((v) => (v === explicitMin ? min : v));
   const isKeyboard = useRef<boolean>(false);
+  const bigboys = [explicitMin, max / 2, max];
 
   const handleValueChange = (newValues: number[]) => {
     onValueChange(
       newValues.map((v, i) => {
         if (isKeyboard.current) {
-          const visual = mappedValue[i] ?? explicitMin;
-          const actuall = value[i] ?? min;
+          const visual = mappedValue[i];
+          const actuall = value[i];
+
+          if (visual === undefined || actuall === undefined) return v;
 
           const diff = v - visual;
           if (diff === 0) return visual;
@@ -46,7 +49,6 @@ function Slider({
 
         if (variant !== 'notched') return v === min ? explicitMin : v;
 
-        const bigboys = [explicitMin, 1.0, max];
         return (
           bigboys.find((m) => {
             const targetMin = m === explicitMin ? min : m;
@@ -65,11 +67,11 @@ function Slider({
       max={max}
       step={step}
       orientation={orientation}
-      onPointerDown={() => {
-        isKeyboard.current = false;
-      }}
-      onKeyDown={() => {
+      onKeyDownCapture={() => {
         isKeyboard.current = true;
+      }}
+      onKeyUpCapture={() => {
+        isKeyboard.current = false;
       }}
       onValueChange={(newValues) => {
         handleValueChange(newValues);
