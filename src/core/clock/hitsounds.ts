@@ -103,6 +103,7 @@ export class HitsoundPlayer {
       const decoded = await this.context.decodeAudioData(buf);
       return trimLeadingSilence(decoded, this.context);
     } catch (e) {
+      // technically should never happen, but idk, you never know these days
       console.warn('Failed to decode hitsound buffer', e);
       return null;
     }
