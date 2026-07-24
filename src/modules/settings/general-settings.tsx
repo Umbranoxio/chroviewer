@@ -138,7 +138,7 @@ export function GeneralSettings({ active, settings, isMapPreview, onChange }: Ge
                       if (file) {
                         void Result.tryPromise(() => saveCustomHitsound('good', file)).then((result) => {
                           if (result.isOk()) {
-                            update('customGoodHitsound', file.name);
+                            update('customGoodHitsound', `${file.name}?${~~(Date.now() / 1000)}`);
                           }
                         });
                       }
@@ -170,7 +170,7 @@ export function GeneralSettings({ active, settings, isMapPreview, onChange }: Ge
                       if (file) {
                         void Result.tryPromise(() => saveCustomHitsound('bad', file)).then((result) => {
                           if (result.isOk()) {
-                            update('customBadHitsound', file.name);
+                            update('customBadHitsound', `${file.name}?${~~(Date.now() / 1000)}`);
                           }
                         });
                       }
