@@ -73,9 +73,7 @@ function Slider({
       onKeyUpCapture={() => {
         isKeyboard.current = false;
       }}
-      onValueChange={(newValues) => {
-        handleValueChange(newValues);
-      }}
+      onValueChange={handleValueChange}
       className={cn(
         'relative flex touch-none select-none items-center data-disabled:opacity-45 data-[orientation=horizontal]:w-full data-[orientation=vertical]:h-full data-[orientation=vertical]:flex-col',
         variant === 'transport' && 'h-12 cursor-pointer',
