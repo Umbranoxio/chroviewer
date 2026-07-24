@@ -31,7 +31,7 @@ function Slider({
 }: SliderProps) {
   const mappedValue = value.map((v) => (v === explicitMin ? min : v));
   const isKeyboard = useRef<boolean>(false);
-  const bigboys = [explicitMin, max / 2, max];
+  const bigboys = [explicitMin, (min + max) / 2, max];
 
   const handleValueChange = (newValues: number[]) => {
     onValueChange(
