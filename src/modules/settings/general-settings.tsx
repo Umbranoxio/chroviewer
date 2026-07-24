@@ -136,9 +136,11 @@ export function GeneralSettings({ active, settings, isMapPreview, onChange }: Ge
                     onChange={(e) => {
                       const file = e.target.files?.[0];
                       if (file) {
-                        void Result.tryPromise(() => saveCustomHitsound('good', file)).then((result) => {
+                        void saveCustomHitsound('good', file).then((result: Result<string, Error>) => {
                           if (result.isOk()) {
                             update('customGoodHitsound', `${file.name}?${~~(Date.now() / 1000)}`);
+                          } else {
+                            console.error(result.error);
                           }
                         });
                       }
@@ -150,8 +152,13 @@ export function GeneralSettings({ active, settings, isMapPreview, onChange }: Ge
                       size="icon"
                       className="h-8 w-8"
                       onClick={() => {
-                        void clearCustomHitsound('good');
-                        update('customGoodHitsound', null);
+                        void clearCustomHitsound('good').then((result: Result<void, Error>) => {
+                          if (result.isOk()) {
+                            update('customGoodHitsound', null);
+                          } else {
+                            console.error(result.error);
+                          }
+                        });
                       }}
                     >
                       <Trash2 className="text-destructive h-4 w-4" />
@@ -168,9 +175,11 @@ export function GeneralSettings({ active, settings, isMapPreview, onChange }: Ge
                     onChange={(e) => {
                       const file = e.target.files?.[0];
                       if (file) {
-                        void Result.tryPromise(() => saveCustomHitsound('bad', file)).then((result) => {
+                        void saveCustomHitsound('bad', file).then((result: Result<string, Error>) => {
                           if (result.isOk()) {
                             update('customBadHitsound', `${file.name}?${~~(Date.now() / 1000)}`);
+                          } else {
+                            console.error(result.error);
                           }
                         });
                       }
@@ -182,8 +191,13 @@ export function GeneralSettings({ active, settings, isMapPreview, onChange }: Ge
                       size="icon"
                       className="h-8 w-8"
                       onClick={() => {
-                        void clearCustomHitsound('bad');
-                        update('customBadHitsound', null);
+                        void clearCustomHitsound('bad').then((result: Result<void, Error>) => {
+                          if (result.isOk()) {
+                            update('customBadHitsound', null);
+                          } else {
+                            console.error(result.error);
+                          }
+                        });
                       }}
                     >
                       <Trash2 className="text-destructive h-4 w-4" />

@@ -1,3 +1,5 @@
+import { Result } from 'better-result';
+
 const DIR_NAME = 'chroviewer_hitsounds';
 
 async function getOpfsDir(): Promise<FileSystemDirectoryHandle> {
@@ -16,6 +18,19 @@ function fileToDataUrl(file: File): Promise<string> {
   });
 }
 
+async function canDecodeAudio(file: File): Promise<boolean> {
+  const ctx = new AudioContext();
+  try {
+    const buffer = await file.arrayBuffer();
+    await ctx.decodeAudioData(buffer.slice(0));
+    return true;
+  } catch {
+    return false;
+  } finally {
+    await ctx.close();
+  }
+}
+
 function dataUrlToArrayBuffer(dataUrl: string): ArrayBuffer {
   const base64 = dataUrl.split(',')[1];
   if (!base64) return new ArrayBuffer(0);
@@ -28,7 +43,11 @@ function dataUrlToArrayBuffer(dataUrl: string): ArrayBuffer {
   return bytes.buffer;
 }
 
-export async function saveCustomHitsound(slot: 'good' | 'bad', file: File): Promise<string> {
+export async function saveCustomHitsound(slot: 'good' | 'bad', file: File): Promise<Result<string, Error>> {
+  if (!(await canDecodeAudio(file))) {
+    return Result.err(new Error('The selected audio file could not be decoded by the browser'));
+  }
+
   const filename = `${slot}_hitsound`;
   try {
     const dir = await getOpfsDir();
@@ -36,12 +55,16 @@ export async function saveCustomHitsound(slot: 'good' | 'bad', file: File): Prom
     const writable = await fileHandle.createWritable();
     await writable.write(file);
     await writable.close();
-    return `opfs:${filename}`;
+    return Result.ok(`opfs:${filename}`);
   } catch (e) {
     console.warn('OPFS unavailable or failed, falling back to data URL', e);
-    const dataUrl = await fileToDataUrl(file);
-    localStorage.setItem(`chroviewer_hitsound_${slot}`, dataUrl);
-    return `dataurl:${slot}`;
+    try {
+      const dataUrl = await fileToDataUrl(file);
+      localStorage.setItem(`chroviewer_hitsound_${slot}`, dataUrl);
+      return Result.ok(`dataurl:${slot}`);
+    } catch (e2) {
+      return Result.err(new Error('Failed to save hitsound: ' + (e2 instanceof Error ? e2.message : String(e2))));
+    }
   }
 }
 
@@ -61,13 +84,26 @@ export async function loadCustomHitsound(slot: 'good' | 'bad'): Promise<ArrayBuf
   }
 }
 
-export async function clearCustomHitsound(slot: 'good' | 'bad'): Promise<void> {
+export async function clearCustomHitsound(slot: 'good' | 'bad'): Promise<Result<void, Error>> {
   const filename = `${slot}_hitsound`;
+  const errors: string[] = [];
+
   try {
     const dir = await getOpfsDir();
     await dir.removeEntry(filename);
-  } catch {
-    // blehhh
+  } catch (e) {
+    errors.push('OPFS: ' + (e instanceof Error ? e.message : String(e)));
   }
-  localStorage.removeItem(`chroviewer_hitsound_${slot}`);
+
+  try {
+    localStorage.removeItem(`chroviewer_hitsound_${slot}`);
+  } catch (e) {
+    errors.push('localStorage: ' + (e instanceof Error ? e.message : String(e)));
+  }
+
+  if (errors.length > 0) {
+    return Result.err(new Error(errors.join(', ')));
+  }
+
+  return Result.ok(undefined);
 }
