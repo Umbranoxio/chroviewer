@@ -1,24 +1,81 @@
-import type { ComponentProps } from 'react';
+import { useRef, type ComponentProps } from 'react';
 
 import { Slider as SliderPrimitive } from 'radix-ui';
+
+import { Notches } from '@/components/ui/notches';
 
 import { cn } from '@/lib/utils';
 
 interface SliderProps extends ComponentProps<typeof SliderPrimitive.Root> {
-  variant?: 'default' | 'transport';
+  variant?: 'default' | 'transport' | 'notched';
+  notchDivisor?: number;
+  explicitMin?: number;
+  snapDistance?: number;
+  value: number[];
+  onValueChange: (value: number[]) => void;
 }
 
-function Slider({ className, value, defaultValue, min = 0, max = 100, variant = 'default', ...props }: SliderProps) {
-  const values = value ?? defaultValue ?? [min];
+function Slider({
+  className,
+  value,
+  min = 0,
+  explicitMin = min,
+  max = 100,
+  step = 1,
+  variant = 'default',
+  orientation = 'horizontal',
+  notchDivisor = 1,
+  onValueChange,
+  snapDistance = 0,
+  ...props
+}: SliderProps) {
+  const mappedValue = value.map((v) => (v === explicitMin ? min : v));
+  const isKeyboard = useRef<boolean>(false);
+  const bigboys = [explicitMin, (min + max) / 2, max];
+
+  const handleValueChange = (newValues: number[]) => {
+    onValueChange(
+      newValues.map((v, i) => {
+        if (isKeyboard.current) {
+          const visual = mappedValue[i];
+          const actuall = value[i];
+
+          if (visual === undefined || actuall === undefined) return v;
+
+          const diff = v - visual;
+          if (diff === 0) return visual;
+          return actuall + diff;
+        }
+
+        if (variant !== 'notched') return v === min ? explicitMin : v;
+
+        return (
+          bigboys.find((m) => {
+            const targetMin = m === explicitMin ? min : m;
+            return Math.abs(v - targetMin) <= step * snapDistance;
+          }) ?? v
+        );
+      }),
+    );
+  };
+
   return (
     <SliderPrimitive.Root
       data-slot="slider"
-      value={value}
-      defaultValue={defaultValue}
+      value={mappedValue}
       min={min}
       max={max}
+      step={step}
+      orientation={orientation}
+      onKeyDownCapture={() => {
+        isKeyboard.current = true;
+      }}
+      onKeyUpCapture={() => {
+        isKeyboard.current = false;
+      }}
+      onValueChange={handleValueChange}
       className={cn(
-        'relative flex touch-none select-none items-center data-[disabled]:opacity-45 data-[orientation=horizontal]:w-full data-[orientation=vertical]:h-full data-[orientation=vertical]:flex-col',
+        'relative flex touch-none select-none items-center data-disabled:opacity-45 data-[orientation=horizontal]:w-full data-[orientation=vertical]:h-full data-[orientation=vertical]:flex-col',
         variant === 'transport' && 'h-12 cursor-pointer',
         className,
       )}
@@ -27,20 +84,40 @@ function Slider({ className, value, defaultValue, min = 0, max = 100, variant = 
       <SliderPrimitive.Track
         data-slot="slider-track"
         className={cn(
-          'relative grow overflow-hidden rounded-full bg-muted data-[orientation=horizontal]:h-1.5 data-[orientation=horizontal]:w-full data-[orientation=vertical]:h-full data-[orientation=vertical]:w-1.5',
+          'relative grow overflow-visible rounded-full bg-muted data-[orientation=horizontal]:h-1.5 data-[orientation=horizontal]:w-full data-[orientation=vertical]:h-full data-[orientation=vertical]:w-1.5',
           variant === 'transport' &&
             'rounded-none border-x border-border/70 bg-muted/45 data-[orientation=horizontal]:h-full',
         )}
       >
+        {variant === 'notched' && (
+          <div
+            className={cn(
+              'pointer-events-none absolute flex items-center justify-between',
+              orientation === 'vertical'
+                ? 'inset-x-auto inset-y-2 left-1/2 -translate-x-1/2 flex-col'
+                : 'inset-x-2 top-1/2 -translate-y-1/2',
+            )}
+          >
+            <Notches
+              orientation={orientation}
+              min={min}
+              max={max}
+              step={step}
+              divisor={notchDivisor}
+              value={mappedValue}
+            />
+          </div>
+        )}
+
         <SliderPrimitive.Range
           data-slot="slider-range"
           className={cn(
-            'bg-primary absolute data-[orientation=horizontal]:h-full data-[orientation=vertical]:w-full',
+            'bg-primary absolute data-[orientation=horizontal]:h-full data-[orientation=vertical]:w-full rounded-full',
             variant === 'transport' && 'bg-transparent',
           )}
         />
       </SliderPrimitive.Track>
-      {values.map((_, index) => (
+      {mappedValue.map((_, index) => (
         <SliderPrimitive.Thumb
           data-slot="slider-thumb"
           key={index}

@@ -689,7 +689,6 @@ export function ViewerShell() {
             onPanelChange={setActivePanel}
             onPlaybackRateChange={(rate) => {
               transport.setPlaybackRate(rate);
-              setActivePanel(null);
             }}
             onLightshowModeChange={session.changeLightshowMode}
             onReplayCameraChange={(replayCamera) => {
