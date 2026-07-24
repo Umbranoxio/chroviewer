@@ -40,11 +40,11 @@ function Slider({
           const visual = mappedValue?.[i] ?? mappedDefaultValue?.[i] ?? min;
           const actuall = value?.[i] ?? defaultValue?.[i] ?? explicitMin;
 
-          //check for difference in what should be there and whats shown
+          //check for difference in what will be there and whats shown
           const diff = v - visual;
           if (diff === 0) return actuall;
 
-          //if its different figure out what the next value should actually be
+          //if its different figure out what the next value should be
           const nextValue = actuall + diff;
           return Math.max(explicitMin, Math.min(max, nextValue));
         }
