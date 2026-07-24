@@ -86,8 +86,12 @@ export class HitsoundPlayer {
     this.customGoodCutArrayBuffer = goodBuffer;
     this.customBadCutArrayBuffer = badBuffer;
     if (this.context !== null) {
-      this.goodCutBuffer = goodBuffer ? await this.decodeBuffer(goodBuffer) : null;
-      this.badCutBuffer = badBuffer ? await this.decodeBuffer(badBuffer) : null;
+      const [goodDecoded, badDecoded] = await Promise.all([
+        goodBuffer ? this.decodeBuffer(goodBuffer) : Promise.resolve(null),
+        badBuffer ? this.decodeBuffer(badBuffer) : Promise.resolve(null),
+      ]);
+      if (this.customGoodCutArrayBuffer === goodBuffer) this.goodCutBuffer = goodDecoded;
+      if (this.customBadCutArrayBuffer === badBuffer) this.badCutBuffer = badDecoded;
     }
   }
 
