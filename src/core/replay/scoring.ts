@@ -182,6 +182,20 @@ function replayStateAt(replay: Replay, stateIndex: ReplayStateIndex, time: numbe
   const maximumScore = scoreEvent?.immediateMaxPossibleScore ?? oldMaximumScore(scoringNoteCount);
   const combo = replay.combos[comboCount - 1]?.combo ?? 0;
   const multiplierEvent = replay.multipliers[multiplierCount - 1];
+  const misses = stateIndex.misses[noteCount] ?? 0;
+  const badCuts = stateIndex.badCuts[noteCount] ?? 0;
+  const bombCuts = stateIndex.bombCuts[noteCount] ?? 0;
+  const wallsHit = wallCount;
+
+  let energy = clamp(replay.energies[energyCount - 1]?.energy ?? 0.5, 0, 1);
+  const modifiers = replay.metadata.modifiers;
+  if (modifiers.includes('IF')) {
+    energy = 1;
+  } else if (modifiers.includes('BE')) {
+    const mistakes = misses + badCuts + bombCuts + wallsHit;
+    energy = Math.max(0, 4 - mistakes) / 4;
+  }
+
   return {
     score,
     maximumScore,
@@ -190,11 +204,11 @@ function replayStateAt(replay: Replay, stateIndex: ReplayStateIndex, time: numbe
     maxCombo: stateIndex.maxCombos[comboCount] ?? 0,
     multiplier: multiplierEvent?.multiplier ?? 1,
     multiplierProgress: multiplierEvent?.nextMultiplierProgress ?? 0,
-    energy: clamp(replay.energies[energyCount - 1]?.energy ?? 0.5, 0, 1),
-    misses: stateIndex.misses[noteCount] ?? 0,
-    badCuts: stateIndex.badCuts[noteCount] ?? 0,
-    bombCuts: stateIndex.bombCuts[noteCount] ?? 0,
-    wallsHit: wallCount,
+    energy,
+    misses,
+    badCuts,
+    bombCuts,
+    wallsHit,
   };
 }
 
