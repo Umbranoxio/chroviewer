@@ -165,6 +165,7 @@ export class ReplayGameplayHud {
           ? buildReplayTimeline(replay)
           : buildReplayTimeline(replay, hitScoreVisualizer);
     this.comboBreakTime = replay === null ? null : firstComboBreakTime(replay);
+    this.root.visible = replay !== null;
     this.beSeparators.visible = replay?.metadata.modifiers.includes('BE') ?? false;
     this.scoreHud.visible = replay !== null && replay.scores.length > 0;
     this.flyingScores.clear();
