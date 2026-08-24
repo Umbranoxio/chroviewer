@@ -155,7 +155,7 @@ export class ReplayGameplayHud {
       this.shapes.push(sep);
     }
     this.beSeparators.visible = false;
-    this.root.add(this.beSeparators);
+    this.scoreHud.add(this.beSeparators);
   }
 
   setReplay(replay: Replay | null, hitScoreVisualizer?: HitScoreVisualizerConfig | null) {
