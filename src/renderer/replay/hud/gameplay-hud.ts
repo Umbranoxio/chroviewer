@@ -149,6 +149,7 @@ export class ReplayGameplayHud {
 
     for (let i = 1; i <= 3; i++) {
       const sep = hudShape(new PlaneGeometry(0.04, 0.09), 0.75, 0x000000);
+      sep.renderOrder = 1001;
       sep.position.set(-0.954 + (1.908 / 4) * i, -0.64, -7.72);
       this.beSeparators.add(sep);
       this.shapes.push(sep);
