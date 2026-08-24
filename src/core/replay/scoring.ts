@@ -189,10 +189,14 @@ function replayStateAt(replay: Replay, stateIndex: ReplayStateIndex, time: numbe
 
   let energy = clamp(replay.energies[energyCount - 1]?.energy ?? 0.5, 0, 1);
   const modifiers = replay.metadata.modifiers;
+  const mistakes = misses + badCuts + bombCuts + wallsHit;
   if (modifiers.includes('IF')) {
-    energy = 1;
+    if (mistakes >= 1) {
+      energy = 0;
+    } else {
+      energy = 1;
+    }
   } else if (modifiers.includes('BE')) {
-    const mistakes = misses + badCuts + bombCuts + wallsHit;
     energy = Math.max(0, 4 - mistakes) / 4;
   }
 
