@@ -49,11 +49,11 @@ export function setScoreSaberStars(stars: number) {
   scoreSaberStars = stars;
 }
 
-export function isMapRanked(): boolean {
+export function isMapRanked() {
   return scoreSaberStars > 0;
 }
 
-function lerp(v0: number, v1: number, t: number): number {
+function lerp(v0: number, v1: number, t: number) {
   return v0 + t * (v1 - v0);
 }
 
@@ -70,7 +70,7 @@ function calculatePPModifier(
   return lerp(lowerVal, upperVal, t);
 }
 
-export function calculatePP(normalisedAccuracy: number): number {
+export function calculatePP(normalisedAccuracy: number) {
   const ppValue = scoreSaberStars * scoreSaberStarValue;
 
   if (keys.length === 0) return 0;

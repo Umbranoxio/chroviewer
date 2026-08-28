@@ -127,7 +127,7 @@ export function useViewerRenderer({
         view.setReplay(
           replayRef.current,
           hitScoreVisualizerForSettings(settingsRef.current, replayRef.current),
-          settingsRef.current.ppCounter,
+          settingsRef.current.showPPCounter,
         );
         view.setBeatSource(() => clock.currentBeat());
       }

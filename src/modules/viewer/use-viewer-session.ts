@@ -106,8 +106,8 @@ export function useViewerSession({
   }, [settings.previewHitLine]);
 
   useEffect(() => {
-    viewerRef.current?.view.setPPCounterEnabled(settings.ppCounter);
-  }, [settings.ppCounter]);
+    viewerRef.current?.view.setPPCounterEnabled(settings.showPPCounter);
+  }, [settings.showPPCounter]);
 
   useEffect(() => {
     const mode: LightshowMode = settings.staticLights ? 'static' : 'full';
@@ -325,7 +325,7 @@ export function useViewerSession({
     viewer.view.setReplay(
       sources.replayRef.current,
       hitScoreVisualizerForSettings(settings, sources.replayRef.current),
-      settings.ppCounter,
+      settings.showPPCounter,
     );
     viewer.view.setReplayCameraSettings(settings);
     setActivePanel(null);
