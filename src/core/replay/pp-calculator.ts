@@ -57,13 +57,7 @@ function lerp(v0: number, v1: number, t: number) {
   return v0 + t * (v1 - v0);
 }
 
-function calculatePPModifier(
-  lowerAcc: number,
-  lowerVal: number,
-  upperAcc: number,
-  upperVal: number,
-  acc: number,
-): number {
+function calculatePPModifier(lowerAcc: number, lowerVal: number, upperAcc: number, upperVal: number, acc: number) {
   if (Math.abs(upperAcc - lowerAcc) < 1e-9) return lowerVal;
   let t = (acc - lowerAcc) / (upperAcc - lowerAcc);
   t = Math.max(0, Math.min(1, t));

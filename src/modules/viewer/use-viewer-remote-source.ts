@@ -155,7 +155,6 @@ export function useViewerRemoteSource({
       const map = yield* mapResult;
       if (!isSourceRequestCurrent(requestId)) return Result.ok(undefined);
       applyLegacyScoreSaberMetadata(replay, source);
-      setScoreSaberStars(source.stars);
       const replayHash = replayMapHash(replay);
       if (replayHash?.toLowerCase() !== source.hash.toLowerCase()) {
         return Result.err(
@@ -178,6 +177,7 @@ export function useViewerRemoteSource({
           }),
         );
       }
+      setScoreSaberStars(source.stars);
       pendingSharedViewRef.current = pending;
       yield* Result.await(
         loadSourceFiles(requestId, map.files, replay, {

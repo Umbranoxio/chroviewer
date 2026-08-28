@@ -13,6 +13,8 @@ import type { MapView } from '../../renderer/map-view';
 import type { RendererLifecycle } from '../../renderer/renderer-lifecycle';
 import type { ActiveSelection } from './viewer-types';
 
+import { setScoreSaberStars } from '@/core/replay/pp-calculator';
+
 export interface ViewerHandle {
   view: MapView;
   lifecycle: RendererLifecycle;
@@ -70,6 +72,7 @@ export function useViewerRenderer({
         if (initialEnvironmentLoadedRef.current) return;
         initialEnvironmentLoadedRef.current = true;
         setEnvironmentLoading(false);
+        setScoreSaberStars(0);
       };
       const view = new MapView(
         { mirrorQuality: settings.graphicsQuality },
