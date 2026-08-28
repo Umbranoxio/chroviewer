@@ -88,7 +88,6 @@ export function useViewerRenderer({
       view.setPreviewHitNotes(settingsRef.current.previewHitNotes);
       view.setPreviewHitLine(settingsRef.current.previewHitLine);
       view.setPreviewNotesLookAtPlayer(settingsRef.current.previewNotesLookAtPlayer);
-      view.setPPCounterEnabled(settingsRef.current.ppCounter);
       viewerRef.current = { view, lifecycle };
       setViewerReady(true);
       cleanup = () => {
@@ -125,7 +124,11 @@ export function useViewerRenderer({
           selection.data,
           colorOverride(settingsRef.current, selection.mapColorScheme, replayRef.current?.metadata),
         );
-        view.setReplay(replayRef.current, hitScoreVisualizerForSettings(settingsRef.current, replayRef.current));
+        view.setReplay(
+          replayRef.current,
+          hitScoreVisualizerForSettings(settingsRef.current, replayRef.current),
+          settingsRef.current.ppCounter,
+        );
         view.setBeatSource(() => clock.currentBeat());
       }
 

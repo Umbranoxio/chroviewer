@@ -45,6 +45,10 @@ export function setScoreSaberStars(stars: number) {
   scoreSaberStars = stars;
 }
 
+export function isMapRanked(): boolean {
+  return scoreSaberStars > 0;
+}
+
 function lerp(v0: number, v1: number, t: number): number {
   return v0 + t * (v1 - v0);
 }

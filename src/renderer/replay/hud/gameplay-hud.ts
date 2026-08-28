@@ -2,7 +2,7 @@ import { Group, MathUtils, type Mesh, type MeshBasicMaterial, PlaneGeometry, Rin
 import type { Text } from 'troika-three-text';
 
 import type { HitScoreVisualizerConfig } from '../../../core/replay/hit-score-visualizer';
-import { calculatePP } from '../../../core/replay/pp-calculator';
+import { calculatePP, isMapRanked } from '../../../core/replay/pp-calculator';
 import { buildReplayTimeline, type ReplayTimeline } from '../../../core/replay/replay-display';
 import { firstComboBreakTime, replayScoreAt, type ReplayScoreState } from '../../../core/replay/scoring';
 import type { Replay } from '../../../core/replay/types';
@@ -176,7 +176,7 @@ export class ReplayGameplayHud {
   }
 
   setPPCounterEnabled(enabled: boolean) {
-    this.ppCounter.visible = enabled;
+    this.ppCounter.visible = enabled && isMapRanked();
   }
 
   setEnabled(enabled: boolean) {

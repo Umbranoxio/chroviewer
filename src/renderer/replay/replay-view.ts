@@ -224,7 +224,7 @@ export class ReplayView {
     this.updateHeadsetVisibility();
   }
 
-  setReplay(replay: Replay | null, hitScoreVisualizer?: HitScoreVisualizerConfig | null) {
+  setReplay(replay: Replay | null, hitScoreVisualizer?: HitScoreVisualizerConfig | null, ppCounterEnabled?: boolean) {
     this.replay = replay;
     this.hasSampledReplayPose = false;
     this.gameplayHud.setReplay(replay, hitScoreVisualizer);
@@ -235,6 +235,7 @@ export class ReplayView {
     this.applySaberOffsets();
     this.cameraController.setReplayPresence(this.hasReplay);
     this.updateHeadsetVisibility();
+    this.setPPCounterEnabled(ppCounterEnabled ?? false);
   }
 
   setHitScoreVisualizer(hitScoreVisualizer: HitScoreVisualizerConfig | null) {

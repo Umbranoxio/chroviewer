@@ -325,6 +325,7 @@ export function useViewerSession({
     viewer.view.setReplay(
       sources.replayRef.current,
       hitScoreVisualizerForSettings(settings, sources.replayRef.current),
+      settings.ppCounter,
     );
     viewer.view.setReplayCameraSettings(settings);
     setActivePanel(null);
