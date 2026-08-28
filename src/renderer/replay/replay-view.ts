@@ -315,6 +315,10 @@ export class ReplayView {
     });
   }
 
+  setPPCounterEnabled(enabled: boolean) {
+    this.gameplayHud.setPPCounterEnabled(enabled);
+  }
+
   baseProvider(name: string, time: number): readonly number[] | undefined {
     const replay = this.replay;
     const pose = replay === null ? null : sampleReplayFrames(replay.poses, time);

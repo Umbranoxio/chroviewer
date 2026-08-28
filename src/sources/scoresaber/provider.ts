@@ -1,6 +1,7 @@
 import { Result } from 'better-result';
 import { z } from 'zod';
 
+import { setScoreSaberStars } from '../../core/replay/pp-calculator';
 import { env } from '../../env';
 import { requestArrayBuffer, requestJson } from '../http';
 import { SourceError } from '../source-error';
@@ -57,6 +58,7 @@ interface ScoreContract {
   leaderboard: {
     difficulty: Pick<ScoreControllerGetScoreData['leaderboard']['difficulty'], 'difficulty' | 'gameMode'>;
     map: Pick<ScoreControllerGetScoreData['leaderboard']['map'], 'hash'>;
+    realm: Pick<ScoreControllerGetScoreData['leaderboard']['realm'], 'stars'>;
   };
   score: Pick<ScoreControllerGetScoreData['score'], 'hasReplay' | 'id'> & {
     player: Pick<ScoreControllerGetScoreData['score']['player'], 'avatar' | 'country' | 'id' | 'name'>;
@@ -94,6 +96,9 @@ const scoreSchema: z.ZodType<ScoreContract> = z.object({
       gameMode: z.string().min(1),
     }),
     map: z.object({ hash: z.hash('sha1') }),
+    realm: z.object({
+      stars: z.float32(),
+    }),
   }),
   score: z.object({
     hasReplay: z.boolean(),
@@ -338,6 +343,9 @@ export async function fetchScoreSaberReplayMetadata(scoreId: string, options: Re
         operation: 'load-score',
       }),
     );
+
+    setScoreSaberStars(score.leaderboard.realm.stars);
+
     return replayMetadata(score, scoreId);
   });
 }
@@ -359,4 +367,27 @@ export function fetchScoreSaberReplayFile(scoreId: string, options: ResolveOptio
           }),
         ),
       );
+}
+
+export async function fetchScoreSaberStars(scoreId: string, options: ResolveOptions = {}) {
+  if (!/^\d+$/.test(scoreId)) {
+    return Result.err(
+      new SourceError({
+        message: 'invalid ScoreSaber score ID',
+        source: 'scoresaber',
+        operation: 'parse-score-id',
+      }),
+    );
+  }
+  return Result.gen(async function* () {
+    const score = yield* Result.await(
+      requestJson(`${env.VITE_SCORESABER_API_URL}/api/v2/scores/${scoreId}?includeScoreStats=false`, scoreSchema, {
+        ...options,
+        source: 'scoresaber',
+        label: `ScoreSaber score ${scoreId}`,
+        operation: 'load-score',
+      }),
+    );
+    return Result.ok(score.leaderboard.realm.stars);
+  });
 }

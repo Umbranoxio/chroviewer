@@ -88,6 +88,7 @@ export function useViewerRenderer({
       view.setPreviewHitNotes(settingsRef.current.previewHitNotes);
       view.setPreviewHitLine(settingsRef.current.previewHitLine);
       view.setPreviewNotesLookAtPlayer(settingsRef.current.previewNotesLookAtPlayer);
+      view.setPPCounterEnabled(settingsRef.current.ppCounter);
       viewerRef.current = { view, lifecycle };
       setViewerReady(true);
       cleanup = () => {

@@ -106,6 +106,10 @@ export function useViewerSession({
   }, [settings.previewHitLine]);
 
   useEffect(() => {
+    viewerRef.current?.view.setPPCounterEnabled(settings.ppCounter);
+  }, [settings.ppCounter]);
+
+  useEffect(() => {
     const mode: LightshowMode = settings.staticLights ? 'static' : 'full';
     if (isForcedLightshowMode(lightshowModeRef.current) && mode === 'full') return;
     lightshowModeRef.current = mode;

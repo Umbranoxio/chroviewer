@@ -2,6 +2,7 @@ import { Group, MathUtils, type Mesh, type MeshBasicMaterial, PlaneGeometry, Rin
 import type { Text } from 'troika-three-text';
 
 import type { HitScoreVisualizerConfig } from '../../../core/replay/hit-score-visualizer';
+import { calculatePP } from '../../../core/replay/pp-calculator';
 import { buildReplayTimeline, type ReplayTimeline } from '../../../core/replay/replay-display';
 import { firstComboBreakTime, replayScoreAt, type ReplayScoreState } from '../../../core/replay/scoring';
 import type { Replay } from '../../../core/replay/types';
@@ -35,6 +36,7 @@ export class ReplayGameplayHud {
   private readonly multiplierX = hudText('x', 0.3, [3.01, 1.83, -6.97]);
   private readonly songTime = hudText('0:00', 0.24, [2.92, 0.76, -6.97]);
   private readonly songDuration = hudText('0:00', 0.24, [3.48, 0.76, -6.97]);
+  private readonly ppCounter = hudText('0pp', 0.3, [3.28, 0.2, -6.97]);
   private readonly energyFill: Mesh<PlaneGeometry, MeshBasicMaterial>;
   private readonly songProgressFill: Mesh<PlaneGeometry, MeshBasicMaterial>;
   private readonly multiplierProgress: Mesh<RingGeometry, MeshBasicMaterial>;
@@ -56,10 +58,11 @@ export class ReplayGameplayHud {
     italicizeHudText(this.comboLabel);
     italicizeHudText(this.multiplierNumber);
     italicizeHudText(this.multiplierX);
+    italicizeHudText(this.ppCounter);
     this.rank.fillOpacity = 0.5;
     this.accuracy.fillOpacity = 0.5;
     this.songDuration.fillOpacity = 0.5;
-    for (const text of [this.multiplierNumber, this.multiplierX, this.songTime, this.songDuration]) {
+    for (const text of [this.multiplierNumber, this.multiplierX, this.songTime, this.songDuration, this.ppCounter]) {
       text.outlineWidth = text.fontSize * 0.012;
       text.outlineColor = 0xffffff;
       text.outlineOpacity = text.fillOpacity;
@@ -74,6 +77,7 @@ export class ReplayGameplayHud {
       this.multiplierX,
       this.songTime,
       this.songDuration,
+      this.ppCounter,
     ];
     this.scoreHud.add(
       this.comboPanel,
@@ -84,6 +88,7 @@ export class ReplayGameplayHud {
       this.multiplierX,
       this.songTime,
       this.songDuration,
+      this.ppCounter,
     );
     this.root.add(this.scoreHud, this.flyingScores.root);
 
@@ -170,6 +175,10 @@ export class ReplayGameplayHud {
     this.refreshDuration();
   }
 
+  setPPCounterEnabled(enabled: boolean) {
+    this.ppCounter.visible = enabled;
+  }
+
   setEnabled(enabled: boolean) {
     this.root.visible = enabled && this.timeline !== null;
   }
@@ -192,7 +201,8 @@ export class ReplayGameplayHud {
   update(time: number) {
     const timeline = this.timeline;
     if (timeline === null) return;
-    this.updateState(replayScoreAt(timeline, time));
+    const score = replayScoreAt(timeline, time);
+    this.updateState(score);
     const duration = replayDuration(timeline.replay, this.songDurationSeconds);
     this.setText(this.songTime, formatTime(time));
     this.songProgressFill.scale.x = duration === 0 ? 0 : Math.min(Math.max(time / duration, 0), 1);
@@ -216,6 +226,7 @@ export class ReplayGameplayHud {
     this.energyFill.scale.x = state.energy;
     const progress = Math.min(Math.max(state.multiplierProgress, 0), 1);
     this.multiplierProgress.geometry.setDrawRange(0, Math.floor(progress * 64) * 6);
+    this.setText(this.ppCounter, `${calculatePP(state.accuracy).toFixed(2)} PP`);
   }
 
   private refreshDuration() {

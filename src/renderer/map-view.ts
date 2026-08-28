@@ -319,6 +319,10 @@ export class MapView implements RenderView {
     this.mapObjects.setPreviewHitLine(enabled);
   }
 
+  setPPCounterEnabled(enabled: boolean) {
+    this.replayView.setPPCounterEnabled(enabled);
+  }
+
   setMap(data: MapRenderData, override?: InfoColorScheme) {
     this.replayView.setPreviewCameraDistanceOverride(null);
     this.clearMap();
