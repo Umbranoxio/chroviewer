@@ -74,7 +74,7 @@ export function GeneralSettings({ active, settings, isMapPreview, onChange }: Ge
           </>
         )}
         <SettingSection title={t('interface')}>
-          <SettingRow label={'PP Counter'}>
+          <SettingRow label={t('ppCounter')}>
             <Switch
               checked={settings.ppCounter}
               onCheckedChange={(checked) => {
