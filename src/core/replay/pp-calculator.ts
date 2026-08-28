@@ -39,6 +39,10 @@ const scoreSaberV3Curve: Record<number, number> = {
   0: 0,
 };
 
+const keys = Object.keys(scoreSaberV3Curve)
+  .map(Number)
+  .sort((a, b) => a - b);
+
 let scoreSaberStars = 0;
 
 export function setScoreSaberStars(stars: number) {
@@ -68,9 +72,6 @@ function calculatePPModifier(
 
 export function calculatePP(normalisedAccuracy: number): number {
   const ppValue = scoreSaberStars * scoreSaberStarValue;
-  const keys = Object.keys(scoreSaberV3Curve)
-    .map(Number)
-    .sort((a, b) => a - b);
 
   if (keys.length === 0) return 0;
 
