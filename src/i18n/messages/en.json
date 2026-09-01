@@ -144,7 +144,8 @@
       "retryMapCache": "Try again",
       "startAudioCalibration": "Start",
       "stopAudioCalibration": "Stop",
-      "timelineBookmarks": "Timeline bookmarks"
+      "timelineBookmarks": "Timeline bookmarks",
+      "ppCounter": "PP Counter"
     },
     "graphics": {
       "high": "High",

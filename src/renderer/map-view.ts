@@ -258,8 +258,8 @@ export class MapView implements RenderView {
     if (this.menuLightshowSeed !== null) this.startMenuLightshow(this.menuLightshowSeed);
   }
 
-  setReplay(replay: Replay | null, hitScoreVisualizer?: HitScoreVisualizerConfig | null) {
-    this.replayView.setReplay(replay, hitScoreVisualizer);
+  setReplay(replay: Replay | null, hitScoreVisualizer?: HitScoreVisualizerConfig | null, ppCounterEnabled?: boolean) {
+    this.replayView.setReplay(replay, hitScoreVisualizer, ppCounterEnabled);
     this.baseProviders.reset();
     this.mapObjects.invalidate();
   }
@@ -317,6 +317,10 @@ export class MapView implements RenderView {
 
   setPreviewHitLine(enabled: boolean) {
     this.mapObjects.setPreviewHitLine(enabled);
+  }
+
+  setPPCounterEnabled(enabled: boolean) {
+    this.replayView.setPPCounterEnabled(enabled);
   }
 
   setMap(data: MapRenderData, override?: InfoColorScheme) {
