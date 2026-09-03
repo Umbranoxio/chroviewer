@@ -43,6 +43,7 @@ export class ReplayGameplayHud {
   private readonly textMeshes: Text[];
   private readonly panelMeshes: Mesh<PlaneGeometry | RingGeometry, MeshBasicMaterial>[];
   private readonly flyingScores = new FlyingScoreHud();
+  private readonly beSeparators = new Group();
   private timeline: ReplayTimeline | null = null;
   private comboBreakTime: number | null = null;
   private songDurationSeconds: number | null = null;
@@ -145,6 +146,16 @@ export class ReplayGameplayHud {
       this.songProgressFill,
       songTimeSeparator,
     ];
+
+    for (let i = 1; i <= 3; i++) {
+      const sep = hudShape(new PlaneGeometry(0.04, 0.09), 0.75, 0x000000);
+      sep.renderOrder = 1001;
+      sep.position.set(-0.954 + (1.908 / 4) * i, -0.64, -7.72);
+      this.beSeparators.add(sep);
+      this.shapes.push(sep);
+    }
+    this.beSeparators.visible = false;
+    this.scoreHud.add(this.beSeparators);
   }
 
   setReplay(replay: Replay | null, hitScoreVisualizer?: HitScoreVisualizerConfig | null) {
@@ -156,6 +167,7 @@ export class ReplayGameplayHud {
           : buildReplayTimeline(replay, hitScoreVisualizer);
     this.comboBreakTime = replay === null ? null : firstComboBreakTime(replay);
     this.root.visible = replay !== null;
+    this.beSeparators.visible = replay?.metadata.modifiers.includes('BE') ?? false;
     this.scoreHud.visible = replay !== null && replay.scores.length > 0;
     this.flyingScores.clear();
     this.updateComboBreak(0);

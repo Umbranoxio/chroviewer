@@ -175,13 +175,35 @@ function replayStateAt(replay: Replay, stateIndex: ReplayStateIndex, time: numbe
   const multiplierCount = upperBound(replay.multipliers, time, (event) => event.time);
   const energyCount = upperBound(replay.energies, time, (event) => event.time);
   const noteCount = upperBound(replay.notes, time, (event) => event.time);
-  const wallCount = upperBound(replay.walls, time, (event) => event.time);
+  const wallsHit = upperBound(replay.walls, time, (event) => event.time);
   const scoreEvent = replay.scores[scoreCount - 1];
   const score = scoreEvent?.score ?? 0;
   const scoringNoteCount = stateIndex.scoringNotes[noteCount] ?? 0;
   const maximumScore = scoreEvent?.immediateMaxPossibleScore ?? oldMaximumScore(scoringNoteCount);
   const combo = replay.combos[comboCount - 1]?.combo ?? 0;
   const multiplierEvent = replay.multipliers[multiplierCount - 1];
+  const misses = stateIndex.misses[noteCount] ?? 0;
+  const badCuts = stateIndex.badCuts[noteCount] ?? 0;
+  const bombCuts = stateIndex.bombCuts[noteCount] ?? 0;
+
+  let energy = clamp(replay.energies[energyCount - 1]?.energy ?? 0.5, 0, 1);
+  const modifiers = replay.metadata.modifiers;
+  const isBeatLeader = replay.metadata.version.startsWith('BeatLeader');
+
+  if (isBeatLeader) {
+    const noteMistakes = misses + badCuts + bombCuts;
+
+    if (modifiers.includes('IF')) {
+      if (noteMistakes >= 1) {
+        energy = 0;
+      } else {
+        energy = 1;
+      }
+    } else if (modifiers.includes('BE')) {
+      energy = Math.max(0, 4 - noteMistakes) / 4;
+    }
+  }
+
   return {
     score,
     maximumScore,
@@ -190,11 +212,11 @@ function replayStateAt(replay: Replay, stateIndex: ReplayStateIndex, time: numbe
     maxCombo: stateIndex.maxCombos[comboCount] ?? 0,
     multiplier: multiplierEvent?.multiplier ?? 1,
     multiplierProgress: multiplierEvent?.nextMultiplierProgress ?? 0,
-    energy: clamp(replay.energies[energyCount - 1]?.energy ?? 0.5, 0, 1),
-    misses: stateIndex.misses[noteCount] ?? 0,
-    badCuts: stateIndex.badCuts[noteCount] ?? 0,
-    bombCuts: stateIndex.bombCuts[noteCount] ?? 0,
-    wallsHit: wallCount,
+    energy,
+    misses,
+    badCuts,
+    bombCuts,
+    wallsHit,
   };
 }
 
