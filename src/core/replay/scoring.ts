@@ -175,7 +175,7 @@ function replayStateAt(replay: Replay, stateIndex: ReplayStateIndex, time: numbe
   const multiplierCount = upperBound(replay.multipliers, time, (event) => event.time);
   const energyCount = upperBound(replay.energies, time, (event) => event.time);
   const noteCount = upperBound(replay.notes, time, (event) => event.time);
-  const wallCount = upperBound(replay.walls, time, (event) => event.time);
+  const wallsHit = upperBound(replay.walls, time, (event) => event.time);
   const scoreEvent = replay.scores[scoreCount - 1];
   const score = scoreEvent?.score ?? 0;
   const scoringNoteCount = stateIndex.scoringNotes[noteCount] ?? 0;
@@ -185,19 +185,24 @@ function replayStateAt(replay: Replay, stateIndex: ReplayStateIndex, time: numbe
   const misses = stateIndex.misses[noteCount] ?? 0;
   const badCuts = stateIndex.badCuts[noteCount] ?? 0;
   const bombCuts = stateIndex.bombCuts[noteCount] ?? 0;
-  const wallsHit = wallCount;
 
   let energy = clamp(replay.energies[energyCount - 1]?.energy ?? 0.5, 0, 1);
   const modifiers = replay.metadata.modifiers;
-  const mistakes = misses + badCuts + bombCuts + wallsHit;
-  if (modifiers.includes('IF')) {
-    if (mistakes >= 1) {
-      energy = 0;
-    } else {
-      energy = 1;
+  const isBeatLeader = replay.metadata.version.startsWith('BeatLeader');
+
+  if (isBeatLeader) {
+    const noteMistakes = misses + badCuts + bombCuts;
+
+    if (modifiers.includes('IF')) {
+      if (noteMistakes >= 1) {
+        energy = 0;
+      } else {
+        energy = 1;
+      }
+    } else if (modifiers.includes('BE')) {
+      const calculatedEnergy = Math.max(0, 4 - noteMistakes) / 4;
+      energy = calculatedEnergy;
     }
-  } else if (modifiers.includes('BE')) {
-    energy = Math.max(0, 4 - mistakes) / 4;
   }
 
   return {
