@@ -200,8 +200,7 @@ function replayStateAt(replay: Replay, stateIndex: ReplayStateIndex, time: numbe
         energy = 1;
       }
     } else if (modifiers.includes('BE')) {
-      const calculatedEnergy = Math.max(0, 4 - noteMistakes) / 4;
-      energy = calculatedEnergy;
+      energy = Math.max(0, 4 - noteMistakes) / 4;
     }
   }
 
