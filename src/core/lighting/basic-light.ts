@@ -13,10 +13,12 @@ import { easingFromId, easingFromName, type EasingFunction } from '../easing';
 const lightGradientSchema = z.record(z.string(), beatSaberJsonValueSchema);
 
 export type BasicLightColor = 'red' | 'blue' | 'white';
-export type LightshowMode = 'full' | 'full-lightshow' | 'static' | 'none';
+export type LightshowMode = 'full' | 'lightshow' | 'full-lightshow' | 'static' | 'none';
 
-export const isFullLightshowMode = (mode: LightshowMode) => mode === 'full' || mode === 'full-lightshow';
-export const isForcedLightshowMode = (mode: LightshowMode) => mode === 'full-lightshow';
+export const isFullLightshowMode = (mode: LightshowMode) =>
+  mode === 'full' || mode === 'lightshow' || mode === 'full-lightshow';
+export const isForcedLightshowMode = (mode: LightshowMode) => mode === 'lightshow' || mode === 'full-lightshow';
+export const isLightsOnlyMode = (mode: LightshowMode) => mode === 'full-lightshow';
 
 export interface BasicLightSample {
   color: BasicLightColor;

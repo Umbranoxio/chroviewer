@@ -170,6 +170,7 @@ export class MapObjectRenderer {
   private previewHitNotes = true;
   private previewHitLine = false;
   private previewNotesLookAtPlayer = false;
+  private gameplayObjectsVisible = true;
   private instanceGroups: InstancedGroup[] = [];
   private arcEntries: ArcEntry[] = [];
   private noteReplayWindows: ActiveWindowIndex | null = null;
@@ -418,6 +419,12 @@ export class MapObjectRenderer {
     this.invalidate();
   }
 
+  setGameplayObjectsVisible(visible: boolean) {
+    if (visible === this.gameplayObjectsVisible) return;
+    this.gameplayObjectsVisible = visible;
+    this.invalidate();
+  }
+
   invalidate() {
     this.objectBeat = Number.NaN;
     this.noteLookStates.clear();
@@ -441,7 +448,7 @@ export class MapObjectRenderer {
     for (const group of this.instanceGroups) group.begin();
     const replayLoaded = replayView.hasReplay;
     const hitPreviewNotes = !replayLoaded && this.previewHitNotes;
-    this.hitLine.visible = !replayLoaded && this.previewHitLine;
+    this.hitLine.visible = this.gameplayObjectsVisible && !replayLoaded && this.previewHitLine;
     const poseFrames = replayView.poseFrames;
 
     const activeNotes = this.noteReplayWindows?.at(now) ?? [];
@@ -449,6 +456,7 @@ export class MapObjectRenderer {
       for (const index of activeNotes) {
         const note = data.notes[index];
         if (note?.colorIndex !== colorIndex) continue;
+        if (!this.gameplayObjectsVisible) continue;
         const duration = currentHalfJumpDurationInBeats(note, movementState) * 2;
         const noodle = sampleNoodleRenderObject(note, data.noodle, now, duration, context, data.leftHanded);
         const movementBeat = noodleMovementBeat(note, now, noodle, duration);
@@ -531,6 +539,7 @@ export class MapObjectRenderer {
     for (const index of this.bombWindows?.at(now) ?? []) {
       const bomb = data.bombs[index];
       if (bomb === undefined) continue;
+      if (!this.gameplayObjectsVisible) continue;
       const duration = currentHalfJumpDurationInBeats(bomb, movementState) * 2;
       const noodle = sampleNoodleRenderObject(bomb, data.noodle, now, duration, context, data.leftHanded);
       const movementBeat = noodleMovementBeat(bomb, now, noodle, duration);
@@ -573,6 +582,7 @@ export class MapObjectRenderer {
       for (const index of activeLinks) {
         const link = data.chainLinks[index];
         if (link?.colorIndex !== colorIndex) continue;
+        if (!this.gameplayObjectsVisible) continue;
         const duration = currentHalfJumpDurationInBeats(link, movementState) * 2;
         const noodle = sampleNoodleRenderObject(link, data.noodle, now, duration, context, data.leftHanded);
         const movementBeat = noodleMovementBeat(link, now, noodle, duration);
@@ -614,6 +624,7 @@ export class MapObjectRenderer {
     for (const index of this.wallWindows?.at(now) ?? []) {
       const wall = data.walls[index];
       if (wall === undefined) continue;
+      if (!this.gameplayObjectsVisible && wall.interactable) continue;
       const duration =
         currentHalfJumpDurationInBeats(wall, movementState) * 2 + (wall.durationBeats ?? wall.pullBeat - wall.beat);
       const noodle = sampleNoodleRenderObject(wall, data.noodle, now, duration, context, data.leftHanded);
@@ -729,6 +740,7 @@ export class MapObjectRenderer {
       const entry = this.arcEntries[index];
       if (entry === undefined) continue;
       const arc = entry.arc;
+      if (!this.gameplayObjectsVisible) continue;
       const hjdBeats = arc.usesGlobalNjs ? movementState.halfJumpDurationInBeats : arc.hjdBeats;
       const unitsPerBeat = arc.usesGlobalNjs
         ? movementState.halfJumpDistance / movementState.halfJumpDurationInBeats

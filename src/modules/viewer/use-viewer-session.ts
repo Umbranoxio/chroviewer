@@ -403,7 +403,7 @@ export function useViewerSession({
   }
 
   function cycleLights() {
-    const modes: LightshowMode[] = ['full-lightshow', 'full', 'static', 'none'];
+    const modes: LightshowMode[] = ['none', 'static', 'full', 'lightshow', 'full-lightshow'];
     const next = modes[(modes.indexOf(lightshowMode) + 1) % modes.length] ?? 'full';
     changeLightshowMode(next);
   }

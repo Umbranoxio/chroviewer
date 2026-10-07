@@ -390,9 +390,11 @@
       "increaseNumerator": "Increase numerator",
       "increaseNumeratorLabel": "Increase beat step numerator",
       "lighting": {
-        "force": "Full (Force Lightshow)",
         "full": "Full",
-        "label": "Lighting mode"
+        "label": "Lighting mode",
+        "lightsOnly": "Lights Only",
+        "lightshow": "Lightshow",
+        "off": "Off"
       },
       "localFilesUnavailable": "Local files cannot be shared",
       "masterVolume": "Master volume",

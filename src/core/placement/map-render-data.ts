@@ -53,6 +53,7 @@ export interface BombInstance extends ObjectMotion {
 export interface WallInstance extends ObjectMotion {
   x: number;
   y: number;
+  interactable: boolean;
   rotationDeg: number;
   width: number;
   height: number;
@@ -445,6 +446,7 @@ export function buildMapRenderData(difficulty: Difficulty, options: MapRenderOpt
       ...motion,
       x: options.leftHanded === true ? -placement.x : placement.x,
       y: placement.y,
+      interactable: !obstacle.customFake && heck.canBecomeInteractable(obstacle),
       rotationDeg: worldRotation === undefined ? obstacle.rotation * (options.leftHanded === true ? -1 : 1) : 0,
       width: placement.width,
       height: placement.height,
