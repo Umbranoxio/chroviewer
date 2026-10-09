@@ -116,4 +116,37 @@ export function useViewerControls({
       window.removeEventListener('keydown', showForKey, true);
     };
   }, [activePanel, autoHide, playing]);
+
+  useEffect(() => {
+    if (!playing || !('wakeLock' in navigator)) return;
+
+    let wakeLock: WakeLockSentinel | null = null;
+    let requesting = false;
+    let active = true;
+
+    async function requestWakeLock() {
+      if (requesting || document.visibilityState !== 'visible' || (wakeLock !== null && !wakeLock.released)) return;
+      requesting = true;
+      try {
+        const sentinel = await navigator.wakeLock.request('screen');
+        if (active) wakeLock = sentinel;
+        else await sentinel.release();
+      } catch {
+      } finally {
+        requesting = false;
+      }
+    }
+
+    function onVisibilityChange() {
+      void requestWakeLock();
+    }
+
+    void requestWakeLock();
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    return () => {
+      active = false;
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+      void wakeLock?.release().catch(() => {});
+    };
+  }, [playing]);
 }
