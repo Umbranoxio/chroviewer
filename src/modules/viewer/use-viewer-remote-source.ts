@@ -42,6 +42,8 @@ import type { LoadedSourceContext, PendingSharedView } from './use-viewer-file-s
 import { isRemoteSourceUrl } from './viewer-search';
 import type { DifficultyRow, MapIdentity, ViewerSource, ViewerSourceLink } from './viewer-types';
 
+import { setScoreSaberStars } from '@/core/replay/pp-calculator';
+
 type RemoteSourceCommand = { requestId: number } & (
   | { type: 'lookup'; lookup: MapLookup }
   | { type: 'input'; input: string; source: ViewerSource }
@@ -175,6 +177,7 @@ export function useViewerRemoteSource({
           }),
         );
       }
+      setScoreSaberStars(source.stars);
       pendingSharedViewRef.current = pending;
       yield* Result.await(
         loadSourceFiles(requestId, map.files, replay, {
