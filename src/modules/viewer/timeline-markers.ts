@@ -2,7 +2,7 @@ import { secondsToSongBpmTime, songBpmTimeToSeconds } from '../../core/beatmap/b
 import type { Bookmark, Difficulty } from '../../core/beatmap/types';
 import type { Replay } from '../../core/replay/types';
 
-export type TimelineMarkerKind = 'miss' | 'bad-cut' | 'pause' | 'bookmark';
+export type TimelineMarkerKind = 'miss' | 'bad-cut' | 'wall' | 'pause' | 'bookmark';
 
 export interface TimelineMarker {
   id: string;
@@ -36,6 +36,15 @@ export function buildTimelineMarkers(
       time: note.time,
       beat: secondsToSongBpmTime(note.time, songBpm),
       lane: note.noteId.lineIndex + 1,
+    });
+  }
+  for (const [index, wall] of (replay?.walls ?? []).entries()) {
+    markers.push({
+      id: `wall-${String(index)}`,
+      kind: 'wall',
+      time: wall.time,
+      beat: secondsToSongBpmTime(wall.time, songBpm),
+      lane: wall.lineIndex + 1,
     });
   }
   for (const [index, pause] of (replay?.pauses ?? []).entries()) {

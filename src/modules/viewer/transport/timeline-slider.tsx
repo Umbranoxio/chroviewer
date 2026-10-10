@@ -1,6 +1,6 @@
 import { useState, type PointerEvent as ReactPointerEvent } from 'react';
 
-import { CircleOff, Pause, X } from 'lucide-react';
+import { BrickWall, CircleOff, Pause, X } from 'lucide-react';
 import { useFormatter, useLocale, useTranslations } from 'use-intl';
 
 import { formatDuration } from '../../../i18n/formats';
@@ -31,6 +31,7 @@ interface MarkerTranslationKeys {
   bookmark: 'markerBookmark';
   miss: 'markerMiss';
   pause: 'markerPause';
+  wall: 'markerWall';
 }
 
 const markerTranslationKeys: MarkerTranslationKeys = {
@@ -38,6 +39,7 @@ const markerTranslationKeys: MarkerTranslationKeys = {
   bookmark: 'markerBookmark',
   miss: 'markerMiss',
   pause: 'markerPause',
+  wall: 'markerWall',
 };
 
 const timelineLanes = [1, 2, 3, 4];
@@ -58,6 +60,9 @@ function MarkerGlyph({ marker }: { marker: TimelineMarker }) {
   }
   if (marker.kind === 'bad-cut') {
     return <X aria-hidden className="drop-shadow-sm" color="#f00" strokeWidth={3.5} />;
+  }
+  if (marker.kind === 'wall') {
+    return <BrickWall aria-hidden className="drop-shadow-sm" color="#f80" strokeWidth={3} />;
   }
   if (marker.kind === 'pause') {
     return <Pause aria-hidden className="drop-shadow-sm" color="#0ff" strokeWidth={3.5} />;
