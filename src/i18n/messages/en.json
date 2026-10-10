@@ -385,6 +385,7 @@
       "markerMiss": "Miss",
       "markerPause": "Pause",
       "markerPauseLength": "Paused for {duration}",
+      "markerWall": "Wall hit",
       "increaseDenominator": "Increase denominator",
       "increaseDenominatorLabel": "Increase beat step denominator",
       "increaseNumerator": "Increase numerator",
