@@ -22,7 +22,6 @@ import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectVa
 import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
 import { TabsContent } from '@/components/ui/tabs';
-import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 
 interface CosmeticsSettingsProps {
   settings: ViewerSettings;
@@ -30,7 +29,7 @@ interface CosmeticsSettingsProps {
   onChange: (settings: ViewerSettings) => void;
 }
 
-type NumericSaberSetting = Exclude<keyof ReplaySaberSettings, 'showSabers' | 'showSaberTrails' | 'replayTrailStyle'>;
+type NumericSaberSetting = Exclude<keyof ReplaySaberSettings, 'showSabers' | 'showSaberTrails'>;
 
 interface SaberSliderOptions {
   minimum: number;
@@ -161,11 +160,11 @@ export function CosmeticsSettings({ settings, environments, onChange }: Cosmetic
   }
 
   const centimeters = (value: number) => t('centimeters', { value: format.number(value * 100, 'decimal') });
-  const millimeters = (value: number) => t('millimeters', { value: format.number(value * 1000, 'decimal') });
+  const milliseconds = (value: number) => t('milliseconds', { value: format.number(value * 1000, 'integer') });
   const degrees = (value: number) => t('degrees', { value: format.number(value, 'decimal') });
   const integer = (value: number) => format.number(value, 'integer');
   const percent = (value: number) => format.number(value, 'percent', { maximumFractionDigits: 0 });
-  const multiplier = (value: number) => t('multiplier', { value: format.number(value, 'decimal') });
+  const ofBlade = (value: number) => t('ofBlade', { value: percent(value) });
 
   return (
     <TabsContent value="cosmetics" className="min-h-0 overflow-y-auto data-[state=inactive]:hidden">
@@ -318,7 +317,7 @@ export function CosmeticsSettings({ settings, environments, onChange }: Cosmetic
               <RotateCcw data-icon="inline-start" />
               {ts('resetAll')}
             </Button>
-            <SettingSection title={t('blade')}>
+            <SettingSection title={t('saber')}>
               <SettingRow label={t('showSabers')}>
                 <Switch
                   checked={settings.showSabers}
@@ -327,36 +326,13 @@ export function CosmeticsSettings({ settings, environments, onChange }: Cosmetic
                   }}
                 />
               </SettingRow>
-              {slider('saberScale', {
-                minimum: 0.25,
-                maximum: 3,
-                step: 0.01,
-                display: percent,
-              })}
-              {slider('saberBladeLength', {
-                minimum: 0.1,
-                maximum: 2,
-                step: 0.001,
-                display: centimeters,
-              })}
-              {slider('saberBladeThickness', {
-                minimum: 0.001,
-                maximum: 0.03,
-                step: 0.0001,
-                display: millimeters,
-              })}
-              {slider('saberCoreThickness', {
-                minimum: 0.0005,
-                maximum: 0.02,
-                step: 0.0001,
-                display: millimeters,
-              })}
-              {slider('saberCoreInset', {
-                minimum: 0,
-                maximum: 0.2,
-                step: 0.001,
-                display: millimeters,
-              })}
+              {slider('saberScale', { minimum: 0.25, maximum: 3, step: 0.01, display: percent })}
+              {slider('saberBladeLength', { minimum: 0.1, maximum: 2, step: 0.01, display: centimeters })}
+              {slider('saberBladeWidth', { minimum: 0.25, maximum: 4, step: 0.05, display: percent })}
+              {slider('saberTipWidth', { minimum: 0, maximum: 1, step: 0.01, display: percent })}
+              {slider('saberHiltLength', { minimum: 0.04, maximum: 0.4, step: 0.005, display: centimeters })}
+              {slider('saberHiltWidth', { minimum: 0.25, maximum: 3, step: 0.05, display: percent })}
+              {slider('saberRingCount', { minimum: 0, maximum: 5, step: 1, display: integer })}
             </SettingSection>
             <Separator />
             <SettingSection title={t('trail')}>
@@ -368,138 +344,9 @@ export function CosmeticsSettings({ settings, environments, onChange }: Cosmetic
                   }}
                 />
               </SettingRow>
-              <SettingRow label={t('replayTrailShape')}>
-                <ToggleGroup
-                  type="single"
-                  value={settings.replayTrailStyle}
-                  aria-label={t('replayTrailShape')}
-                  onValueChange={(replayTrailStyle) => {
-                    if (replayTrailStyle === 'flag' || replayTrailStyle === 'rectangle') {
-                      update('replayTrailStyle', replayTrailStyle);
-                    }
-                  }}
-                >
-                  <ToggleGroupItem value="flag">{t('trailFlag')}</ToggleGroupItem>
-                  <ToggleGroupItem value="rectangle">{t('trailRectangle')}</ToggleGroupItem>
-                </ToggleGroup>
-              </SettingRow>
-              {slider('replayTrailLength', {
-                minimum: 0.02,
-                maximum: 1.5,
-                step: 0.001,
-                display: centimeters,
-              })}
-              {slider('replayTrailThinness', {
-                minimum: 0,
-                maximum: 0.95,
-                step: 0.01,
-                display: percent,
-              })}
-              {slider('replayTrailSamples', {
-                minimum: 2,
-                maximum: 128,
-                step: 1,
-                display: integer,
-              })}
-              {slider('replayTrailFade', {
-                minimum: 0.1,
-                maximum: 5,
-                step: 0.1,
-                display: multiplier,
-              })}
-              {slider('replayTrailOpacity', {
-                minimum: 0,
-                maximum: 2,
-                step: 0.01,
-                display: percent,
-              })}
-              {slider('replayTrailMotionThreshold', {
-                minimum: 0.0001,
-                maximum: 0.02,
-                step: 0.0001,
-                display: millimeters,
-              })}
-            </SettingSection>
-            <Separator />
-            <SettingSection title={t('hilt')}>
-              {slider('saberGripLength', {
-                minimum: 0.02,
-                maximum: 0.3,
-                step: 0.001,
-                display: centimeters,
-              })}
-              {slider('saberGripThickness', {
-                minimum: 0.002,
-                maximum: 0.03,
-                step: 0.0001,
-                display: millimeters,
-              })}
-              {slider('saberGuardSize', {
-                minimum: 0.005,
-                maximum: 0.08,
-                step: 0.0005,
-                display: millimeters,
-              })}
-              {slider('saberGuardThickness', {
-                minimum: 0.0005,
-                maximum: 0.01,
-                step: 0.0001,
-                display: millimeters,
-              })}
-              {slider('saberCollarSize', {
-                minimum: 0.002,
-                maximum: 0.04,
-                step: 0.0005,
-                display: millimeters,
-              })}
-              {slider('saberCollarThickness', {
-                minimum: 0.0005,
-                maximum: 0.01,
-                step: 0.0001,
-                display: millimeters,
-              })}
-              {slider('saberCollarSpacing', {
-                minimum: 0,
-                maximum: 0.2,
-                step: 0.001,
-                display: millimeters,
-              })}
-              {slider('saberRingCount', {
-                minimum: 0,
-                maximum: 5,
-                step: 1,
-                display: integer,
-              })}
-              {slider('saberRingSize', {
-                minimum: 0.002,
-                maximum: 0.03,
-                step: 0.0001,
-                display: millimeters,
-              })}
-              {slider('saberRingThickness', {
-                minimum: 0.001,
-                maximum: 0.02,
-                step: 0.0001,
-                display: millimeters,
-              })}
-              {slider('saberRingSpacing', {
-                minimum: 0,
-                maximum: 0.04,
-                step: 0.0005,
-                display: millimeters,
-              })}
-              {slider('saberPommelLength', {
-                minimum: 0.002,
-                maximum: 0.05,
-                step: 0.0005,
-                display: millimeters,
-              })}
-              {slider('saberPommelThickness', {
-                minimum: 0.002,
-                maximum: 0.03,
-                step: 0.0001,
-                display: millimeters,
-              })}
+              {slider('saberTrailDuration', { minimum: 0.05, maximum: 1, step: 0.01, display: milliseconds })}
+              {slider('saberTrailWidth', { minimum: 0.05, maximum: 1, step: 0.01, display: ofBlade })}
+              {slider('saberTrailBrightness', { minimum: 0, maximum: 2, step: 0.01, display: percent })}
             </SettingSection>
             <Separator />
             <SettingSection title={t('alignment')}>

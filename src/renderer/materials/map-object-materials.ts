@@ -243,8 +243,8 @@ export function createSaberTrailMaterial(color: Rgb) {
   return new ShaderMaterial({
     vertexShader: SABER_TRAIL_VERT,
     fragmentShader: SABER_TRAIL_FRAG,
-    uniforms: { _Color: { value: linearColor(color) } },
-    transparent: true,
+    uniforms: { _Color: { value: linearColor(color) }, _Brightness: { value: 1 }, _Duration: { value: 1 } },
+    ...additive,
     depthWrite: false,
     side: DoubleSide,
   });

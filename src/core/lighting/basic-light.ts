@@ -410,8 +410,10 @@ export function customPropIds(event: BasicEvent): number[] | undefined {
   return ids.length === 0 ? undefined : ids;
 }
 
-export function lightTimelineForMode(mode: LightshowMode, timeline: BasicLightTimeline) {
-  if (mode === 'static') return STATIC_LIGHT_TIMELINE;
+const STATIC_LIGHT_EVENT_TYPES = new Set([0, 4]);
+
+export function lightTimelineForMode(mode: LightshowMode, timeline: BasicLightTimeline, eventType: number) {
+  if (mode === 'static') return STATIC_LIGHT_EVENT_TYPES.has(eventType) ? STATIC_LIGHT_TIMELINE : EMPTY_LIGHT_TIMELINE;
   if (mode === 'none') return EMPTY_LIGHT_TIMELINE;
   return timeline;
 }

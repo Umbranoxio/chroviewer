@@ -35,30 +35,15 @@ export interface ViewerSettings {
   showSabers: boolean;
   saberScale: number;
   saberBladeLength: number;
-  saberBladeThickness: number;
-  saberCoreThickness: number;
-  saberCoreInset: number;
-  showSaberTrails: boolean;
-  replayTrailStyle: 'flag' | 'rectangle';
-  replayTrailLength: number;
-  replayTrailThinness: number;
-  replayTrailSamples: number;
-  replayTrailFade: number;
-  replayTrailOpacity: number;
-  replayTrailMotionThreshold: number;
-  saberGripLength: number;
-  saberGripThickness: number;
-  saberGuardSize: number;
-  saberGuardThickness: number;
-  saberCollarSize: number;
-  saberCollarThickness: number;
-  saberCollarSpacing: number;
+  saberBladeWidth: number;
+  saberTipWidth: number;
+  saberHiltLength: number;
+  saberHiltWidth: number;
   saberRingCount: number;
-  saberRingSize: number;
-  saberRingThickness: number;
-  saberRingSpacing: number;
-  saberPommelLength: number;
-  saberPommelThickness: number;
+  showSaberTrails: boolean;
+  saberTrailDuration: number;
+  saberTrailWidth: number;
+  saberTrailBrightness: number;
   saberXOffset: number;
   saberYOffset: number;
   saberZOffset: number;
@@ -125,14 +110,7 @@ export type ReplayCameraSettings = Pick<
 
 export type ReplayTrailSettings = Pick<
   ViewerSettings,
-  | 'showSaberTrails'
-  | 'replayTrailStyle'
-  | 'replayTrailLength'
-  | 'replayTrailThinness'
-  | 'replayTrailSamples'
-  | 'replayTrailFade'
-  | 'replayTrailOpacity'
-  | 'replayTrailMotionThreshold'
+  'showSaberTrails' | 'saberTrailDuration' | 'saberTrailWidth' | 'saberTrailBrightness'
 >;
 
 export type ReplaySaberSettings = Pick<
@@ -140,37 +118,19 @@ export type ReplaySaberSettings = Pick<
   | 'showSabers'
   | 'saberScale'
   | 'saberBladeLength'
-  | 'saberBladeThickness'
-  | 'saberCoreThickness'
-  | 'saberCoreInset'
-  | 'showSaberTrails'
-  | 'replayTrailStyle'
-  | 'replayTrailLength'
-  | 'replayTrailThinness'
-  | 'replayTrailSamples'
-  | 'replayTrailFade'
-  | 'replayTrailOpacity'
-  | 'replayTrailMotionThreshold'
-  | 'saberGripLength'
-  | 'saberGripThickness'
-  | 'saberGuardSize'
-  | 'saberGuardThickness'
-  | 'saberCollarSize'
-  | 'saberCollarThickness'
-  | 'saberCollarSpacing'
+  | 'saberBladeWidth'
+  | 'saberTipWidth'
+  | 'saberHiltLength'
+  | 'saberHiltWidth'
   | 'saberRingCount'
-  | 'saberRingSize'
-  | 'saberRingThickness'
-  | 'saberRingSpacing'
-  | 'saberPommelLength'
-  | 'saberPommelThickness'
   | 'saberXOffset'
   | 'saberYOffset'
   | 'saberZOffset'
   | 'saberXRotation'
   | 'saberYRotation'
   | 'saberZRotation'
->;
+> &
+  ReplayTrailSettings;
 
 export const DEFAULT_REPLAY_CAMERA_SETTINGS: ReplayCameraSettings = {
   showHeadset: true,
@@ -193,36 +153,21 @@ export const DEFAULT_REPLAY_CAMERA_SETTINGS: ReplayCameraSettings = {
 
 export const DEFAULT_REPLAY_TRAIL_SETTINGS: ReplayTrailSettings = {
   showSaberTrails: true,
-  replayTrailStyle: 'flag',
-  replayTrailLength: 0.331,
-  replayTrailThinness: 0,
-  replayTrailSamples: 18,
-  replayTrailFade: 1.6,
-  replayTrailOpacity: 1,
-  replayTrailMotionThreshold: 0.002,
+  saberTrailDuration: 0.29,
+  saberTrailWidth: 0.25,
+  saberTrailBrightness: 1,
 };
 
 export const DEFAULT_REPLAY_SABER_SETTINGS: ReplaySaberSettings = {
   showSabers: true,
   saberScale: 1,
   saberBladeLength: 1,
-  saberBladeThickness: 0.0075,
-  saberCoreThickness: 0.003,
-  saberCoreInset: 0.004,
-  ...DEFAULT_REPLAY_TRAIL_SETTINGS,
-  saberGripLength: 0.1424,
-  saberGripThickness: 0.009,
-  saberGuardSize: 0.033,
-  saberGuardThickness: 0.002,
-  saberCollarSize: 0.0106,
-  saberCollarThickness: 0.002,
-  saberCollarSpacing: 0.1408,
+  saberBladeWidth: 1,
+  saberTipWidth: 0.2,
+  saberHiltLength: 0.16,
+  saberHiltWidth: 1,
   saberRingCount: 5,
-  saberRingSize: 0.0096,
-  saberRingThickness: 0.005,
-  saberRingSpacing: 0.0224,
-  saberPommelLength: 0.0144,
-  saberPommelThickness: 0.0098,
+  ...DEFAULT_REPLAY_TRAIL_SETTINGS,
   saberXOffset: 0,
   saberYOffset: 0,
   saberZOffset: 0,
@@ -275,7 +220,8 @@ export const DEFAULT_VIEWER_SETTINGS: ViewerSettings = {
   keepMapInfoVisible: false,
 };
 
-const storageKey = 'chroviewer.settings.v9';
+const storageKey = 'chroviewer.settings.v10';
+const v9StorageKey = 'chroviewer.settings.v9';
 const previousStorageKey = 'chroviewer.settings.v8';
 const v7StorageKey = 'chroviewer.settings.v7';
 const v6StorageKey = 'chroviewer.settings.v6';
@@ -354,30 +300,15 @@ const viewerSettingsObjectSchema = z.object({
   showSabers: z.catch(z.boolean(), DEFAULT_VIEWER_SETTINGS.showSabers),
   saberScale: numberSetting(DEFAULT_VIEWER_SETTINGS.saberScale, 0.25, 3),
   saberBladeLength: numberSetting(DEFAULT_VIEWER_SETTINGS.saberBladeLength, 0.1, 2),
-  saberBladeThickness: numberSetting(DEFAULT_VIEWER_SETTINGS.saberBladeThickness, 0.001, 0.03),
-  saberCoreThickness: numberSetting(DEFAULT_VIEWER_SETTINGS.saberCoreThickness, 0.0005, 0.02),
-  saberCoreInset: numberSetting(DEFAULT_VIEWER_SETTINGS.saberCoreInset, 0, 0.2),
-  showSaberTrails: z.catch(z.boolean(), DEFAULT_VIEWER_SETTINGS.showSaberTrails),
-  replayTrailStyle: z.catch(z.enum(['flag', 'rectangle']), DEFAULT_VIEWER_SETTINGS.replayTrailStyle),
-  replayTrailLength: numberSetting(DEFAULT_VIEWER_SETTINGS.replayTrailLength, 0.02, 1.5),
-  replayTrailThinness: numberSetting(DEFAULT_VIEWER_SETTINGS.replayTrailThinness, 0, 0.95),
-  replayTrailSamples: integerSetting(DEFAULT_VIEWER_SETTINGS.replayTrailSamples, 2, 128),
-  replayTrailFade: numberSetting(DEFAULT_VIEWER_SETTINGS.replayTrailFade, 0.1, 5),
-  replayTrailOpacity: numberSetting(DEFAULT_VIEWER_SETTINGS.replayTrailOpacity, 0, 2),
-  replayTrailMotionThreshold: numberSetting(DEFAULT_VIEWER_SETTINGS.replayTrailMotionThreshold, 0.0001, 0.02),
-  saberGripLength: numberSetting(DEFAULT_VIEWER_SETTINGS.saberGripLength, 0.02, 0.3),
-  saberGripThickness: numberSetting(DEFAULT_VIEWER_SETTINGS.saberGripThickness, 0.002, 0.03),
-  saberGuardSize: numberSetting(DEFAULT_VIEWER_SETTINGS.saberGuardSize, 0.005, 0.08),
-  saberGuardThickness: numberSetting(DEFAULT_VIEWER_SETTINGS.saberGuardThickness, 0.0005, 0.01),
-  saberCollarSize: numberSetting(DEFAULT_VIEWER_SETTINGS.saberCollarSize, 0.002, 0.04),
-  saberCollarThickness: numberSetting(DEFAULT_VIEWER_SETTINGS.saberCollarThickness, 0.0005, 0.01),
-  saberCollarSpacing: numberSetting(DEFAULT_VIEWER_SETTINGS.saberCollarSpacing, 0, 0.2),
+  saberBladeWidth: numberSetting(DEFAULT_VIEWER_SETTINGS.saberBladeWidth, 0.25, 4),
+  saberTipWidth: numberSetting(DEFAULT_VIEWER_SETTINGS.saberTipWidth, 0, 1),
+  saberHiltLength: numberSetting(DEFAULT_VIEWER_SETTINGS.saberHiltLength, 0.04, 0.4),
+  saberHiltWidth: numberSetting(DEFAULT_VIEWER_SETTINGS.saberHiltWidth, 0.25, 3),
   saberRingCount: integerSetting(DEFAULT_VIEWER_SETTINGS.saberRingCount, 0, 5),
-  saberRingSize: numberSetting(DEFAULT_VIEWER_SETTINGS.saberRingSize, 0.002, 0.03),
-  saberRingThickness: numberSetting(DEFAULT_VIEWER_SETTINGS.saberRingThickness, 0.001, 0.02),
-  saberRingSpacing: numberSetting(DEFAULT_VIEWER_SETTINGS.saberRingSpacing, 0, 0.04),
-  saberPommelLength: numberSetting(DEFAULT_VIEWER_SETTINGS.saberPommelLength, 0.002, 0.05),
-  saberPommelThickness: numberSetting(DEFAULT_VIEWER_SETTINGS.saberPommelThickness, 0.002, 0.03),
+  showSaberTrails: z.catch(z.boolean(), DEFAULT_VIEWER_SETTINGS.showSaberTrails),
+  saberTrailDuration: numberSetting(DEFAULT_VIEWER_SETTINGS.saberTrailDuration, 0.05, 1),
+  saberTrailWidth: numberSetting(DEFAULT_VIEWER_SETTINGS.saberTrailWidth, 0.05, 1),
+  saberTrailBrightness: numberSetting(DEFAULT_VIEWER_SETTINGS.saberTrailBrightness, 0, 2),
   saberXOffset: numberSetting(DEFAULT_VIEWER_SETTINGS.saberXOffset, -0.25, 0.25),
   saberYOffset: numberSetting(DEFAULT_VIEWER_SETTINGS.saberYOffset, -0.25, 0.25),
   saberZOffset: numberSetting(DEFAULT_VIEWER_SETTINGS.saberZOffset, -0.25, 0.25),
@@ -418,39 +349,12 @@ const viewerSettingsObjectSchema = z.object({
 });
 
 const viewerSettingsSchema = z.catch(viewerSettingsObjectSchema, DEFAULT_VIEWER_SETTINGS);
-const viewerSettingsPatchObjectSchema = z.partial(viewerSettingsObjectSchema);
-const legacyReplayTrailProperty = 'replayTrailShape';
-const legacyReplayTrailFields = {
-  [legacyReplayTrailProperty]: z.optional(z.enum(['flag', 'rectangle'])),
-};
-const legacyReplayTrailSchema = z.pipe(
-  z.object(legacyReplayTrailFields),
-  z.transform((value) => Object.values(value)[0]),
-);
-const viewerSettingsPatchInputSchema = z.extend(viewerSettingsPatchObjectSchema, legacyReplayTrailFields);
-export const viewerSettingsPatchSchema = z.pipe(
-  viewerSettingsPatchInputSchema,
-  z.transform((value) => {
-    const settings = z.parse(viewerSettingsPatchObjectSchema, value);
-    const legacyStyle = z.parse(legacyReplayTrailSchema, value);
-    if (settings.replayTrailStyle === undefined && legacyStyle !== undefined) {
-      settings.replayTrailStyle = legacyStyle;
-    }
-    return settings;
-  }),
-);
+export const viewerSettingsPatchSchema = z.partial(viewerSettingsObjectSchema);
 
 type ViewerSettingsInput = Parameters<typeof viewerSettingsSchema.parse>[0];
 
 export function sanitizeViewerSettings(value: ViewerSettingsInput): ViewerSettings {
   return z.parse(viewerSettingsSchema, value);
-}
-
-function sanitizeLegacyViewerSettings(value: ViewerSettingsInput) {
-  const settings = sanitizeViewerSettings(value);
-  const legacyStyle = z.parse(legacyReplayTrailSchema, value);
-  if (legacyStyle !== undefined) settings.replayTrailStyle = legacyStyle;
-  return settings;
 }
 
 const browserMobileDevice = z.safeParse(
@@ -467,10 +371,8 @@ export function isMobileDevice(
   );
 }
 
-function parseStoredViewerSettings(text: string, legacy = false) {
-  return Result.try(() =>
-    legacy ? sanitizeLegacyViewerSettings(JSON.parse(text)) : sanitizeViewerSettings(JSON.parse(text)),
-  );
+function parseStoredViewerSettings(text: string) {
+  return Result.try(() => sanitizeViewerSettings(JSON.parse(text)));
 }
 
 export function loadViewerSettings(
@@ -486,51 +388,37 @@ export function loadViewerSettings(
     return parsed.isOk() ? parsed.value : defaults;
   }
 
-  const previousText = storage.getItem(previousStorageKey);
-  if (previousText !== null) {
-    const parsed = parseStoredViewerSettings(previousText, true);
-    if (parsed.isErr()) return defaults;
-    return parsed.value;
-  }
-
-  const v7Text = storage.getItem(v7StorageKey);
-  if (v7Text !== null) {
-    const parsed = parseStoredViewerSettings(v7Text, true);
-    if (parsed.isErr()) return defaults;
-    return parsed.value;
-  }
-
-  const v6Text = storage.getItem(v6StorageKey);
-  if (v6Text !== null) {
-    const parsed = parseStoredViewerSettings(v6Text, true);
-    if (parsed.isErr()) return defaults;
-    return resetSaberModel(parsed.value);
+  for (const key of [v9StorageKey, previousStorageKey, v7StorageKey, v6StorageKey]) {
+    const text = storage.getItem(key);
+    if (text === null) continue;
+    const parsed = parseStoredViewerSettings(text);
+    return parsed.isOk() ? resetSaberSettings(parsed.value) : defaults;
   }
 
   const incorrectColorText = storage.getItem(incorrectColorStorageKey);
   if (incorrectColorText !== null) {
-    const parsed = parseStoredViewerSettings(incorrectColorText, true);
+    const parsed = parseStoredViewerSettings(incorrectColorText);
     if (parsed.isErr()) return defaults;
     return resetSaberSettings(migrateIncorrectDefaultColors(parsed.value));
   }
 
   const olderText = storage.getItem(olderStorageKey);
   if (olderText !== null) {
-    const parsed = parseStoredViewerSettings(olderText, true);
+    const parsed = parseStoredViewerSettings(olderText);
     if (parsed.isErr()) return defaults;
     return resetSaberSettings(migrateLegacyColorOverrides(parsed.value));
   }
 
   const legacyText = storage.getItem(legacyStorageKey);
   if (legacyText !== null) {
-    const parsed = parseStoredViewerSettings(legacyText, true);
+    const parsed = parseStoredViewerSettings(legacyText);
     if (parsed.isErr()) return defaults;
     return resetSaberSettings(migrateLegacyColorOverrides(parsed.value));
   }
 
   const oldestText = storage.getItem(oldestStorageKey);
   if (oldestText !== null) {
-    const parsed = parseStoredViewerSettings(oldestText, true);
+    const parsed = parseStoredViewerSettings(oldestText);
     if (parsed.isErr()) return defaults;
     const settings = resetSaberSettings(migrateLegacyColorOverrides(parsed.value));
     return settings.graphicsQuality === 'medium'
@@ -540,7 +428,7 @@ export function loadViewerSettings(
 
   const originalText = storage.getItem(originalStorageKey);
   if (originalText === null) return defaults;
-  const parsed = parseStoredViewerSettings(originalText, true);
+  const parsed = parseStoredViewerSettings(originalText);
   if (parsed.isErr()) return defaults;
   const settings = resetSaberSettings(migrateLegacyColorOverrides(parsed.value));
   return settings.graphicsQuality === 'high' ? { ...settings, graphicsQuality: defaults.graphicsQuality } : settings;
@@ -548,26 +436,6 @@ export function loadViewerSettings(
 
 function resetSaberSettings(settings: ViewerSettings): ViewerSettings {
   return { ...settings, ...DEFAULT_REPLAY_SABER_SETTINGS };
-}
-
-function resetSaberModel(settings: ViewerSettings): ViewerSettings {
-  return {
-    ...settings,
-    saberBladeThickness: DEFAULT_REPLAY_SABER_SETTINGS.saberBladeThickness,
-    saberCoreThickness: DEFAULT_REPLAY_SABER_SETTINGS.saberCoreThickness,
-    saberGripLength: DEFAULT_REPLAY_SABER_SETTINGS.saberGripLength,
-    saberGripThickness: DEFAULT_REPLAY_SABER_SETTINGS.saberGripThickness,
-    saberGuardSize: DEFAULT_REPLAY_SABER_SETTINGS.saberGuardSize,
-    saberGuardThickness: DEFAULT_REPLAY_SABER_SETTINGS.saberGuardThickness,
-    saberCollarSize: DEFAULT_REPLAY_SABER_SETTINGS.saberCollarSize,
-    saberCollarThickness: DEFAULT_REPLAY_SABER_SETTINGS.saberCollarThickness,
-    saberCollarSpacing: DEFAULT_REPLAY_SABER_SETTINGS.saberCollarSpacing,
-    saberRingSize: DEFAULT_REPLAY_SABER_SETTINGS.saberRingSize,
-    saberRingThickness: DEFAULT_REPLAY_SABER_SETTINGS.saberRingThickness,
-    saberRingSpacing: DEFAULT_REPLAY_SABER_SETTINGS.saberRingSpacing,
-    saberPommelLength: DEFAULT_REPLAY_SABER_SETTINGS.saberPommelLength,
-    saberPommelThickness: DEFAULT_REPLAY_SABER_SETTINGS.saberPommelThickness,
-  };
 }
 
 function migrateIncorrectDefaultColors(settings: ViewerSettings): ViewerSettings {

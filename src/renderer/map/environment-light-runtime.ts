@@ -552,7 +552,7 @@ export class EnvironmentLightRuntime {
         beat,
       );
     }
-    const timeline = lightTimelineForMode(this.lightshowMode, this.timelineForBinding(binding));
+    const timeline = lightTimelineForMode(this.lightshowMode, this.timelineForBinding(binding), binding.eventType);
     return this.sampleBasicTimeline(
       timeline,
       beat,
@@ -572,7 +572,7 @@ export class EnvironmentLightRuntime {
     if (events === undefined) return null;
     const sourceTimeline = this.lightTimelinesByEvents.get(events) ?? createBasicLightTimeline(events);
     this.lightTimelinesByEvents.set(events, sourceTimeline);
-    const timeline = lightTimelineForMode(this.lightshowMode, sourceTimeline);
+    const timeline = lightTimelineForMode(this.lightshowMode, sourceTimeline, eventType);
     return this.sampleBasicTimeline(timeline, beat, boosted, songBpm, 0, false, false);
   }
 

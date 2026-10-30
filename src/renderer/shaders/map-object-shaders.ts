@@ -254,20 +254,24 @@ void main() {
 `;
 
 export const SABER_TRAIL_VERT = /* glsl */ `
-attribute float trailAlpha;
-varying float vTrailAlpha;
+varying vec2 vUv;
 void main() {
-  vTrailAlpha = trailAlpha;
+  vUv = uv;
   gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
 }
 `;
 
 export const SABER_TRAIL_FRAG = /* glsl */ `
 uniform vec3 _Color;
-varying float vTrailAlpha;
+uniform float _Brightness;
+uniform float _Duration;
+varying vec2 vUv;
 void main() {
-  float alpha = vTrailAlpha * 0.3;
-  gl_FragColor = vec4(_Color * (0.45 + vTrailAlpha * 0.55), alpha);
+  float along = vUv.x;
+  float fresh = 1.0 - vUv.y;
+  float intensity = fresh * fresh * pow(smoothstep(0.0, 0.35, along), 2.2) * pow(smoothstep(0.0, 0.05, 1.0 - along), 2.2) * _Brightness;
+  float hot = (1.0 - smoothstep(0.0, 0.04, vUv.y * _Duration)) * along * along;
+  gl_FragColor = vec4(mix(_Color, vec3(1.0), hot * 0.6) * intensity, intensity * 0.3);
   #include <colorspace_fragment>
 }
 `;
