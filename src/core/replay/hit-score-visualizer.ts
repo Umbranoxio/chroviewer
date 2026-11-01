@@ -55,7 +55,7 @@ export interface HitScoreVisualizerConfig {
   timeOffset: number;
 }
 
-const richTextTag = /<([^>]*)>/g;
+const richTextTag = /<([^<>]*)>/g;
 
 export function hitScoreTextRuns(value: string) {
   const runs: HitScoreTextRun[] = [];
@@ -100,7 +100,7 @@ export function hitScoreTextRuns(value: string) {
       const color = /^(?:color\s*=\s*["']?(#[\da-f]{3,8}|[a-z]+)["']?|(#[\da-f]{3,8}))$/i.exec(tag);
       if (size !== null) {
         const value = Number(size[1]);
-        sizes.push(size[2] === '%' ? ((sizes.at(-1) ?? 1) * value) / 100 : value === 0 ? 0 : (sizes.at(-1) ?? 1));
+        sizes.push(size[2] === '%' ? value / 100 : value === 0 ? 0 : (sizes.at(-1) ?? 1));
       } else if (/^\/color$/i.test(tag)) {
         if (colors.length > 1) colors.pop();
       } else if (color !== null) {
