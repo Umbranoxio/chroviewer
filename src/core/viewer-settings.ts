@@ -81,6 +81,7 @@ export interface ViewerSettings {
   autoHide: boolean;
   liveChatCollapsed: boolean;
   keepMapInfoVisible: boolean;
+  showPPCounter: boolean;
 }
 
 export type HitsoundPreset = z.infer<typeof hitsoundPresetSchema>;
@@ -218,6 +219,7 @@ export const DEFAULT_VIEWER_SETTINGS: ViewerSettings = {
   autoHide: true,
   liveChatCollapsed: false,
   keepMapInfoVisible: false,
+  showPPCounter: true,
 };
 
 const storageKey = 'chroviewer.settings.v10';
@@ -346,6 +348,7 @@ const viewerSettingsObjectSchema = z.object({
   autoHide: z.catch(z.boolean(), DEFAULT_VIEWER_SETTINGS.autoHide),
   liveChatCollapsed: z.catch(z.boolean(), DEFAULT_VIEWER_SETTINGS.liveChatCollapsed),
   keepMapInfoVisible: z.catch(z.boolean(), DEFAULT_VIEWER_SETTINGS.keepMapInfoVisible),
+  showPPCounter: z.catch(z.boolean(), DEFAULT_VIEWER_SETTINGS.showPPCounter),
 });
 
 const viewerSettingsSchema = z.catch(viewerSettingsObjectSchema, DEFAULT_VIEWER_SETTINGS);

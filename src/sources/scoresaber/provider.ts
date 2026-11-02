@@ -57,6 +57,7 @@ interface ScoreContract {
   leaderboard: {
     difficulty: Pick<ScoreControllerGetScoreData['leaderboard']['difficulty'], 'difficulty' | 'gameMode'>;
     map: Pick<ScoreControllerGetScoreData['leaderboard']['map'], 'hash'>;
+    realm: Pick<ScoreControllerGetScoreData['leaderboard']['realm'], 'stars'>;
   };
   score: Pick<ScoreControllerGetScoreData['score'], 'hasReplay' | 'id'> & {
     player: Pick<ScoreControllerGetScoreData['score']['player'], 'avatar' | 'country' | 'id' | 'name'>;
@@ -94,6 +95,9 @@ const scoreSchema: z.ZodType<ScoreContract> = z.object({
       gameMode: z.string().min(1),
     }),
     map: z.object({ hash: z.hash('sha1') }),
+    realm: z.object({
+      stars: z.float32(),
+    }),
   }),
   score: z.object({
     hasReplay: z.boolean(),
@@ -247,6 +251,7 @@ function replayMetadata(score: ScoreContract, requestedScoreId: string) {
     hash: score.leaderboard.map.hash,
     difficulty: score.leaderboard.difficulty.difficulty,
     characteristic,
+    stars: score.leaderboard.realm.stars,
     playerId: player.id,
     player: {
       id: player.id,
