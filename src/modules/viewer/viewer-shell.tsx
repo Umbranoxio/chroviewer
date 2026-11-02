@@ -443,7 +443,10 @@ export function ViewerShell() {
   };
   return (
     <main
-      className="relative size-full overflow-hidden bg-black [--live-sidebar-width:18rem]"
+      className={cn(
+        'relative size-full overflow-hidden bg-black [--live-sidebar-width:18rem]',
+        !chromeVisible && 'cursor-none',
+      )}
       style={viewportStyle}
       onDragOver={(event) => {
         event.preventDefault();
