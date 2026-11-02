@@ -46,7 +46,7 @@ export const viewerSearchSchema = z.pipe(
     characteristic: z.catch(z.optional(characteristicSchema), undefined),
     beat: z.catch(z.optional(nonnegativeNumberSchema), undefined),
     autoplay: z.catch(z.optional(z.boolean()), undefined),
-    lightshow: z.catch(z.optional(z.literal('full-lightshow')), undefined),
+    lightshow: z.catch(z.optional(z.enum(['lightshow', 'full-lightshow'])), undefined),
     settings: z.catch(z.optional(viewerSettingsPatchSchema), undefined),
     playerId: z.catch(z.optional(livePlayerIdSchema), undefined),
     tournamentId: z.catch(z.optional(liveIdSchema), undefined),
@@ -114,7 +114,7 @@ export function viewerSearchForShare(
   source: ViewerShareSource,
   beat: number | undefined,
   settings?: SharedViewerSettings,
-  lightshow?: 'full-lightshow',
+  lightshow?: 'lightshow' | 'full-lightshow',
 ): ViewerSearch {
   if (source.type === 'live') {
     return {

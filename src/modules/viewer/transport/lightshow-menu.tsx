@@ -29,6 +29,7 @@ export function LightshowMenu({
   function selectMode(value: string) {
     switch (value) {
       case 'full-lightshow':
+      case 'lightshow':
       case 'full':
       case 'static':
       case 'none':
@@ -57,7 +58,10 @@ export function LightshowMenu({
         onValueChange={selectMode}
       >
         <ToggleGroupItem className="w-full" value="full-lightshow">
-          {t('force')}
+          {t('lightsOnly')}
+        </ToggleGroupItem>
+        <ToggleGroupItem className="w-full" value="lightshow">
+          {t('lightshow')}
         </ToggleGroupItem>
         <ToggleGroupItem className="w-full" value="full">
           {t('full')}
@@ -66,7 +70,7 @@ export function LightshowMenu({
           {tc('static')}
         </ToggleGroupItem>
         <ToggleGroupItem className="w-full" value="none">
-          {tc('off')}
+          {t('off')}
         </ToggleGroupItem>
       </ToggleGroup>
     </TransportMenu>

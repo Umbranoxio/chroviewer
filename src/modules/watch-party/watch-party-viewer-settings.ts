@@ -12,7 +12,7 @@ const watchPartyViewerSettingsSchema = z.object({
   previewHitNotes: z.boolean(),
   previewHitLine: z.boolean(),
   previewNotesLookAtPlayer: z.boolean(),
-  lightshowMode: z.enum(['full', 'full-lightshow', 'static', 'none']),
+  lightshowMode: z.enum(['full', 'lightshow', 'full-lightshow', 'static', 'none']),
   preferReplayColors: z.boolean(),
   preferReplayEnvironment: z.boolean(),
   overrideEnvironment: z.boolean(),
