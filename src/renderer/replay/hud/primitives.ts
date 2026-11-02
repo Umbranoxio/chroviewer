@@ -16,6 +16,7 @@ import { Text } from 'troika-three-text';
 
 import { getBrowserLocale } from '../../../i18n/config';
 import { formatDuration, getFormatter } from '../../../i18n/formats';
+import { hideBehindScoreOccluders } from '../../materials/score-occluder-stencil';
 import { MAIN_ONLY_LAYER } from '../../mirror/planar-mirror';
 
 const tekoFontUrl = `${import.meta.env.BASE_URL}fonts/teko-medium.ttf`;
@@ -42,6 +43,8 @@ export function fixedHudMaterial(opacity = 1, color: ColorRepresentation = 0xfff
 
 export function flyingScoreMaterial(color: ColorRepresentation = 0xffffff, bloomAlpha = flyingScoreBloomAlpha) {
   const material = fixedHudMaterial(1, color);
+  material.depthTest = false;
+  hideBehindScoreOccluders(material);
   if (bloomAlpha === 0) return material;
   material.blendSrcAlpha = ConstantAlphaFactor;
   material.blendDstAlpha = OneMinusSrcAlphaFactor;

@@ -22,6 +22,7 @@ import {
 } from '../materials/map-object-materials';
 import { shaderUniformValue } from '../materials/shared';
 import { ReplayGameplayHud } from './hud/gameplay-hud';
+import type { HudLayout } from './hud/hud-layouts';
 import { ReplayCameraController, type ReplayCameraMode } from './replay-camera';
 import {
   createReplaySurfaceMaterial,
@@ -218,6 +219,10 @@ export class ReplayView {
 
   setHitScoreVisualizer(hitScoreVisualizer: HitScoreVisualizerConfig | null) {
     this.gameplayHud.setHitScoreVisualizer(hitScoreVisualizer);
+  }
+
+  setHudLayout(layout: HudLayout) {
+    this.gameplayHud.setLayout(layout);
   }
 
   setMapHasNotes(hasMapNotes: boolean) {

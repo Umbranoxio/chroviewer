@@ -38,6 +38,7 @@ import {
   SABER_TRAIL_FRAG,
   SABER_TRAIL_VERT,
 } from '../shaders/map-object-shaders';
+import { writeScoreOccluderStencil } from './score-occluder-stencil';
 import { additive, linearColor, materialFogUniforms } from './shared';
 import { worldNoiseTexture } from './world-noise-texture';
 
@@ -86,7 +87,9 @@ function createNoteSurfaceMaterial(
 }
 
 export function createNoteMaterial(fog: FogUniforms, color: Rgb, reflection: Texture) {
-  return createNoteSurfaceMaterial(fog, linearColor(color), reflection, 0.92, 2, -0.1, 5, 0.03, 0.2, 0.95);
+  return writeScoreOccluderStencil(
+    createNoteSurfaceMaterial(fog, linearColor(color), reflection, 0.92, 2, -0.1, 5, 0.03, 0.2, 0.95),
+  );
 }
 
 function directionalMaterial(fog: FogUniforms, decorative: boolean) {
@@ -180,63 +183,69 @@ export function createHitLineMaterial() {
 }
 
 export function createBombMaterial(fog: FogUniforms, reflection: Texture) {
-  return new MirrorPassMaterial({
-    defines: { INSTANCED_COLOR: '', REFLECTIVE_SURFACE: '', MIRROR_FACE_CORRECTION: '' },
-    vertexShader: OBJECT_VERT,
-    fragmentShader: BOMB_FRAG,
-    side: DoubleSide,
-    uniforms: {
-      ...materialFogUniforms(fog, { startOffset: 100, scale: 0.5 }),
-      _ReflectionMap: { value: reflection },
-      _MirrorPass: { value: 0 },
-      _Color: { value: linearColor(BOMB_COLOR) },
-      _SurfaceGain: { value: 0.2 },
-      _SurfaceGloss: { value: 1 },
-      _CutoutSize: { value: 1 },
-      _CutoutEdgeWidth: { value: 0.02 },
-      _CutoutEdgeGlow: { value: 1 },
-    },
-  });
+  return writeScoreOccluderStencil(
+    new MirrorPassMaterial({
+      defines: { INSTANCED_COLOR: '', REFLECTIVE_SURFACE: '', MIRROR_FACE_CORRECTION: '' },
+      vertexShader: OBJECT_VERT,
+      fragmentShader: BOMB_FRAG,
+      side: DoubleSide,
+      uniforms: {
+        ...materialFogUniforms(fog, { startOffset: 100, scale: 0.5 }),
+        _ReflectionMap: { value: reflection },
+        _MirrorPass: { value: 0 },
+        _Color: { value: linearColor(BOMB_COLOR) },
+        _SurfaceGain: { value: 0.2 },
+        _SurfaceGloss: { value: 1 },
+        _CutoutSize: { value: 1 },
+        _CutoutEdgeWidth: { value: 0.02 },
+        _CutoutEdgeGlow: { value: 1 },
+      },
+    }),
+  );
 }
 
 export function createSaberGlowMaterial(fog: FogUniforms, color: Rgb, coreColor: Rgb) {
-  return new ShaderMaterial({
-    ...additive,
-    depthWrite: false,
-    vertexShader: OBJECT_VERT,
-    fragmentShader: SABER_GLOW_FRAG,
-    uniforms: {
-      ...materialFogUniforms(fog),
-      _Color: { value: linearColor(color) },
-      _ColorMultiplier: { value: 1.4 },
-      _CoreColor: { value: linearColor(coreColor) },
-      _CoreMultiplier: { value: 1.65 },
-      _CoreBlend: { value: 0.26 },
-      _BloomAlpha: { value: 0.62 },
-      _CoreBloomAlpha: { value: 0.65 },
-      _CutoutSize: { value: 1 },
-      _CutoutEdgeWidth: { value: 0 },
-    },
-  });
+  return writeScoreOccluderStencil(
+    new ShaderMaterial({
+      ...additive,
+      depthWrite: false,
+      vertexShader: OBJECT_VERT,
+      fragmentShader: SABER_GLOW_FRAG,
+      uniforms: {
+        ...materialFogUniforms(fog),
+        _Color: { value: linearColor(color) },
+        _ColorMultiplier: { value: 1.4 },
+        _CoreColor: { value: linearColor(coreColor) },
+        _CoreMultiplier: { value: 1.65 },
+        _CoreBlend: { value: 0.26 },
+        _BloomAlpha: { value: 0.62 },
+        _CoreBloomAlpha: { value: 0.65 },
+        _CutoutSize: { value: 1 },
+        _CutoutEdgeWidth: { value: 0 },
+      },
+    }),
+  );
 }
 
 export function createSaberCoreMaterial(fog: FogUniforms, color: Rgb) {
-  return new ShaderMaterial({
-    vertexShader: OBJECT_VERT,
-    fragmentShader: SABER_GLOW_FRAG,
-    uniforms: {
-      ...materialFogUniforms(fog),
-      _Color: { value: linearColor(color) },
-      _ColorMultiplier: { value: 2.05 },
-      _CoreColor: { value: linearColor(color) },
-      _CoreMultiplier: { value: 2.05 },
-      _CoreBlend: { value: 0 },
-      _BloomAlpha: { value: 0.3 },
-      _CoreBloomAlpha: { value: 0.3 },
-      _CutoutSize: { value: 1 },
-      _CutoutEdgeWidth: { value: 0 },
-    },
-  });
+  return writeScoreOccluderStencil(
+    new ShaderMaterial({
+      vertexShader: OBJECT_VERT,
+      fragmentShader: SABER_GLOW_FRAG,
+      uniforms: {
+        ...materialFogUniforms(fog),
+        _Color: { value: linearColor(color) },
+        _ColorMultiplier: { value: 2.05 },
+        _CoreColor: { value: linearColor(color) },
+        _CoreMultiplier: { value: 2.05 },
+        _CoreBlend: { value: 0 },
+        _BloomAlpha: { value: 0.3 },
+        _CoreBloomAlpha: { value: 0.3 },
+        _CutoutSize: { value: 1 },
+        _CutoutEdgeWidth: { value: 0 },
+      },
+    }),
+  );
 }
 
 export function createSaberTrailMaterial(color: Rgb) {
@@ -251,42 +260,46 @@ export function createSaberTrailMaterial(color: Rgb) {
 }
 
 export function createObstacleMaterial(fog: FogUniforms, color: Rgb) {
-  return new ShaderMaterial({
-    defines: { INSTANCED_COLOR: '' },
-    vertexShader: OBJECT_VERT,
-    fragmentShader: OBSTACLE_FRAG,
-    uniforms: {
-      ...materialFogUniforms(fog, { startOffset: 100 }),
-      _Color: { value: linearColor(color) },
-      _CutoutSize: { value: 1.2 },
-      _CutoutEdgeWidth: { value: 0 },
-    },
-    depthWrite: false,
-    side: DoubleSide,
-    transparent: true,
-    blending: CustomBlending,
-    blendEquation: AddEquation,
-    blendSrc: SrcAlphaFactor,
-    blendDst: OneMinusSrcAlphaFactor,
-    blendSrcAlpha: ZeroFactor,
-    blendDstAlpha: OneFactor,
-  });
+  return writeScoreOccluderStencil(
+    new ShaderMaterial({
+      defines: { INSTANCED_COLOR: '' },
+      vertexShader: OBJECT_VERT,
+      fragmentShader: OBSTACLE_FRAG,
+      uniforms: {
+        ...materialFogUniforms(fog, { startOffset: 100 }),
+        _Color: { value: linearColor(color) },
+        _CutoutSize: { value: 1.2 },
+        _CutoutEdgeWidth: { value: 0 },
+      },
+      depthWrite: false,
+      side: DoubleSide,
+      transparent: true,
+      blending: CustomBlending,
+      blendEquation: AddEquation,
+      blendSrc: SrcAlphaFactor,
+      blendDst: OneMinusSrcAlphaFactor,
+      blendSrcAlpha: ZeroFactor,
+      blendDstAlpha: OneFactor,
+    }),
+  );
 }
 
 export function createLegacySolidObstacleMaterial(color: Rgb) {
-  return new ShaderMaterial({
-    defines: { INSTANCED_COLOR: '', INSTANCED_COLOR_ALPHA: '' },
-    vertexShader: OBJECT_VERT,
-    fragmentShader: LEGACY_SOLID_OBSTACLE_FRAG,
-    uniforms: {
-      _Color: { value: linearColor(color) },
-      _CutoutSize: { value: 1.2 },
-      _CutoutEdgeWidth: { value: 0 },
-      _CutoutSoftening: { value: 0 },
-    },
-    depthWrite: true,
-    side: DoubleSide,
-  });
+  return writeScoreOccluderStencil(
+    new ShaderMaterial({
+      defines: { INSTANCED_COLOR: '', INSTANCED_COLOR_ALPHA: '' },
+      vertexShader: OBJECT_VERT,
+      fragmentShader: LEGACY_SOLID_OBSTACLE_FRAG,
+      uniforms: {
+        _Color: { value: linearColor(color) },
+        _CutoutSize: { value: 1.2 },
+        _CutoutEdgeWidth: { value: 0 },
+        _CutoutSoftening: { value: 0 },
+      },
+      depthWrite: true,
+      side: DoubleSide,
+    }),
+  );
 }
 
 export function createObstacleDisplacementMaterial(
@@ -295,58 +308,62 @@ export function createObstacleDisplacementMaterial(
   screenTexture: { value: Texture },
   displacementTexture: Texture,
 ) {
-  return new ShaderMaterial({
-    defines: { INSTANCED_COLOR: '' },
-    vertexShader: OBSTACLE_DISPLACEMENT_VERT,
-    fragmentShader: OBSTACLE_DISPLACEMENT_FRAG,
-    uniforms: {
-      ...materialFogUniforms(fog, {
-        startOffset: 100,
-        scale: 1,
-        heightEnabled: true,
-        heightScale: 2.5,
-      }),
-      _Color: { value: linearColor(color) },
-      _WallSceneTexture: screenTexture,
-      _WallNoiseTexture: { value: displacementTexture },
-      _WallDisplacementStrength: { value: 0.25 },
-      _WallDisplacementAlpha: { value: 0.75 },
-      _WallViewAngleDistortionParam: { value: 1 },
-      _WallTintToWhite: { value: 0.75 },
-      _WallAddColorMultiplier: { value: 0.1 },
-      _CutoutSize: { value: 1.2 },
-      _CutoutEdgeWidth: { value: 0 },
-    },
-    depthWrite: true,
-    side: DoubleSide,
-    transparent: true,
-    blending: CustomBlending,
-    blendEquation: AddEquation,
-    blendSrc: OneFactor,
-    blendDst: ZeroFactor,
-    blendSrcAlpha: OneFactor,
-    blendDstAlpha: ZeroFactor,
-  });
+  return writeScoreOccluderStencil(
+    new ShaderMaterial({
+      defines: { INSTANCED_COLOR: '' },
+      vertexShader: OBSTACLE_DISPLACEMENT_VERT,
+      fragmentShader: OBSTACLE_DISPLACEMENT_FRAG,
+      uniforms: {
+        ...materialFogUniforms(fog, {
+          startOffset: 100,
+          scale: 1,
+          heightEnabled: true,
+          heightScale: 2.5,
+        }),
+        _Color: { value: linearColor(color) },
+        _WallSceneTexture: screenTexture,
+        _WallNoiseTexture: { value: displacementTexture },
+        _WallDisplacementStrength: { value: 0.25 },
+        _WallDisplacementAlpha: { value: 0.75 },
+        _WallViewAngleDistortionParam: { value: 1 },
+        _WallTintToWhite: { value: 0.75 },
+        _WallAddColorMultiplier: { value: 0.1 },
+        _CutoutSize: { value: 1.2 },
+        _CutoutEdgeWidth: { value: 0 },
+      },
+      depthWrite: true,
+      side: DoubleSide,
+      transparent: true,
+      blending: CustomBlending,
+      blendEquation: AddEquation,
+      blendSrc: OneFactor,
+      blendDst: ZeroFactor,
+      blendSrcAlpha: OneFactor,
+      blendDstAlpha: ZeroFactor,
+    }),
+  );
 }
 
 export function createObstacleOutlineMaterial(fog: FogUniforms, color: Rgb) {
-  return new ShaderMaterial({
-    defines: { INSTANCED_COLOR: '' },
-    vertexShader: OBSTACLE_OUTLINE_VERT,
-    fragmentShader: OBSTACLE_OUTLINE_FRAG,
-    uniforms: {
-      ...materialFogUniforms(fog, {
-        startOffset: 7,
-        heightEnabled: true,
-        heightScale: 2.5,
-      }),
-      _Color: { value: linearColor(color) },
-      _CutoutSize: { value: 1 },
-      _CutoutEdgeWidth: { value: 0 },
-    },
-    depthWrite: true,
-    side: DoubleSide,
-  });
+  return writeScoreOccluderStencil(
+    new ShaderMaterial({
+      defines: { INSTANCED_COLOR: '' },
+      vertexShader: OBSTACLE_OUTLINE_VERT,
+      fragmentShader: OBSTACLE_OUTLINE_FRAG,
+      uniforms: {
+        ...materialFogUniforms(fog, {
+          startOffset: 7,
+          heightEnabled: true,
+          heightScale: 2.5,
+        }),
+        _Color: { value: linearColor(color) },
+        _CutoutSize: { value: 1 },
+        _CutoutEdgeWidth: { value: 0 },
+      },
+      depthWrite: true,
+      side: DoubleSide,
+    }),
+  );
 }
 
 export function createObstacleFakeGlowMaterial(fog: FogUniforms, color: Rgb) {

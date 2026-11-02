@@ -32,6 +32,7 @@ import {
   createRainMaterial,
 } from '../../materials/environment-effect-materials';
 import { createMirrorMaterial } from '../../materials/scene-materials';
+import { ENVIRONMENT_STENCIL_MASK } from '../../materials/score-occluder-stencil';
 import type { EnvironmentMaterialData } from '../types';
 import { createLightEnvironmentMaterial } from './light-environment-material';
 import { createLitEnvironmentMaterial } from './lit-environment-material';
@@ -278,6 +279,8 @@ export function createEnvironmentMaterial(
   if (stencilComp !== 8 || stencilPass !== 0) {
     material.stencilWrite = true;
     material.stencilRef = data.floats._StencilRefValue ?? 0;
+    material.stencilFuncMask = ENVIRONMENT_STENCIL_MASK;
+    material.stencilWriteMask = ENVIRONMENT_STENCIL_MASK;
     material.stencilFunc = unityStencilFunc(stencilComp);
     material.stencilZPass = unityStencilOp(stencilPass);
   }

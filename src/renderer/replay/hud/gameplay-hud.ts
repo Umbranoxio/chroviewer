@@ -7,6 +7,7 @@ import { firstComboBreakTime, replayScoreAt, type ReplayScoreState } from '../..
 import type { Replay } from '../../../core/replay/types';
 import { comboBreakAnimationAt } from './combo-break-animation';
 import { FlyingScoreHud } from './flying-score-hud';
+import { defaultHudLayout, type HudLayout } from './hud-layouts';
 import {
   disposeHudText,
   formatAccuracy,
@@ -19,22 +20,25 @@ import {
   replayDuration,
 } from './primitives';
 
-const scoreStackCenterX = -3.2;
-
 export class ReplayGameplayHud {
   readonly root = new Group();
 
   private readonly scoreHud = new Group();
+  private readonly energyAnchor = new Group();
+  private readonly comboAnchor = new Group();
+  private readonly scoreAnchor = new Group();
+  private readonly multiplierAnchor = new Group();
+  private readonly progressAnchor = new Group();
   private readonly comboPanel = new Group();
   private readonly combo = hudText('0', 0.46, [0, -0.165, 0]);
   private readonly comboLabel = hudText('COMBO', 0.33, [0, 0.165, 0]);
-  private readonly score = hudText('0', 0.33, [-3.2, 1.17, -6.99]);
-  private readonly rank = hudText('SS', 0.66, [-3.2, 0.48, -6.98]);
-  private readonly accuracy = hudText('100.00%', 0.27, [-3.2, 0.88, -6.98]);
-  private readonly multiplierNumber = hudText('1', 0.6, [3.28, 1.68, -6.97]);
-  private readonly multiplierX = hudText('x', 0.3, [3.01, 1.83, -6.97]);
-  private readonly songTime = hudText('0:00', 0.24, [2.92, 0.76, -6.97]);
-  private readonly songDuration = hudText('0:00', 0.24, [3.48, 0.76, -6.97]);
+  private readonly score = hudText('0', 0.33, [0, 0.27, 0.01]);
+  private readonly rank = hudText('SS', 0.66, [0, -0.42, 0.02]);
+  private readonly accuracy = hudText('100.00%', 0.27, [0, -0.02, 0.02]);
+  private readonly multiplierNumber = hudText('1', 0.6, [0.08, -0.02, 0.03]);
+  private readonly multiplierX = hudText('x', 0.3, [-0.19, 0.13, 0.03]);
+  private readonly songTime = hudText('0:00', 0.24, [-0.28, -0.04, 0.02]);
+  private readonly songDuration = hudText('0:00', 0.24, [0.28, -0.04, 0.02]);
   private readonly energyFill: Mesh<PlaneGeometry, MeshBasicMaterial>;
   private readonly songProgressFill: Mesh<PlaneGeometry, MeshBasicMaterial>;
   private readonly multiplierProgress: Mesh<RingGeometry, MeshBasicMaterial>;
@@ -51,7 +55,7 @@ export class ReplayGameplayHud {
   constructor() {
     this.root.visible = false;
     this.root.renderOrder = 1000;
-    this.comboPanel.position.set(-3.2, 1.775, -6.99);
+    this.comboPanel.position.set(0, -0.055, 0.01);
     this.comboPanel.add(this.combo, this.comboLabel);
     italicizeHudText(this.comboLabel);
     italicizeHudText(this.multiplierNumber);
@@ -75,63 +79,57 @@ export class ReplayGameplayHud {
       this.songTime,
       this.songDuration,
     ];
-    this.scoreHud.add(
-      this.comboPanel,
-      this.score,
-      this.rank,
-      this.accuracy,
-      this.multiplierNumber,
-      this.multiplierX,
-      this.songTime,
-      this.songDuration,
-    );
     this.root.add(this.scoreHud, this.flyingScores.root);
 
     this.comboTopLine = hudMesh(new PlaneGeometry(1, 0.04));
-    this.comboTopLine.position.set(-3.2, 2.18, -7);
+    this.comboTopLine.position.set(0, 0.35, 0);
     this.comboBottomLine = hudMesh(new PlaneGeometry(1, 0.04));
-    this.comboBottomLine.position.set(-3.2, 1.41, -7);
+    this.comboBottomLine.position.set(0, -0.42, 0);
 
     const energyBackground = hudMesh(new PlaneGeometry(1.94, 0.09), 0.75, 0x000000);
-    energyBackground.position.set(0, -0.64, -7.75);
     energyBackground.renderOrder = 999;
     const energyGeometry = new PlaneGeometry(1.908, 0.06).translate(0.954, 0, 0);
     this.energyFill = hudMesh(energyGeometry);
-    this.energyFill.position.set(-0.954, -0.64, -7.73);
+    this.energyFill.position.set(-0.954, 0, 0.02);
     const emptyEnergyIcon = hudMesh(new PlaneGeometry(0.12, 0.12), 0.25);
-    emptyEnergyIcon.position.set(-1.1, -0.64, -7.73);
+    emptyEnergyIcon.position.set(-1.1, 0, 0.02);
     emptyEnergyIcon.rotation.z = Math.PI / 4;
     const fullEnergyIcon = hudMesh(new PlaneGeometry(0.12, 0.12), 0.25);
-    fullEnergyIcon.position.set(1.06, -0.64, -7.73);
+    fullEnergyIcon.position.set(1.06, 0, 0.02);
     fullEnergyIcon.rotation.z = Math.PI / 4;
 
     const multiplierBackground = hudMesh(new RingGeometry(0.47, 0.5, 64), 0.25);
-    multiplierBackground.position.set(3.2, 1.7, -7);
     multiplierBackground.renderOrder = 999;
     this.multiplierProgress = hudMesh(new RingGeometry(0.47, 0.5, 64, 1, Math.PI / 2, -Math.PI * 2));
-    this.multiplierProgress.position.set(3.2, 1.7, -6.97);
+    this.multiplierProgress.position.set(0, 0, 0.03);
 
     const songProgressBackground = hudMesh(new PlaneGeometry(1, 0.06), 0.25);
-    songProgressBackground.position.set(3.2, 0.98, -6.99);
+    songProgressBackground.position.set(0, 0.18, 0);
     const songProgressGeometry = new PlaneGeometry(1, 0.06).translate(0.5, 0, 0);
     this.songProgressFill = hudMesh(songProgressGeometry);
-    this.songProgressFill.position.set(2.7, 0.98, -6.97);
+    this.songProgressFill.position.set(-0.5, 0.18, 0.02);
     const songTimeSeparator = hudMesh(new PlaneGeometry(0.02, 0.18), 0.5);
-    songTimeSeparator.position.set(3.2, 0.76, -6.99);
+    songTimeSeparator.position.set(0, -0.04, 0);
 
-    this.scoreHud.add(
-      this.comboTopLine,
-      this.comboBottomLine,
-      energyBackground,
-      this.energyFill,
-      emptyEnergyIcon,
-      fullEnergyIcon,
-      multiplierBackground,
-      this.multiplierProgress,
+    this.energyAnchor.add(energyBackground, this.energyFill, emptyEnergyIcon, fullEnergyIcon);
+    this.comboAnchor.add(this.comboPanel, this.comboTopLine, this.comboBottomLine);
+    this.scoreAnchor.add(this.score, this.rank, this.accuracy);
+    this.multiplierAnchor.add(multiplierBackground, this.multiplierProgress, this.multiplierNumber, this.multiplierX);
+    this.progressAnchor.add(
       songProgressBackground,
       this.songProgressFill,
       songTimeSeparator,
+      this.songTime,
+      this.songDuration,
     );
+    this.scoreHud.add(
+      this.energyAnchor,
+      this.comboAnchor,
+      this.scoreAnchor,
+      this.multiplierAnchor,
+      this.progressAnchor,
+    );
+    this.setLayout(defaultHudLayout);
     this.panelMeshes = [
       this.comboTopLine,
       this.comboBottomLine,
@@ -145,6 +143,21 @@ export class ReplayGameplayHud {
       this.songProgressFill,
       songTimeSeparator,
     ];
+  }
+
+  setLayout(layout: HudLayout) {
+    const pitch = MathUtils.degToRad(-(layout.pitch ?? 0));
+    const anchors = [
+      [this.energyAnchor, layout.energy],
+      [this.comboAnchor, layout.combo],
+      [this.scoreAnchor, layout.score],
+      [this.multiplierAnchor, layout.multiplier],
+      [this.progressAnchor, layout.progress],
+    ] as const;
+    for (const [anchor, [x, y, z]] of anchors) {
+      anchor.position.set(x, y, -z);
+      anchor.rotation.x = pitch;
+    }
   }
 
   setReplay(replay: Replay | null, hitScoreVisualizer?: HitScoreVisualizerConfig | null) {
@@ -231,13 +244,13 @@ export class ReplayGameplayHud {
     this.comboBottomLine.visible = state.linesVisible;
     this.comboTopLine.material.opacity = state.lineAlpha;
     this.comboBottomLine.material.opacity = state.lineAlpha;
-    this.comboTopLine.position.x = -3.2 + state.topLineX;
-    this.comboBottomLine.position.x = -3.2 + state.bottomLineX;
+    this.comboTopLine.position.x = state.topLineX;
+    this.comboBottomLine.position.x = state.bottomLineX;
     this.comboTopLine.scale.x = state.lineScaleX;
     this.comboBottomLine.scale.x = state.lineScaleX;
     this.comboPanel.scale.set(state.comboScaleX, state.comboScaleY, 1);
     this.comboPanel.rotation.z = MathUtils.degToRad(state.comboRotationDegrees);
-    this.comboPanel.position.z = -6.99 - state.comboDepth;
+    this.comboPanel.position.z = 0.01 - state.comboDepth;
   }
 
   private updateScoreStack(score: string, accuracy: string, rank: string) {
@@ -256,7 +269,7 @@ export class ReplayGameplayHud {
         const bounds = text.textRenderInfo?.visibleBounds;
         if (bounds !== undefined) {
           const opticalOffset = text === this.accuracy ? 0.03 : 0;
-          text.position.x = scoreStackCenterX - (bounds[0] + bounds[2]) / 2 + opticalOffset;
+          text.position.x = -(bounds[0] + bounds[2]) / 2 + opticalOffset;
         }
       }
     };
