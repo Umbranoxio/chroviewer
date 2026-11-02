@@ -169,19 +169,42 @@ function buildReplayStateIndex(replay: Replay): ReplayStateIndex {
   return { badCuts, bombCuts, maxCombos, misses, scoringNotes };
 }
 
+function noteMistakes(stateIndex: ReplayStateIndex, noteCount: number) {
+  return (
+    (stateIndex.misses[noteCount] ?? 0) + (stateIndex.badCuts[noteCount] ?? 0) + (stateIndex.bombCuts[noteCount] ?? 0)
+  );
+}
+
 function replayStateAt(replay: Replay, stateIndex: ReplayStateIndex, time: number): ReplayScoreState {
   const scoreCount = upperBound(replay.scores, time, (event) => event.time);
   const comboCount = upperBound(replay.combos, time, (event) => event.time);
   const multiplierCount = upperBound(replay.multipliers, time, (event) => event.time);
   const energyCount = upperBound(replay.energies, time, (event) => event.time);
   const noteCount = upperBound(replay.notes, time, (event) => event.time);
-  const wallCount = upperBound(replay.walls, time, (event) => event.time);
+  const wallsHit = upperBound(replay.walls, time, (event) => event.time);
   const scoreEvent = replay.scores[scoreCount - 1];
   const score = scoreEvent?.score ?? 0;
   const scoringNoteCount = stateIndex.scoringNotes[noteCount] ?? 0;
   const maximumScore = scoreEvent?.immediateMaxPossibleScore ?? oldMaximumScore(scoringNoteCount);
   const combo = replay.combos[comboCount - 1]?.combo ?? 0;
   const multiplierEvent = replay.multipliers[multiplierCount - 1];
+  const misses = stateIndex.misses[noteCount] ?? 0;
+  const badCuts = stateIndex.badCuts[noteCount] ?? 0;
+  const bombCuts = stateIndex.bombCuts[noteCount] ?? 0;
+
+  let energy = clamp(replay.energies[energyCount - 1]?.energy ?? 0.5, 0, 1);
+  const modifiers = replay.metadata.modifiers;
+  const isBeatLeader = replay.metadata.version.startsWith('BeatLeader');
+
+  if (isBeatLeader && (modifiers.includes('IF') || modifiers.includes('BE'))) {
+    const lives = modifiers.includes('IF') ? 1 : 4;
+    const lastWall = replay.walls[wallsHit - 1];
+    const baseLives = lastWall === undefined ? lives : Math.round(clamp(lastWall.energy, 0, 1) * lives);
+    const notesBeforeWall = lastWall === undefined ? 0 : upperBound(replay.notes, lastWall.time, (event) => event.time);
+    const mistakesBefore = noteMistakes(stateIndex, notesBeforeWall);
+    energy = Math.max(0, baseLives - (noteMistakes(stateIndex, noteCount) - mistakesBefore)) / lives;
+  }
+
   return {
     score,
     maximumScore,
@@ -190,11 +213,11 @@ function replayStateAt(replay: Replay, stateIndex: ReplayStateIndex, time: numbe
     maxCombo: stateIndex.maxCombos[comboCount] ?? 0,
     multiplier: multiplierEvent?.multiplier ?? 1,
     multiplierProgress: multiplierEvent?.nextMultiplierProgress ?? 0,
-    energy: clamp(replay.energies[energyCount - 1]?.energy ?? 0.5, 0, 1),
-    misses: stateIndex.misses[noteCount] ?? 0,
-    badCuts: stateIndex.badCuts[noteCount] ?? 0,
-    bombCuts: stateIndex.bombCuts[noteCount] ?? 0,
-    wallsHit: wallCount,
+    energy,
+    misses,
+    badCuts,
+    bombCuts,
+    wallsHit,
   };
 }
 
