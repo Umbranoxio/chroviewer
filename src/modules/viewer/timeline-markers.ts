@@ -61,3 +61,64 @@ export function buildTimelineMarkers(
   }
   return markers.sort((left, right) => left.time - right.time);
 }
+
+export const TIMELINE_LANE_COUNT = 4;
+
+export function markerProgress(marker: Pick<TimelineMarker, 'time'>, duration: number) {
+  return duration <= 0 ? 0 : Math.min(Math.max(marker.time / duration, 0), 1);
+}
+
+export function markerTopPercent(marker: Pick<TimelineMarker, 'lane'>) {
+  if (marker.lane === undefined) return 50;
+  const clampedLane = Math.min(Math.max(marker.lane, 1), TIMELINE_LANE_COUNT);
+  return ((clampedLane - 0.5) / TIMELINE_LANE_COUNT) * 100;
+}
+
+export function findMarkerAtPosition(
+  markers: readonly TimelineMarker[],
+  duration: number,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  hitRadius = 5,
+): TimelineMarker | null {
+  if (width <= 0 || height <= 0 || markers.length === 0) return null;
+
+  let startIndex = 0;
+  let endTime = Number.POSITIVE_INFINITY;
+  if (duration <= 0) {
+    if (Math.abs(x) > hitRadius) return null;
+  } else {
+    if (x - hitRadius > 0) {
+      const minTime = ((x - hitRadius) / width) * duration;
+      let low = 0;
+      let high = markers.length;
+      while (low < high) {
+        const middle = (low + high) >>> 1;
+        if ((markers[middle]?.time ?? 0) < minTime) low = middle + 1;
+        else high = middle;
+      }
+      startIndex = low;
+    }
+    if (x + hitRadius < width) {
+      endTime = ((x + hitRadius) / width) * duration;
+    }
+  }
+
+  const radiusSq = hitRadius * hitRadius;
+  let best: TimelineMarker | null = null;
+  let bestDistSq = radiusSq;
+  for (let index = startIndex; index < markers.length; index++) {
+    const marker = markers[index];
+    if (marker === undefined || marker.time > endTime) break;
+    const dx = markerProgress(marker, duration) * width - x;
+    const dy = (markerTopPercent(marker) / 100) * height - y;
+    const distSq = dx * dx + dy * dy;
+    if (distSq <= bestDistSq + 1e-6) {
+      best = marker;
+      bestDistSq = distSq;
+    }
+  }
+  return best;
+}
