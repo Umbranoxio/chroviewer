@@ -701,6 +701,7 @@ export function ViewerShell() {
         settingsOpen={settingsOpen}
         shareCategories={share.shareCategories}
         shareIncludeTimecode={share.includeTimecode}
+        shareResetOthers={share.resetOthers}
         shareOpen={activePanel === 'share'}
         shareUrl={share.shareUrl}
         onAboutOpenChange={(open) => {
@@ -710,6 +711,7 @@ export function ViewerShell() {
         onSettingsClick={toggleSettings}
         onShareCategoriesChange={share.setShareCategories}
         onShareIncludeTimecodeChange={share.setIncludeTimecode}
+        onShareResetOthersChange={share.setResetOthers}
         onShareOpenChange={(open) => {
           setActivePanel(open ? 'share' : null);
         }}

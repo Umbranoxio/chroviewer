@@ -4,8 +4,7 @@ import { useFormatter, useTranslations } from 'use-intl';
 import { clearCustomHitsound, saveCustomHitsound } from '../../core/hitsound-storage';
 import {
   DEFAULT_VIEWER_SETTINGS,
-  MAX_AUDIO_OFFSET_MS,
-  MIN_AUDIO_OFFSET_MS,
+  SETTING_RANGES,
   type HitsoundPreset,
   type ViewerSettings,
 } from '../../core/viewer-settings';
@@ -235,9 +234,7 @@ export function GeneralSettings({ active, settings, isMapPreview, onChange }: Ge
             label={t('audioOffset')}
             detail={t('audioOffsetDescription')}
             value={settings.audioOffsetMs}
-            minimum={MIN_AUDIO_OFFSET_MS}
-            maximum={MAX_AUDIO_OFFSET_MS}
-            step={10}
+            range={SETTING_RANGES.audioOffsetMs}
             display={(value) =>
               t('milliseconds', {
                 value: format.number(value, { maximumFractionDigits: 0, signDisplay: 'exceptZero' }),

@@ -7,6 +7,7 @@ import { MAX_HSV_PROFILE_BYTES, parseHitScoreVisualizerProfile } from '../../cor
 import {
   DEFAULT_REPLAY_SABER_SETTINGS,
   DEFAULT_VIEWER_SETTINGS,
+  SETTING_RANGES,
   type ReplaySaberSettings,
   type ViewerSettings,
 } from '../../core/viewer-settings';
@@ -32,9 +33,6 @@ interface CosmeticsSettingsProps {
 type NumericSaberSetting = Exclude<keyof ReplaySaberSettings, 'showSabers' | 'showSaberTrails'>;
 
 interface SaberSliderOptions {
-  minimum: number;
-  maximum: number;
-  step: number;
   display: (value: number) => string;
 }
 
@@ -99,9 +97,7 @@ export function CosmeticsSettings({ settings, environments, onChange }: Cosmetic
         id={`viewer-${key}`}
         label={t(key)}
         value={settings[key]}
-        minimum={options.minimum}
-        maximum={options.maximum}
-        step={options.step}
+        range={SETTING_RANGES[key]}
         display={options.display}
         onChange={(value) => {
           update(key, value);
@@ -326,13 +322,13 @@ export function CosmeticsSettings({ settings, environments, onChange }: Cosmetic
                   }}
                 />
               </SettingRow>
-              {slider('saberScale', { minimum: 0.25, maximum: 3, step: 0.01, display: percent })}
-              {slider('saberBladeLength', { minimum: 0.1, maximum: 2, step: 0.01, display: centimeters })}
-              {slider('saberBladeWidth', { minimum: 0.25, maximum: 4, step: 0.05, display: percent })}
-              {slider('saberTipWidth', { minimum: 0, maximum: 1, step: 0.01, display: percent })}
-              {slider('saberHiltLength', { minimum: 0.04, maximum: 0.4, step: 0.005, display: centimeters })}
-              {slider('saberHiltWidth', { minimum: 0.25, maximum: 3, step: 0.05, display: percent })}
-              {slider('saberRingCount', { minimum: 0, maximum: 5, step: 1, display: integer })}
+              {slider('saberScale', { display: percent })}
+              {slider('saberBladeLength', { display: centimeters })}
+              {slider('saberBladeWidth', { display: percent })}
+              {slider('saberTipWidth', { display: percent })}
+              {slider('saberHiltLength', { display: centimeters })}
+              {slider('saberHiltWidth', { display: percent })}
+              {slider('saberRingCount', { display: integer })}
             </SettingSection>
             <Separator />
             <SettingSection title={t('trail')}>
@@ -344,46 +340,28 @@ export function CosmeticsSettings({ settings, environments, onChange }: Cosmetic
                   }}
                 />
               </SettingRow>
-              {slider('saberTrailDuration', { minimum: 0.05, maximum: 1, step: 0.01, display: milliseconds })}
-              {slider('saberTrailWidth', { minimum: 0.05, maximum: 1, step: 0.01, display: ofBlade })}
-              {slider('saberTrailBrightness', { minimum: 0, maximum: 2, step: 0.01, display: percent })}
+              {slider('saberTrailDuration', { display: milliseconds })}
+              {slider('saberTrailWidth', { display: ofBlade })}
+              {slider('saberTrailBrightness', { display: percent })}
             </SettingSection>
             <Separator />
             <SettingSection title={t('alignment')}>
               {slider('saberXOffset', {
-                minimum: -0.25,
-                maximum: 0.25,
-                step: 0.001,
                 display: centimeters,
               })}
               {slider('saberYOffset', {
-                minimum: -0.25,
-                maximum: 0.25,
-                step: 0.001,
                 display: centimeters,
               })}
               {slider('saberZOffset', {
-                minimum: -0.25,
-                maximum: 0.25,
-                step: 0.001,
                 display: centimeters,
               })}
               {slider('saberXRotation', {
-                minimum: -45,
-                maximum: 45,
-                step: 0.1,
                 display: degrees,
               })}
               {slider('saberYRotation', {
-                minimum: -45,
-                maximum: 45,
-                step: 0.1,
                 display: degrees,
               })}
               {slider('saberZRotation', {
-                minimum: -45,
-                maximum: 45,
-                step: 0.1,
                 display: degrees,
               })}
             </SettingSection>

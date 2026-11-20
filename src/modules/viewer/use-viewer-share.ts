@@ -6,7 +6,8 @@ import { useTranslations } from 'use-intl';
 
 import { difficultyRank, type InfoDifficulty } from '../../core/beatmap/info';
 import { isForcedLightshowMode, type LightshowMode } from '../../core/lighting/basic-light';
-import { settingsForShareCategories, type ShareSettingsCategory } from '../../core/share-link';
+import type { ShareSettingsCategory } from '../../core/share-link';
+import { encodeShareSettings } from '../../core/share-settings-codec';
 import type { ViewerSettings } from '../../core/viewer-settings';
 import type { LiveTarget } from '../live/live-types';
 import { viewerSearchForShare, type ViewerShareSource } from './viewer-search';
@@ -40,7 +41,8 @@ export function useViewerShare({
   const router = useRouter();
   const t = useTranslations('viewer');
   const [categories, setCategories] = useState<ShareSettingsCategory[]>([]);
-  const [includeTimecode, setIncludeTimecode] = useState(true);
+  const [includeTimecode, setIncludeTimecode] = useState(false);
+  const [resetOthers, setResetOthers] = useState(true);
   const [timelineCopied, setTimelineCopied] = useState<'time' | 'beat' | null>(null);
   const timelineCopyTimeoutRef = useRef(0);
   const selectedRank = selectedDifficulty === undefined ? -1 : difficultyRank(selectedDifficulty.difficulty);
@@ -93,11 +95,13 @@ export function useViewerShare({
       search: viewerSearchForShare(
         source,
         includeBeat ? beat : undefined,
-        settingsForShareCategories(settings, selectedCategories),
         isForcedLightshowMode(lightshowMode) ? lightshowMode : undefined,
       ),
     });
-    return new URL(location.href, window.location.origin).href;
+    const url = new URL(location.href, window.location.origin);
+    url.hash = '';
+    const code = encodeShareSettings(settings, selectedCategories, resetOthers);
+    return code === undefined ? url.href : `${url.href}#${code}`;
   }
 
   async function copyShareLink(url: string) {
@@ -125,6 +129,8 @@ export function useViewerShare({
     copyTimelineShareLink,
     includeTimecode,
     setIncludeTimecode,
+    resetOthers,
+    setResetOthers,
     setShareCategories: setCategories,
     shareCategories: categories,
     shareUrl: shareUrlFor(categories, includeTimecode),

@@ -21,6 +21,7 @@ interface ViewerActionsProps {
   settingsOpen: boolean;
   shareCategories: ShareSettingsCategory[];
   shareIncludeTimecode: boolean;
+  shareResetOthers: boolean;
   shareOpen: boolean;
   shareUrl: string | null;
   onAboutOpenChange: (open: boolean) => void;
@@ -28,6 +29,7 @@ interface ViewerActionsProps {
   onSettingsClick: MouseEventHandler<HTMLButtonElement>;
   onShareCategoriesChange: (categories: ShareSettingsCategory[]) => void;
   onShareIncludeTimecodeChange: (include: boolean) => void;
+  onShareResetOthersChange: (reset: boolean) => void;
   onShareOpenChange: (open: boolean) => void;
 }
 
@@ -40,6 +42,7 @@ export function ViewerActions({
   settingsOpen,
   shareCategories,
   shareIncludeTimecode,
+  shareResetOthers,
   shareOpen,
   shareUrl,
   onAboutOpenChange,
@@ -47,6 +50,7 @@ export function ViewerActions({
   onSettingsClick,
   onShareCategoriesChange,
   onShareIncludeTimecodeChange,
+  onShareResetOthersChange,
   onShareOpenChange,
 }: ViewerActionsProps) {
   const t = useTranslations('viewer');
@@ -79,9 +83,11 @@ export function ViewerActions({
               url={shareUrl}
               categories={shareCategories}
               includeTimecode={shareIncludeTimecode}
+              resetOthers={shareResetOthers}
               onCategoriesChange={onShareCategoriesChange}
               onCopy={onCopyShare}
               onIncludeTimecodeChange={onShareIncludeTimecodeChange}
+              onResetOthersChange={onShareResetOthersChange}
             />
           </PopoverContent>
         </Popover>

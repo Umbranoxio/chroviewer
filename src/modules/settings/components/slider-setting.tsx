@@ -1,6 +1,8 @@
 import { RotateCcw } from 'lucide-react';
 import { useTranslations } from 'use-intl';
 
+import type { SettingRange } from '../../../core/viewer-settings';
+
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 
@@ -10,9 +12,7 @@ interface SliderSettingProps {
   label: string;
   detail?: string;
   value: number;
-  minimum: number;
-  maximum: number;
-  step: number;
+  range: SettingRange;
   display: (value: number) => string;
   onChange: (value: number) => void;
 }
@@ -23,9 +23,7 @@ export function SliderSetting({
   label,
   detail,
   value,
-  minimum,
-  maximum,
-  step,
+  range,
   display,
   onChange,
 }: SliderSettingProps) {
@@ -61,9 +59,9 @@ export function SliderSetting({
       </div>
       <Slider
         id={id}
-        min={minimum}
-        max={maximum}
-        step={step}
+        min={range.min}
+        max={range.max}
+        step={range.step}
         value={[value]}
         onValueChange={([next]) => {
           if (next !== undefined) onChange(next);

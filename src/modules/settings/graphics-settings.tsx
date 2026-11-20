@@ -1,6 +1,6 @@
 import { useFormatter, useTranslations } from 'use-intl';
 
-import { DEFAULT_VIEWER_SETTINGS, type ViewerSettings } from '../../core/viewer-settings';
+import { DEFAULT_VIEWER_SETTINGS, SETTING_RANGES, type ViewerSettings } from '../../core/viewer-settings';
 import { SettingRow } from './components/setting-row';
 import { SettingSection } from './components/setting-section';
 import { SliderSetting } from './components/slider-setting';
@@ -66,9 +66,7 @@ export function GraphicsSettings({ settings, onChange }: GraphicsSettingsProps) 
             id="viewer-render-scale"
             label={t('renderScale')}
             value={settings.renderScale}
-            minimum={0.5}
-            maximum={1.5}
-            step={0.05}
+            range={SETTING_RANGES.renderScale}
             display={(value) => format.number(value, 'percent', { maximumFractionDigits: 0 })}
             onChange={(renderScale) => {
               update('renderScale', renderScale);

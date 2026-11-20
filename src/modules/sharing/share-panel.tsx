@@ -1,33 +1,37 @@
 import { useEffect, useRef, useState } from 'react';
 
-import { Check, Copy } from 'lucide-react';
+import { Check, CircleHelp, Copy } from 'lucide-react';
 import { useTranslations } from 'use-intl';
 
 import type { ShareSettingsCategory } from '../../core/share-link';
+import { SHARE_CATEGORIES } from '../../core/share-settings-codec';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface SharePanelProps {
   url: string | null;
   categories: ShareSettingsCategory[];
   includeTimecode: boolean;
+  resetOthers: boolean;
   onCategoriesChange: (categories: ShareSettingsCategory[]) => void;
   onCopy: (url: string) => Promise<boolean>;
   onIncludeTimecodeChange: (include: boolean) => void;
+  onResetOthersChange: (reset: boolean) => void;
 }
-
-const shareCategories: ShareSettingsCategory[] = ['general', 'graphics', 'cosmetics', 'camera'];
 
 export function SharePanel({
   url,
   categories,
   includeTimecode,
+  resetOthers,
   onCategoriesChange,
   onCopy,
   onIncludeTimecodeChange,
+  onResetOthersChange,
 }: SharePanelProps) {
   const [copied, setCopied] = useState(false);
   const copyTimeoutRef = useRef(0);
@@ -82,19 +86,43 @@ export function SharePanel({
           <div className="grid gap-1.5">
             <span className="text-xs font-medium">{t('includeSettings')}</span>
             <ToggleGroup
-              className="grid grid-cols-4"
+              className="grid grid-cols-2"
               type="multiple"
               value={categories}
               aria-label={t('categoriesLabel')}
               onValueChange={selectCategories}
             >
-              {shareCategories.map((category) => (
-                <ToggleGroupItem className="h-7 px-1 text-xs" key={category} value={category}>
+              {SHARE_CATEGORIES.map((category) => (
+                <ToggleGroupItem className="h-7 px-2.5 text-xs" key={category} value={category}>
                   {tc(category)}
                 </ToggleGroupItem>
               ))}
             </ToggleGroup>
           </div>
+          {categories.length > 0 && (
+            <div className="flex items-center justify-between gap-3 text-xs font-medium">
+              <span className="flex items-center gap-1.5">
+                <label htmlFor="share-reset-others">{t('resetOthers')}</label>
+                <TooltipProvider delayDuration={100}>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        className="text-muted-foreground hover:text-foreground focus-visible:ring-ring/40 rounded-full outline-none focus-visible:ring-3"
+                        aria-label={t('resetOthersHelp')}
+                      >
+                        <CircleHelp className="size-3.5" />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent className="whitespace-pre-line" side="top">
+                      {t('resetOthersHelp')}
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </span>
+              <Switch id="share-reset-others" checked={resetOthers} onCheckedChange={onResetOthersChange} />
+            </div>
+          )}
           <Input
             readOnly
             value={url}
