@@ -10,8 +10,10 @@
     "api:regen": "node scripts/codegen/generate-api.ts --refresh",
     "api:check": "node scripts/codegen/generate-api.ts --check",
     "proto:generate": "node scripts/codegen/generate-live-protocol.ts",
+    "share-layout:generate": "node scripts/codegen/generate-share-layout.ts",
+    "share-layout:check": "node scripts/codegen/generate-share-layout.ts --check",
     "proto:check": "node scripts/codegen/generate-live-protocol.ts --check && buf lint src/modules/live/proto",
-    "verify": "vp check && vp run api:check && vp run proto:check && vp test && vp build"
+    "verify": "vp check && vp run api:check && vp run proto:check && vp run share-layout:check && vp test && vp build"
   },
   "dependencies": {
     "@bufbuild/protobuf": "^2.12.1",
