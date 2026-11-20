@@ -1,6 +1,6 @@
 import { useFormatter, useTranslations } from 'use-intl';
 
-import { DEFAULT_REPLAY_CAMERA_SETTINGS, type ViewerSettings } from '../../../core/viewer-settings';
+import { DEFAULT_REPLAY_CAMERA_SETTINGS, SETTING_RANGES, type ViewerSettings } from '../../../core/viewer-settings';
 import { SettingRow } from '../components/setting-row';
 import { SettingSection } from '../components/setting-section';
 import { SliderSetting } from '../components/slider-setting';
@@ -66,9 +66,7 @@ export function CameraTransformSettings({ onChange, settings, update }: CameraTr
           id="replay-camera-x-offset"
           label={t('leftRight')}
           value={settings.replayCameraXOffset}
-          minimum={-10}
-          maximum={10}
-          step={0.01}
+          range={SETTING_RANGES.replayCameraXOffset}
           display={formatMeters}
           onChange={(replayCameraXOffset) => {
             update('replayCameraXOffset', replayCameraXOffset);
@@ -79,9 +77,7 @@ export function CameraTransformSettings({ onChange, settings, update }: CameraTr
           id="replay-camera-y-offset"
           label={t('upDown')}
           value={settings.replayCameraYOffset}
-          minimum={-10}
-          maximum={10}
-          step={0.01}
+          range={SETTING_RANGES.replayCameraYOffset}
           display={formatMeters}
           onChange={(replayCameraYOffset) => {
             update('replayCameraYOffset', replayCameraYOffset);
@@ -92,9 +88,7 @@ export function CameraTransformSettings({ onChange, settings, update }: CameraTr
           id="replay-camera-z-offset"
           label={t('forwardBack')}
           value={settings.replayCameraDepthOffset}
-          minimum={-10}
-          maximum={10}
-          step={0.01}
+          range={SETTING_RANGES.replayCameraDepthOffset}
           display={formatMeters}
           onChange={(replayCameraDepthOffset) => {
             update('replayCameraDepthOffset', replayCameraDepthOffset);
@@ -116,9 +110,7 @@ export function CameraTransformSettings({ onChange, settings, update }: CameraTr
           id="replay-camera-x-rotation"
           label={t('upDown')}
           value={settings.replayCameraXRotation}
-          minimum={-180}
-          maximum={180}
-          step={0.1}
+          range={SETTING_RANGES.replayCameraXRotation}
           display={formatDegrees}
           onChange={(replayCameraXRotation) => {
             update('replayCameraXRotation', replayCameraXRotation);
@@ -129,9 +121,7 @@ export function CameraTransformSettings({ onChange, settings, update }: CameraTr
           id="replay-camera-y-rotation"
           label={t('leftRight')}
           value={settings.replayCameraYRotation}
-          minimum={-180}
-          maximum={180}
-          step={0.1}
+          range={SETTING_RANGES.replayCameraYRotation}
           display={formatDegrees}
           onChange={(replayCameraYRotation) => {
             update('replayCameraYRotation', replayCameraYRotation);
@@ -142,9 +132,7 @@ export function CameraTransformSettings({ onChange, settings, update }: CameraTr
           id="replay-camera-z-rotation"
           label={t('tiltLeftRight')}
           value={settings.replayCameraZRotation}
-          minimum={-180}
-          maximum={180}
-          step={0.1}
+          range={SETTING_RANGES.replayCameraZRotation}
           display={formatDegrees}
           onChange={(replayCameraZRotation) => {
             update('replayCameraZRotation', replayCameraZRotation);

@@ -1,7 +1,6 @@
 import * as z from 'zod/mini';
 
 import type { DifficultyRank } from '../../core/beatmap/info';
-import type { SharedViewerSettings } from '../../core/share-link';
 import { viewerSettingsPatchSchema } from '../../core/viewer-settings';
 
 export type ViewerShareSource =
@@ -113,7 +112,6 @@ export function isRemoteSourceUrl(value: string) {
 export function viewerSearchForShare(
   source: ViewerShareSource,
   beat: number | undefined,
-  settings?: SharedViewerSettings,
   lightshow?: 'full-lightshow',
 ): ViewerSearch {
   if (source.type === 'live') {
@@ -122,7 +120,6 @@ export function viewerSearchForShare(
       tournamentId: source.tournamentId,
       roomId: source.roomId,
       matchId: source.matchId,
-      settings,
       lightshow,
     };
   }
@@ -133,11 +130,10 @@ export function viewerSearchForShare(
       difficulty: source.difficulty,
       characteristic: source.characteristic,
       beat: sharedBeat,
-      settings,
       lightshow,
     };
   }
-  if (source.type === 'replay') return { replayUrl: source.replayUrl, beat: sharedBeat, settings, lightshow };
-  if (source.type === 'score') return { scoreId: source.scoreId, beat: sharedBeat, settings, lightshow };
-  return { scoreIdBL: source.scoreId, beat: sharedBeat, settings, lightshow };
+  if (source.type === 'replay') return { replayUrl: source.replayUrl, beat: sharedBeat, lightshow };
+  if (source.type === 'score') return { scoreId: source.scoreId, beat: sharedBeat, lightshow };
+  return { scoreIdBL: source.scoreId, beat: sharedBeat, lightshow };
 }

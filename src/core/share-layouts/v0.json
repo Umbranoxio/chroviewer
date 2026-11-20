@@ -1,0 +1,469 @@
+{
+  "categories": ["general", "graphics", "cosmetics", "camera"],
+  "fields": [
+    {
+      "key": "hitsounds",
+      "category": "general",
+      "default": true,
+      "kind": "bool"
+    },
+    {
+      "key": "hitsoundPreset",
+      "category": "general",
+      "default": "default",
+      "kind": "enum",
+      "values": ["default", "ChromapperTick", "OsuHitsound", "ThumpyHitsound", "GalxHitsound", "RabbitViewerTick"]
+    },
+    {
+      "key": "previewHitNotes",
+      "category": "general",
+      "default": true,
+      "kind": "bool"
+    },
+    {
+      "key": "previewHitLine",
+      "category": "general",
+      "default": false,
+      "kind": "bool"
+    },
+    {
+      "key": "previewNotesLookAtPlayer",
+      "category": "general",
+      "default": false,
+      "kind": "bool"
+    },
+    {
+      "key": "graphicsQuality",
+      "category": "graphics",
+      "default": "high",
+      "kind": "enum",
+      "values": ["none", "low", "medium", "high"]
+    },
+    {
+      "key": "screenDisplacementEffects",
+      "category": "graphics",
+      "default": true,
+      "kind": "bool"
+    },
+    {
+      "key": "renderScale",
+      "category": "graphics",
+      "default": 1,
+      "kind": "num",
+      "min": 0.5,
+      "max": 1.5,
+      "step": 0.05
+    },
+    {
+      "key": "staticLights",
+      "category": "graphics",
+      "default": false,
+      "kind": "bool"
+    },
+    {
+      "key": "preferReplayColors",
+      "category": "cosmetics",
+      "default": true,
+      "kind": "bool"
+    },
+    {
+      "key": "preferReplayEnvironment",
+      "category": "cosmetics",
+      "default": true,
+      "kind": "bool"
+    },
+    {
+      "key": "overrideEnvironment",
+      "category": "cosmetics",
+      "default": false,
+      "kind": "bool"
+    },
+    {
+      "key": "environmentOverrideId",
+      "category": "cosmetics",
+      "default": "BigMirrorEnvironment",
+      "kind": "enum",
+      "values": [
+        "DefaultEnvironment",
+        "OriginsEnvironment",
+        "TriangleEnvironment",
+        "NiceEnvironment",
+        "BigMirrorEnvironment",
+        "DragonsEnvironment",
+        "KDAEnvironment",
+        "MonstercatEnvironment",
+        "CrabRaveEnvironment",
+        "PanicEnvironment",
+        "RocketEnvironment",
+        "GreenDayGrenadeEnvironment",
+        "GreenDayEnvironment",
+        "TimbalandEnvironment",
+        "FitBeatEnvironment",
+        "LinkinParkEnvironment",
+        "GlassDesertEnvironment",
+        "BTSEnvironment",
+        "KaleidoscopeEnvironment",
+        "InterscopeEnvironment",
+        "GagaEnvironment",
+        "SkrillexEnvironment",
+        "HalloweenEnvironment",
+        "WeaveEnvironment",
+        "EDMEnvironment",
+        "TheSecondEnvironment",
+        "LizzoEnvironment",
+        "TheWeekndEnvironment",
+        "Dragons2Environment",
+        "LatticeEnvironment",
+        "DaftPunkEnvironment",
+        "HipHopEnvironment",
+        "ColliderEnvironment",
+        "GridEnvironment",
+        "BillieEnvironment"
+      ]
+    },
+    {
+      "key": "customColors",
+      "category": "cosmetics",
+      "default": false,
+      "kind": "bool"
+    },
+    {
+      "key": "leftColor",
+      "category": "cosmetics",
+      "default": "#c81414",
+      "kind": "color"
+    },
+    {
+      "key": "rightColor",
+      "category": "cosmetics",
+      "default": "#288ed2",
+      "kind": "color"
+    },
+    {
+      "key": "obstacleColor",
+      "category": "cosmetics",
+      "default": "#ff3030",
+      "kind": "color"
+    },
+    {
+      "key": "environmentLeftColor",
+      "category": "cosmetics",
+      "default": "#d91616",
+      "kind": "color"
+    },
+    {
+      "key": "environmentRightColor",
+      "category": "cosmetics",
+      "default": "#30acff",
+      "kind": "color"
+    },
+    {
+      "key": "environmentWhiteColor",
+      "category": "cosmetics",
+      "default": "#b9b9b9",
+      "kind": "color"
+    },
+    {
+      "key": "environmentLeftBoostColor",
+      "category": "cosmetics",
+      "default": "#d91616",
+      "kind": "color"
+    },
+    {
+      "key": "environmentRightBoostColor",
+      "category": "cosmetics",
+      "default": "#30acff",
+      "kind": "color"
+    },
+    {
+      "key": "environmentWhiteBoostColor",
+      "category": "cosmetics",
+      "default": "#b9b9b9",
+      "kind": "color"
+    },
+    {
+      "key": "showSabers",
+      "category": "cosmetics",
+      "default": true,
+      "kind": "bool"
+    },
+    {
+      "key": "saberScale",
+      "category": "cosmetics",
+      "default": 1,
+      "kind": "num",
+      "min": 0.25,
+      "max": 3,
+      "step": 0.01
+    },
+    {
+      "key": "saberBladeLength",
+      "category": "cosmetics",
+      "default": 1,
+      "kind": "num",
+      "min": 0.1,
+      "max": 2,
+      "step": 0.01
+    },
+    {
+      "key": "saberBladeWidth",
+      "category": "cosmetics",
+      "default": 1,
+      "kind": "num",
+      "min": 0.25,
+      "max": 4,
+      "step": 0.05
+    },
+    {
+      "key": "saberTipWidth",
+      "category": "cosmetics",
+      "default": 0.2,
+      "kind": "num",
+      "min": 0,
+      "max": 1,
+      "step": 0.01
+    },
+    {
+      "key": "saberHiltLength",
+      "category": "cosmetics",
+      "default": 0.16,
+      "kind": "num",
+      "min": 0.04,
+      "max": 0.4,
+      "step": 0.005
+    },
+    {
+      "key": "saberHiltWidth",
+      "category": "cosmetics",
+      "default": 1,
+      "kind": "num",
+      "min": 0.25,
+      "max": 3,
+      "step": 0.05
+    },
+    {
+      "key": "saberRingCount",
+      "category": "cosmetics",
+      "default": 5,
+      "kind": "num",
+      "min": 0,
+      "max": 5,
+      "step": 1
+    },
+    {
+      "key": "showSaberTrails",
+      "category": "cosmetics",
+      "default": true,
+      "kind": "bool"
+    },
+    {
+      "key": "saberTrailDuration",
+      "category": "cosmetics",
+      "default": 0.29,
+      "kind": "num",
+      "min": 0.05,
+      "max": 1,
+      "step": 0.01
+    },
+    {
+      "key": "saberTrailWidth",
+      "category": "cosmetics",
+      "default": 0.25,
+      "kind": "num",
+      "min": 0.05,
+      "max": 1,
+      "step": 0.01
+    },
+    {
+      "key": "saberTrailBrightness",
+      "category": "cosmetics",
+      "default": 1,
+      "kind": "num",
+      "min": 0,
+      "max": 2,
+      "step": 0.01
+    },
+    {
+      "key": "saberXOffset",
+      "category": "cosmetics",
+      "default": 0,
+      "kind": "num",
+      "min": -0.25,
+      "max": 0.25,
+      "step": 0.001
+    },
+    {
+      "key": "saberYOffset",
+      "category": "cosmetics",
+      "default": 0,
+      "kind": "num",
+      "min": -0.25,
+      "max": 0.25,
+      "step": 0.001
+    },
+    {
+      "key": "saberZOffset",
+      "category": "cosmetics",
+      "default": 0,
+      "kind": "num",
+      "min": -0.25,
+      "max": 0.25,
+      "step": 0.001
+    },
+    {
+      "key": "saberXRotation",
+      "category": "cosmetics",
+      "default": 0,
+      "kind": "num",
+      "min": -45,
+      "max": 45,
+      "step": 0.1
+    },
+    {
+      "key": "saberYRotation",
+      "category": "cosmetics",
+      "default": 0,
+      "kind": "num",
+      "min": -45,
+      "max": 45,
+      "step": 0.1
+    },
+    {
+      "key": "saberZRotation",
+      "category": "cosmetics",
+      "default": 0,
+      "kind": "num",
+      "min": -45,
+      "max": 45,
+      "step": 0.1
+    },
+    {
+      "key": "showHeadset",
+      "category": "camera",
+      "default": true,
+      "kind": "bool"
+    },
+    {
+      "key": "orthoCameraEnabled",
+      "category": "camera",
+      "default": false,
+      "kind": "bool"
+    },
+    {
+      "key": "orthoCameraView",
+      "category": "camera",
+      "default": "back",
+      "kind": "enum",
+      "values": ["back", "left", "right"]
+    },
+    {
+      "key": "replayCamera",
+      "category": "camera",
+      "default": "first-person",
+      "kind": "enum",
+      "values": ["static", "follow", "first-person"]
+    },
+    {
+      "key": "replayCameraSmoothing",
+      "category": "camera",
+      "default": true,
+      "kind": "bool"
+    },
+    {
+      "key": "replayCameraSmoothingSpeed",
+      "category": "camera",
+      "default": 4,
+      "kind": "num",
+      "min": 1,
+      "max": 20,
+      "step": 0.1
+    },
+    {
+      "key": "replayCameraFov",
+      "category": "camera",
+      "default": 70,
+      "kind": "num",
+      "min": 60,
+      "max": 120,
+      "step": 0.1
+    },
+    {
+      "key": "previewCameraDistance",
+      "category": "camera",
+      "default": 4,
+      "kind": "num",
+      "min": 0,
+      "max": 10,
+      "step": 0.1
+    },
+    {
+      "key": "fixedCameraDistance",
+      "category": "camera",
+      "default": 4,
+      "kind": "num",
+      "min": 2,
+      "max": 10,
+      "step": 0.1
+    },
+    {
+      "key": "replayCameraXOffset",
+      "category": "camera",
+      "default": 0,
+      "kind": "num",
+      "min": -10,
+      "max": 10,
+      "step": 0.01
+    },
+    {
+      "key": "replayCameraYOffset",
+      "category": "camera",
+      "default": 0,
+      "kind": "num",
+      "min": -10,
+      "max": 10,
+      "step": 0.01
+    },
+    {
+      "key": "replayCameraDepthOffset",
+      "category": "camera",
+      "default": -0.55,
+      "kind": "num",
+      "min": -10,
+      "max": 10,
+      "step": 0.01
+    },
+    {
+      "key": "replayCameraXRotation",
+      "category": "camera",
+      "default": 0,
+      "kind": "num",
+      "min": -180,
+      "max": 180,
+      "step": 0.1
+    },
+    {
+      "key": "replayCameraYRotation",
+      "category": "camera",
+      "default": 0,
+      "kind": "num",
+      "min": -180,
+      "max": 180,
+      "step": 0.1
+    },
+    {
+      "key": "replayCameraZRotation",
+      "category": "camera",
+      "default": 0,
+      "kind": "num",
+      "min": -180,
+      "max": 180,
+      "step": 0.1
+    },
+    {
+      "key": "replayCameraForceUpright",
+      "category": "camera",
+      "default": false,
+      "kind": "bool"
+    }
+  ]
+}

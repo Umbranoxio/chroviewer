@@ -7,8 +7,25 @@ import { MAX_HSV_PROFILE_BYTES } from './replay/hit-score-visualizer-profile';
 import { replayColorScheme } from './replay/play-settings';
 import type { ReplayMetadata } from './replay/types';
 
+export const SETTING_OPTIONS = {
+  graphicsQuality: ['none', 'low', 'medium', 'high'],
+  orthoCameraView: ['back', 'left', 'right'],
+  replayCamera: ['static', 'follow', 'first-person'],
+  hitsoundPreset: [
+    'default',
+    'ChromapperTick',
+    'OsuHitsound',
+    'ThumpyHitsound',
+    'GalxHitsound',
+    'RabbitViewerTick',
+    'custom',
+  ],
+} as const;
+
+type SettingOption<K extends keyof typeof SETTING_OPTIONS> = (typeof SETTING_OPTIONS)[K][number];
+
 export interface ViewerSettings {
-  graphicsQuality: 'none' | 'low' | 'medium' | 'high';
+  graphicsQuality: SettingOption<'graphicsQuality'>;
   screenDisplacementEffects: boolean;
   previewHitNotes: boolean;
   previewHitLine: boolean;
@@ -64,8 +81,8 @@ export interface ViewerSettings {
   reverseTimelineScroll: boolean;
   showHeadset: boolean;
   orthoCameraEnabled: boolean;
-  orthoCameraView: 'back' | 'left' | 'right';
-  replayCamera: 'static' | 'follow' | 'first-person';
+  orthoCameraView: SettingOption<'orthoCameraView'>;
+  replayCamera: SettingOption<'replayCamera'>;
   replayCameraSmoothing: boolean;
   replayCameraSmoothingSpeed: number;
   replayCameraFov: number;
@@ -83,10 +100,51 @@ export interface ViewerSettings {
   keepMapInfoVisible: boolean;
 }
 
-export type HitsoundPreset = z.infer<typeof hitsoundPresetSchema>;
+export type HitsoundPreset = SettingOption<'hitsoundPreset'>;
 
-export const MIN_AUDIO_OFFSET_MS = -1000;
-export const MAX_AUDIO_OFFSET_MS = 1000;
+export interface SettingRange {
+  min: number;
+  max: number;
+  step: number;
+}
+
+type NumberSettingKey = {
+  [K in keyof ViewerSettings]: ViewerSettings[K] extends number ? K : never;
+}[keyof ViewerSettings];
+
+export const SETTING_RANGES: Record<NumberSettingKey, SettingRange> = {
+  renderScale: { min: 0.5, max: 1.5, step: 0.05 },
+  saberScale: { min: 0.25, max: 3, step: 0.01 },
+  saberBladeLength: { min: 0.1, max: 2, step: 0.01 },
+  saberBladeWidth: { min: 0.25, max: 4, step: 0.05 },
+  saberTipWidth: { min: 0, max: 1, step: 0.01 },
+  saberHiltLength: { min: 0.04, max: 0.4, step: 0.005 },
+  saberHiltWidth: { min: 0.25, max: 3, step: 0.05 },
+  saberRingCount: { min: 0, max: 5, step: 1 },
+  saberTrailDuration: { min: 0.05, max: 1, step: 0.01 },
+  saberTrailWidth: { min: 0.05, max: 1, step: 0.01 },
+  saberTrailBrightness: { min: 0, max: 2, step: 0.01 },
+  saberXOffset: { min: -0.25, max: 0.25, step: 0.001 },
+  saberYOffset: { min: -0.25, max: 0.25, step: 0.001 },
+  saberZOffset: { min: -0.25, max: 0.25, step: 0.001 },
+  saberXRotation: { min: -45, max: 45, step: 0.1 },
+  saberYRotation: { min: -45, max: 45, step: 0.1 },
+  saberZRotation: { min: -45, max: 45, step: 0.1 },
+  masterVolume: { min: 0, max: 1, step: 0.01 },
+  songVolume: { min: 0, max: 1, step: 0.01 },
+  hitsoundVolume: { min: 0, max: 1, step: 0.01 },
+  audioOffsetMs: { min: -1000, max: 1000, step: 10 },
+  replayCameraSmoothingSpeed: { min: 1, max: 20, step: 0.1 },
+  replayCameraFov: { min: 60, max: 120, step: 0.1 },
+  previewCameraDistance: { min: 0, max: 10, step: 0.1 },
+  fixedCameraDistance: { min: 2, max: 10, step: 0.1 },
+  replayCameraXOffset: { min: -10, max: 10, step: 0.01 },
+  replayCameraYOffset: { min: -10, max: 10, step: 0.01 },
+  replayCameraDepthOffset: { min: -10, max: 10, step: 0.01 },
+  replayCameraXRotation: { min: -180, max: 180, step: 0.1 },
+  replayCameraYRotation: { min: -180, max: 180, step: 0.1 },
+  replayCameraZRotation: { min: -180, max: 180, step: 0.1 },
+};
 
 export type ReplayCameraSettings = Pick<
   ViewerSettings,
@@ -238,18 +296,19 @@ interface MobileDeviceInfo {
   maxTouchPoints: number;
 }
 
-function numberSetting(fallback: number, minimum: number, maximum: number) {
+function numberSetting(key: NumberSettingKey) {
+  const { min, max, step } = SETTING_RANGES[key];
   return z.pipe(
-    z.catch(z.number(), fallback),
-    z.transform((value) => Math.min(Math.max(value, minimum), maximum)),
+    z.catch(z.number(), DEFAULT_VIEWER_SETTINGS[key]),
+    z.transform((value) => {
+      const clamped = Math.min(Math.max(value, min), max);
+      return Number.isInteger(step) ? Math.round(clamped) : clamped;
+    }),
   );
 }
 
-function integerSetting(fallback: number, minimum: number, maximum: number) {
-  return z.pipe(
-    numberSetting(fallback, minimum, maximum),
-    z.transform((value) => Math.round(value)),
-  );
+function optionSetting<K extends keyof typeof SETTING_OPTIONS>(key: K) {
+  return z.catch(z.enum(SETTING_OPTIONS[key]), DEFAULT_VIEWER_SETTINGS[key]);
 }
 
 function hexColorSchema(fallback: string) {
@@ -262,23 +321,13 @@ function hexColorSchema(fallback: string) {
   );
 }
 
-const hitsoundPresetSchema = z.enum([
-  'default',
-  'ChromapperTick',
-  'OsuHitsound',
-  'ThumpyHitsound',
-  'GalxHitsound',
-  'RabbitViewerTick',
-  'custom',
-]);
-
 const viewerSettingsObjectSchema = z.object({
-  graphicsQuality: z.catch(z.enum(['none', 'low', 'medium', 'high']), DEFAULT_VIEWER_SETTINGS.graphicsQuality),
+  graphicsQuality: optionSetting('graphicsQuality'),
   screenDisplacementEffects: z.catch(z.boolean(), DEFAULT_VIEWER_SETTINGS.screenDisplacementEffects),
   previewHitNotes: z.catch(z.boolean(), DEFAULT_VIEWER_SETTINGS.previewHitNotes),
   previewHitLine: z.catch(z.boolean(), DEFAULT_VIEWER_SETTINGS.previewHitLine),
   previewNotesLookAtPlayer: z.catch(z.boolean(), DEFAULT_VIEWER_SETTINGS.previewNotesLookAtPlayer),
-  renderScale: numberSetting(DEFAULT_VIEWER_SETTINGS.renderScale, 0.5, 1.5),
+  renderScale: numberSetting('renderScale'),
   staticLights: z.catch(z.boolean(), DEFAULT_VIEWER_SETTINGS.staticLights),
   preferReplayColors: z.catch(z.boolean(), DEFAULT_VIEWER_SETTINGS.preferReplayColors),
   preferReplayEnvironment: z.catch(z.boolean(), DEFAULT_VIEWER_SETTINGS.preferReplayEnvironment),
@@ -298,50 +347,50 @@ const viewerSettingsObjectSchema = z.object({
   preferReplayHsvProfile: z.catch(z.boolean(), DEFAULT_VIEWER_SETTINGS.preferReplayHsvProfile),
   hsvProfile: z.catch(z.string().check(z.maxLength(MAX_HSV_PROFILE_BYTES)), DEFAULT_VIEWER_SETTINGS.hsvProfile),
   showSabers: z.catch(z.boolean(), DEFAULT_VIEWER_SETTINGS.showSabers),
-  saberScale: numberSetting(DEFAULT_VIEWER_SETTINGS.saberScale, 0.25, 3),
-  saberBladeLength: numberSetting(DEFAULT_VIEWER_SETTINGS.saberBladeLength, 0.1, 2),
-  saberBladeWidth: numberSetting(DEFAULT_VIEWER_SETTINGS.saberBladeWidth, 0.25, 4),
-  saberTipWidth: numberSetting(DEFAULT_VIEWER_SETTINGS.saberTipWidth, 0, 1),
-  saberHiltLength: numberSetting(DEFAULT_VIEWER_SETTINGS.saberHiltLength, 0.04, 0.4),
-  saberHiltWidth: numberSetting(DEFAULT_VIEWER_SETTINGS.saberHiltWidth, 0.25, 3),
-  saberRingCount: integerSetting(DEFAULT_VIEWER_SETTINGS.saberRingCount, 0, 5),
+  saberScale: numberSetting('saberScale'),
+  saberBladeLength: numberSetting('saberBladeLength'),
+  saberBladeWidth: numberSetting('saberBladeWidth'),
+  saberTipWidth: numberSetting('saberTipWidth'),
+  saberHiltLength: numberSetting('saberHiltLength'),
+  saberHiltWidth: numberSetting('saberHiltWidth'),
+  saberRingCount: numberSetting('saberRingCount'),
   showSaberTrails: z.catch(z.boolean(), DEFAULT_VIEWER_SETTINGS.showSaberTrails),
-  saberTrailDuration: numberSetting(DEFAULT_VIEWER_SETTINGS.saberTrailDuration, 0.05, 1),
-  saberTrailWidth: numberSetting(DEFAULT_VIEWER_SETTINGS.saberTrailWidth, 0.05, 1),
-  saberTrailBrightness: numberSetting(DEFAULT_VIEWER_SETTINGS.saberTrailBrightness, 0, 2),
-  saberXOffset: numberSetting(DEFAULT_VIEWER_SETTINGS.saberXOffset, -0.25, 0.25),
-  saberYOffset: numberSetting(DEFAULT_VIEWER_SETTINGS.saberYOffset, -0.25, 0.25),
-  saberZOffset: numberSetting(DEFAULT_VIEWER_SETTINGS.saberZOffset, -0.25, 0.25),
-  saberXRotation: numberSetting(DEFAULT_VIEWER_SETTINGS.saberXRotation, -45, 45),
-  saberYRotation: numberSetting(DEFAULT_VIEWER_SETTINGS.saberYRotation, -45, 45),
-  saberZRotation: numberSetting(DEFAULT_VIEWER_SETTINGS.saberZRotation, -45, 45),
+  saberTrailDuration: numberSetting('saberTrailDuration'),
+  saberTrailWidth: numberSetting('saberTrailWidth'),
+  saberTrailBrightness: numberSetting('saberTrailBrightness'),
+  saberXOffset: numberSetting('saberXOffset'),
+  saberYOffset: numberSetting('saberYOffset'),
+  saberZOffset: numberSetting('saberZOffset'),
+  saberXRotation: numberSetting('saberXRotation'),
+  saberYRotation: numberSetting('saberYRotation'),
+  saberZRotation: numberSetting('saberZRotation'),
   hitsounds: z.catch(z.boolean(), DEFAULT_VIEWER_SETTINGS.hitsounds),
-  hitsoundPreset: z.catch(hitsoundPresetSchema, DEFAULT_VIEWER_SETTINGS.hitsoundPreset),
+  hitsoundPreset: optionSetting('hitsoundPreset'),
   customGoodHitsound: z.catch(z.nullable(z.string()), DEFAULT_VIEWER_SETTINGS.customGoodHitsound),
   customBadHitsound: z.catch(z.nullable(z.string()), DEFAULT_VIEWER_SETTINGS.customBadHitsound),
   masterMuted: z.catch(z.boolean(), DEFAULT_VIEWER_SETTINGS.masterMuted),
   songMuted: z.catch(z.boolean(), DEFAULT_VIEWER_SETTINGS.songMuted),
-  masterVolume: numberSetting(DEFAULT_VIEWER_SETTINGS.masterVolume, 0, 1),
-  songVolume: numberSetting(DEFAULT_VIEWER_SETTINGS.songVolume, 0, 1),
-  hitsoundVolume: numberSetting(DEFAULT_VIEWER_SETTINGS.hitsoundVolume, 0, 1),
-  audioOffsetMs: integerSetting(DEFAULT_VIEWER_SETTINGS.audioOffsetMs, MIN_AUDIO_OFFSET_MS, MAX_AUDIO_OFFSET_MS),
+  masterVolume: numberSetting('masterVolume'),
+  songVolume: numberSetting('songVolume'),
+  hitsoundVolume: numberSetting('hitsoundVolume'),
+  audioOffsetMs: numberSetting('audioOffsetMs'),
   showBookmarks: z.catch(z.boolean(), DEFAULT_VIEWER_SETTINGS.showBookmarks),
   reverseTimelineScroll: z.catch(z.boolean(), DEFAULT_VIEWER_SETTINGS.reverseTimelineScroll),
   showHeadset: z.catch(z.boolean(), DEFAULT_VIEWER_SETTINGS.showHeadset),
   orthoCameraEnabled: z.catch(z.boolean(), DEFAULT_VIEWER_SETTINGS.orthoCameraEnabled),
-  orthoCameraView: z.catch(z.enum(['back', 'left', 'right']), DEFAULT_VIEWER_SETTINGS.orthoCameraView),
-  replayCamera: z.catch(z.enum(['static', 'follow', 'first-person']), DEFAULT_VIEWER_SETTINGS.replayCamera),
+  orthoCameraView: optionSetting('orthoCameraView'),
+  replayCamera: optionSetting('replayCamera'),
   replayCameraSmoothing: z.catch(z.boolean(), DEFAULT_VIEWER_SETTINGS.replayCameraSmoothing),
-  replayCameraSmoothingSpeed: numberSetting(DEFAULT_VIEWER_SETTINGS.replayCameraSmoothingSpeed, 1, 20),
-  replayCameraFov: numberSetting(DEFAULT_VIEWER_SETTINGS.replayCameraFov, 60, 120),
-  previewCameraDistance: numberSetting(DEFAULT_VIEWER_SETTINGS.previewCameraDistance, 0, 10),
-  fixedCameraDistance: numberSetting(DEFAULT_VIEWER_SETTINGS.fixedCameraDistance, 2, 10),
-  replayCameraXOffset: numberSetting(DEFAULT_VIEWER_SETTINGS.replayCameraXOffset, -10, 10),
-  replayCameraYOffset: numberSetting(DEFAULT_VIEWER_SETTINGS.replayCameraYOffset, -10, 10),
-  replayCameraDepthOffset: numberSetting(DEFAULT_VIEWER_SETTINGS.replayCameraDepthOffset, -10, 10),
-  replayCameraXRotation: numberSetting(DEFAULT_VIEWER_SETTINGS.replayCameraXRotation, -180, 180),
-  replayCameraYRotation: numberSetting(DEFAULT_VIEWER_SETTINGS.replayCameraYRotation, -180, 180),
-  replayCameraZRotation: numberSetting(DEFAULT_VIEWER_SETTINGS.replayCameraZRotation, -180, 180),
+  replayCameraSmoothingSpeed: numberSetting('replayCameraSmoothingSpeed'),
+  replayCameraFov: numberSetting('replayCameraFov'),
+  previewCameraDistance: numberSetting('previewCameraDistance'),
+  fixedCameraDistance: numberSetting('fixedCameraDistance'),
+  replayCameraXOffset: numberSetting('replayCameraXOffset'),
+  replayCameraYOffset: numberSetting('replayCameraYOffset'),
+  replayCameraDepthOffset: numberSetting('replayCameraDepthOffset'),
+  replayCameraXRotation: numberSetting('replayCameraXRotation'),
+  replayCameraYRotation: numberSetting('replayCameraYRotation'),
+  replayCameraZRotation: numberSetting('replayCameraZRotation'),
   replayCameraForceUpright: z.catch(z.boolean(), DEFAULT_VIEWER_SETTINGS.replayCameraForceUpright),
   autoHide: z.catch(z.boolean(), DEFAULT_VIEWER_SETTINGS.autoHide),
   liveChatCollapsed: z.catch(z.boolean(), DEFAULT_VIEWER_SETTINGS.liveChatCollapsed),

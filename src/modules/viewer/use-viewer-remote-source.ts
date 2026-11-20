@@ -10,6 +10,7 @@ import { applyLegacyScoreSaberMetadata, isScoreSaberReplay } from '../../core/re
 import type { Replay } from '../../core/replay/types';
 import { replayMapHash } from '../../core/replay/types';
 import { applySharedViewerSettings } from '../../core/share-link';
+import { decodeShareSettings } from '../../core/share-settings-codec';
 import type { ViewerSettings } from '../../core/viewer-settings';
 import { extractMapArchive } from '../../sources/archive';
 import {
@@ -503,12 +504,12 @@ export function useViewerRemoteSource({
   }
 
   useEffect(() => {
+    const sharedSettings = decodeShareSettings(window.location.hash)?.patch ?? search.settings;
+    if (sharedSettings !== undefined) {
+      setSettings((current) => applySharedViewerSettings(current, sharedSettings));
+    }
     if (search.replayUrl !== undefined) {
       const requestId = beginSourceRequest();
-      const sharedSettings = search.settings;
-      if (sharedSettings !== undefined) {
-        setSettings((current) => applySharedViewerSettings(current, sharedSettings));
-      }
       setSourceInput(search.replayUrl);
       sourceMutation.mutate({
         type: 'shared-replay',
@@ -521,10 +522,6 @@ export function useViewerRemoteSource({
     }
     if (search.scoreId !== undefined) {
       const requestId = beginSourceRequest();
-      const sharedSettings = search.settings;
-      if (sharedSettings !== undefined) {
-        setSettings((current) => applySharedViewerSettings(current, sharedSettings));
-      }
       setSourceInput(`scoresaber:${search.scoreId}`);
       sourceMutation.mutate({
         type: 'shared-score',
@@ -537,10 +534,6 @@ export function useViewerRemoteSource({
     }
     if (search.scoreIdBL !== undefined) {
       const requestId = beginSourceRequest();
-      const sharedSettings = search.settings;
-      if (sharedSettings !== undefined) {
-        setSettings((current) => applySharedViewerSettings(current, sharedSettings));
-      }
       setSourceInput(`beatleader:${search.scoreIdBL}`);
       sourceMutation.mutate({
         type: 'shared-beatleader',
@@ -553,10 +546,6 @@ export function useViewerRemoteSource({
     }
     if (search.map === undefined) return;
     const requestId = beginSourceRequest();
-    const sharedSettings = search.settings;
-    if (sharedSettings !== undefined) {
-      setSettings((current) => applySharedViewerSettings(current, sharedSettings));
-    }
     pendingSharedViewRef.current = {
       autoplay: search.autoplay,
       beat: search.beat,

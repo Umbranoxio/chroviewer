@@ -1,6 +1,6 @@
 import { useFormatter, useTranslations } from 'use-intl';
 
-import { DEFAULT_REPLAY_CAMERA_SETTINGS, type ViewerSettings } from '../../../core/viewer-settings';
+import { DEFAULT_REPLAY_CAMERA_SETTINGS, SETTING_RANGES, type ViewerSettings } from '../../../core/viewer-settings';
 import { SettingSection } from '../components/setting-section';
 import { SliderSetting } from '../components/slider-setting';
 import type { CameraSettingsUpdate } from './camera-setting-controls';
@@ -28,9 +28,7 @@ export function PreviewCameraSettings({ hasReplay, settings, update }: PreviewCa
           id="replay-camera-fov"
           label={t('fieldOfView')}
           value={settings.replayCameraFov}
-          minimum={60}
-          maximum={120}
-          step={0.1}
+          range={SETTING_RANGES.replayCameraFov}
           display={(value) =>
             format.number(value, {
               style: 'unit',
@@ -54,9 +52,7 @@ export function PreviewCameraSettings({ hasReplay, settings, update }: PreviewCa
               id="fixed-camera-distance"
               label={t('distanceFromHitPlane')}
               value={settings[distanceKey]}
-              minimum={hasReplay ? 2 : 0}
-              maximum={10}
-              step={0.1}
+              range={SETTING_RANGES[distanceKey]}
               display={(value) =>
                 format.number(value, {
                   style: 'unit',

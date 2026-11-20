@@ -199,6 +199,8 @@
     "includeSettings": "Include settings",
     "includeTimecode": "Include timecode",
     "localFilesUnavailable": "Local maps and replay files cannot be shared by URL",
+    "resetOthers": "Reset other settings to default",
+    "resetOthersHelp": "When enabled, viewers get exactly your settings for the selected categories, and anything you left at default is reset for them too.\nWhen disabled, only the settings you changed are applied, and viewers keep their own values for the rest.",
     "title": "Share viewer"
   },
   "watchParty": {

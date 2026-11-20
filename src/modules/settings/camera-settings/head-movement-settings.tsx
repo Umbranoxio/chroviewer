@@ -1,6 +1,6 @@
 import { useFormatter, useTranslations } from 'use-intl';
 
-import { DEFAULT_REPLAY_CAMERA_SETTINGS, type ViewerSettings } from '../../../core/viewer-settings';
+import { DEFAULT_REPLAY_CAMERA_SETTINGS, SETTING_RANGES, type ViewerSettings } from '../../../core/viewer-settings';
 import { SettingRow } from '../components/setting-row';
 import { SettingSection } from '../components/setting-section';
 import { SliderSetting } from '../components/slider-setting';
@@ -33,9 +33,7 @@ export function HeadMovementSettings({ settings, update }: HeadMovementSettingsP
           id="replay-camera-smoothing-speed"
           label={t('responseSpeed')}
           value={settings.replayCameraSmoothingSpeed}
-          minimum={1}
-          maximum={20}
-          step={0.1}
+          range={SETTING_RANGES.replayCameraSmoothingSpeed}
           display={(value) =>
             t('perSecond', {
               value: format.number(value, { minimumFractionDigits: 1, maximumFractionDigits: 1 }),
